@@ -1,0 +1,21 @@
+src/app/(dashboard)/calendar/page.tsx
+  s_548895eef3a38a::t_0592cf6e0fa070 3,24-50,62,66-75,93,113-115,125-130,196,198,208,210,220,222,283,478,579
+DESIGN.md
+  s_548895eef3a38a::t_57df3bf446f117 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9719b9e0c6ee349a42d0e6f16df328b5a987b914",
+  "prompts": {},
+  "sessions": {
+    "s_548895eef3a38a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f80a7-5074-7692-974c-eeb975953fd2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
