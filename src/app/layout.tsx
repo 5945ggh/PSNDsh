@@ -1,20 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { MockProvider } from "@/context/MockContext";
 
 export const metadata: Metadata = {
-  title: "Personal Dashboard",
-  description: "个人面板",
+  title: "Personal Dashboard - 个人面板",
+  description: "安静、清醒、可信的个人时间与意图管理面板",
 };
 
 export default function RootLayout({
@@ -25,9 +15,13 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+        <MockProvider>
+          {children}
+        </MockProvider>
+      </body>
     </html>
   );
 }

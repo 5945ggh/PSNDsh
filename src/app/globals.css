@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --background: #fcfcfc;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --border: #e4e4e7;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+
+  /* Status Colors */
+  --color-active: #2563eb;
+  --color-completed: #16a34a;
+  --color-paused: #d97706;
+  --color-archived: #71717a;
+  --color-dueSoon: #ea580c;
+  --color-overdue: #dc2626;
+
+  /* Calendar Tracks */
+  --track-course: #eff6ff;
+  --track-course-border: #bfdbfe;
+  --track-course-text: #1e40af;
+  --track-focus: #faf5ff;
+  --track-focus-border: #e9d5ff;
+  --track-focus-text: #6b21a8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --card: #141417;
+    --card-foreground: #f4f4f5;
+    --border: #27272a;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --primary: #f4f4f5;
+    --primary-foreground: #09090b;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
+
+    --track-course: #1e293b;
+    --track-course-border: #334155;
+    --track-course-text: #93c5fd;
+    --track-focus: #2e1065;
+    --track-focus-border: #4c1d95;
+    --track-focus-text: #d8b4fe;
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Ensure tabular numerals for precise time alignment without layout shift */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tree indent line indicator */
+.tree-line {
+  position: relative;
+}
+.tree-line::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border);
 }
