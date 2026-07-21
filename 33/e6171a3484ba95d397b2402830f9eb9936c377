@@ -1,0 +1,58 @@
+src/components/focus/FocusSplitModal.tsx
+  s_548895eef3a38a::t_766a008ce48c11 99-119,122-123,263,265-266,282
+  s_548895eef3a38a::t_0bae856dee2f48 4,95-98,267-274,283-285
+  s_548895eef3a38a::t_2df99827ea4a75 7,11-21,36
+src/app/(dashboard)/calendar/page.tsx
+  s_548895eef3a38a::t_684f5d0094fe60 50-56,60-61,64-67,69-71,73
+  s_548895eef3a38a::t_8f7c6f93e65ae8 57-59,62-63,68,72,272-283,310-314,331,346,366-370,390,410,440-451,473,484,499,515,572,616-620,624,663
+  s_548895eef3a38a::t_6abd8bc7d56265 567,569-571,573-599,601,611,613-615,621-623,625-649,651-662,664-700,702
+src/types/mock.ts
+  s_548895eef3a38a::t_2dc9e369cde1dc 171-175
+src/lib/mock/store.ts
+  s_548895eef3a38a::t_16773516c3203f 20,26-92
+  s_548895eef3a38a::t_0c06599364d1a2 728-732,738
+  s_548895eef3a38a::t_6b466fa0f3d406 660-669,672,677-685,687-701,706-720,723-726,737
+  s_548895eef3a38a::t_fd5920b36e6f52 98-103,134-143,149-154
+  s_548895eef3a38a::t_81acbf9f116bdf 605-606,610
+  s_548895eef3a38a::t_fe6f3032c6b532 338-340,347-360,362,366,371-373,383-384
+  s_548895eef3a38a::t_23652f83b7414a 93
+src/lib/mock/domain.test.ts
+  s_548895eef3a38a::t_b4ac048a15a5f4 38
+src/app/(dashboard)/plan/page.tsx
+  s_548895eef3a38a::t_8f7c6f93e65ae8 334,364
+  s_548895eef3a38a::t_80d251f2efe77b 6,375-379,385-425
+src/lib/mock/store.test.ts
+  s_548895eef3a38a::t_092d723d90bbe0 16,28-32,36-37,39-44,48-49
+  s_548895eef3a38a::t_b4ac048a15a5f4 1-15,17-27,33-35,38,45-47,50-95
+src/lib/mock/fixtures.ts
+  s_548895eef3a38a::t_6da5148d443953 229,246-284,414-436
+  s_548895eef3a38a::t_cee57c8a6613ce 437-439
+src/app/(dashboard)/statistics/page.tsx
+  s_548895eef3a38a::t_70a7d5e1fbc42f 168,196,199,207,209-211,223-238
+  s_548895eef3a38a::t_7c1ebfb5f6ab7f 23-25,29-42,241
+  s_548895eef3a38a::t_638871fb8a422b 79,101,105,108-110,119,122-148
+  s_548895eef3a38a::t_ce798bbe33e643 5
+  s_548895eef3a38a::t_6c57f6a71b34f4 239-240
+  s_548895eef3a38a::t_28876372a624d1 242
+src/components/focus/FocusManualModal.tsx
+  s_548895eef3a38a::t_0bae856dee2f48 4,46-52,170-177,186-188
+  s_548895eef3a38a::t_766a008ce48c11 53-68,71,185
+src/components/layout/ScenarioSwitcher.tsx
+  s_548895eef3a38a::t_0bae856dee2f48 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "33e6171a3484ba95d397b2402830f9eb9936c377",
+  "prompts": {},
+  "sessions": {
+    "s_548895eef3a38a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f80a7-5074-7692-974c-eeb975953fd2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
