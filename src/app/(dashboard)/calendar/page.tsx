@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useMock } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
@@ -21,6 +21,33 @@ import {
   Trash2,
 } from "lucide-react";
 
+const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
+const SHANGHAI_TIME_ZONE = "Asia/Shanghai";
+const shanghaiTimePartsFormatter = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: SHANGHAI_TIME_ZONE,
+});
+
+const subscribeToMobileViewport = (onChange: () => void) => {
+  const mediaQuery = window.matchMedia(MOBILE_VIEWPORT_QUERY);
+  mediaQuery.addEventListener("change", onChange);
+  return () => mediaQuery.removeEventListener("change", onChange);
+};
+
+const getMobileViewportSnapshot = () =>
+  window.matchMedia(MOBILE_VIEWPORT_QUERY).matches;
+
+const getServerViewportSnapshot = () => false;
+
+const getShanghaiDecimalHour = (value: Date) => {
+  const parts = shanghaiTimePartsFormatter.formatToParts(value);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  return hour + minute / 60;
+};
+
 export default function CalendarPage() {
   const router = useRouter();
   const { api } = useMock();
@@ -32,9 +59,20 @@ export default function CalendarPage() {
 
   const [isIcsOpen, setIsIcsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact" | "day">("grid");
+  const [hasChosenViewMode, setHasChosenViewMode] = useState(false);
   const [trackFilter, setTrackFilter] = useState<"both" | "schedule" | "focus">("both");
   const [selectedDay, setSelectedDay] = useState("2026-06-24");
   const [activeScheduleModal, setActiveScheduleModal] = useState<ScheduleBlock | null>(null);
+  const isMobileViewport = useSyncExternalStore(
+    subscribeToMobileViewport,
+    getMobileViewportSnapshot,
+    getServerViewportSnapshot
+  );
+  const displayedViewMode = isMobileViewport && !hasChosenViewMode ? "day" : viewMode;
+  const selectViewMode = (mode: "grid" | "compact" | "day") => {
+    setViewMode(mode);
+    setHasChosenViewMode(true);
+  };
 
   const weekDays = [
     { date: "2026-06-22", dayName: "周一" },
@@ -52,7 +90,7 @@ export default function CalendarPage() {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-      timeZone: "Asia/Shanghai",
+      timeZone: SHANGHAI_TIME_ZONE,
     }).format(value);
   const overlapRange = (date: string, startedAt: string, endedAt: string) => {
     const dayStartMs = Date.parse(`${date}T00:00:00+08:00`);
@@ -72,9 +110,9 @@ export default function CalendarPage() {
     return overlapRange(selectedDay, session.startedAt, sessionEnd);
   });
 
-  // Y-axis Hours: 07:00 to 24:00 (17 hours)
-  const startHourRange = 7;
-  const totalHoursCount = 17;
+  // Full-day desktop timeline keeps both halves of a cross-midnight session visible.
+  const startHourRange = 0;
+  const totalHoursCount = 24;
   const hourRowHeight = 56;
   const gridTotalHeight = totalHoursCount * hourRowHeight;
 
@@ -84,8 +122,12 @@ export default function CalendarPage() {
     const sDate = new Date(startedAt);
     const eDate = endedAt ? new Date(endedAt) : new Date(sDate.getTime() + 60 * 60 * 1000);
 
-    const sHour = sDate.getHours() + sDate.getMinutes() / 60;
-    const eHour = eDate.getHours() + eDate.getMinutes() / 60;
+    const sHour = getShanghaiDecimalHour(sDate);
+    const rawEndHour = getShanghaiDecimalHour(eDate);
+    const eHour =
+      eDate.getTime() > sDate.getTime() && rawEndHour <= sHour
+        ? rawEndHour + 24
+        : rawEndHour;
 
     const clampedSHour = Math.max(startHourRange, Math.min(startHourRange + totalHoursCount, sHour));
     const clampedEHour = Math.max(clampedSHour + 0.5, Math.min(startHourRange + totalHoursCount, eHour));
@@ -151,9 +193,9 @@ export default function CalendarPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 text-xs bg-zinc-50 dark:bg-zinc-800">
             <button
-              onClick={() => setViewMode("grid")}
+              onClick={() => selectViewMode("grid")}
               className={`flex items-center gap-1 px-3 py-1.5 rounded font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                viewMode === "grid"
+                displayedViewMode === "grid"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
@@ -163,9 +205,9 @@ export default function CalendarPage() {
             </button>
 
             <button
-              onClick={() => setViewMode("compact")}
+              onClick={() => selectViewMode("compact")}
               className={`flex items-center gap-1 px-3 py-1.5 rounded font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                viewMode === "compact"
+                displayedViewMode === "compact"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
@@ -175,9 +217,9 @@ export default function CalendarPage() {
             </button>
 
             <button
-              onClick={() => setViewMode("day")}
+              onClick={() => selectViewMode("day")}
               className={`flex items-center gap-1 px-3 py-1.5 rounded font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                viewMode === "day"
+                displayedViewMode === "day"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
@@ -238,7 +280,7 @@ export default function CalendarPage() {
       </div>
 
       {/* 1. DETAILED HOURLY GRID VIEW WITH CLICK JUMP */}
-      {viewMode === "grid" && (
+      {displayedViewMode === "grid" && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-x-auto">
           <div className="min-w-[900px] flex">
             {/* Left Y-axis Hour Labels */}
@@ -433,7 +475,7 @@ export default function CalendarPage() {
       )}
 
       {/* 2. COMPACT CARD GRID VIEW */}
-      {viewMode === "compact" && (
+      {displayedViewMode === "compact" && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-x-auto">
           <div className="min-w-[800px] grid grid-cols-7 gap-2">
             {weekDays.map((wd) => {
@@ -534,7 +576,7 @@ export default function CalendarPage() {
       )}
 
       {/* 3. SINGLE DAY VIEW */}
-      {viewMode === "day" && (
+      {displayedViewMode === "day" && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-4 max-w-2xl mx-auto">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
             <button
