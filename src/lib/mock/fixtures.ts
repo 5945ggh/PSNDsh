@@ -226,8 +226,7 @@ export const MOCK_ENTRIES_NORMAL: Entry[] = [
   },
 ];
 
-// Reference Current Date: Friday 2026-06-26, week starts Monday 2026-06-22
-export const MOCK_WEEK_PLAN_NORMAL: WeekPlan = {
+const WEEK_PLAN_CURRENT: WeekPlan = {
   weekStart: "2026-06-22",
   note: `## 本周重心
 - [x] 攻克 ICS2 HW8/9
@@ -243,6 +242,45 @@ export const MOCK_WEEK_PLAN_NORMAL: WeekPlan = {
     { entryId: "entry_openviking", source: "manual", sortKey: "w5" },
   ],
 };
+
+const WEEK_PLAN_LAST: WeekPlan = {
+  weekStart: "2026-06-15",
+  note: `## 上周收尾
+- [x] 完成 ICS2 HW8 关键题
+- [/] 整理 OSTEP IO & Files 读书笔记
+- [ ] 复盘 LockLab 锁设计并补测
+
+> 备注：这周以收尾为主，下一周继续推进论文初稿。`,
+  items: [
+    { entryId: "entry_ostep_io", source: "rollover", sortKey: "w1" },
+    { entryId: "entry_hw8", source: "manual", sortKey: "w2" },
+    { entryId: "entry_lab4_sub", source: "manual", sortKey: "w3" },
+  ],
+};
+
+const WEEK_PLAN_TWO_WEEKS_AGO: WeekPlan = {
+  weekStart: "2026-06-08",
+  note: `## 前周记录
+- [x] 复习 OSTEP 基础章节
+- [ ] 启动 AI 伦理论文资料搜集
+- [ ] 补齐 GitHub 探索笔记
+
+> 这是一份更早的历史周计划，方便对比滚动结果。`,
+  items: [
+    { entryId: "entry_ostep", source: "rollover", sortKey: "w1" },
+    { entryId: "entry_ai_ethics", source: "manual", sortKey: "w2" },
+    { entryId: "entry_github", source: "manual", sortKey: "w3" },
+  ],
+};
+
+export const MOCK_WEEK_PLANS_NORMAL: Record<string, WeekPlan> = {
+  [WEEK_PLAN_CURRENT.weekStart]: WEEK_PLAN_CURRENT,
+  [WEEK_PLAN_LAST.weekStart]: WEEK_PLAN_LAST,
+  [WEEK_PLAN_TWO_WEEKS_AGO.weekStart]: WEEK_PLAN_TWO_WEEKS_AGO,
+};
+
+// Reference Current Date: Friday 2026-06-26, week starts Monday 2026-06-22
+export const MOCK_WEEK_PLAN_NORMAL: WeekPlan = WEEK_PLAN_CURRENT;
 
 // Schedule Blocks for the Week (Courses, Plans)
 export const MOCK_SCHEDULE_BLOCKS_NORMAL: ScheduleBlock[] = [
@@ -369,6 +407,32 @@ export const MOCK_FOCUS_SESSIONS_NORMAL: FocusSession[] = [
         endedAt: "2026-06-26T00:30:00+08:00",
         entryId: null, // 未关联
         note: null,
+      },
+    ],
+  },
+
+  // 4. Earlier-month historical focus session for monthly statistics
+  {
+    id: "foc_early_month",
+    startedAt: "2026-06-12T19:00:00+08:00",
+    endedAt: "2026-06-12T20:15:00+08:00",
+    captureMode: "timer",
+    note: "月中补充的历史专注样本",
+    outcome: "补完 OSTEP FS 相关阅读",
+    segments: [
+      {
+        id: "seg_early_1",
+        startedAt: "2026-06-12T19:00:00+08:00",
+        endedAt: "2026-06-12T19:35:00+08:00",
+        entryId: "entry_ostep_fs",
+        note: "FS 39",
+      },
+      {
+        id: "seg_early_2",
+        startedAt: "2026-06-12T19:35:00+08:00",
+        endedAt: "2026-06-12T20:15:00+08:00",
+        entryId: "entry_openviking",
+        note: "整理记忆系统笔记",
       },
     ],
   },

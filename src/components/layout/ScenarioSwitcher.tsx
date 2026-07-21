@@ -18,7 +18,7 @@ export const ScenarioSwitcher: React.FC = () => {
   ];
 
   return (
-    <aside aria-label="Mock 场景切换控制台" className="fixed bottom-4 right-4 z-50">
+    <aside aria-label="Mock 场景切换控制台" className="fixed bottom-20 right-4 z-50 md:bottom-4">
       {isOpen ? (
         <div className="bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-lg shadow-xl p-3 w-64 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center justify-between font-semibold border-b border-zinc-800 pb-2 mb-2">

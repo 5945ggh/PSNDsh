@@ -47,8 +47,30 @@ export default function CalendarPage() {
   ];
   const selectedDayIndex = Math.max(0, weekDays.findIndex((day) => day.date === selectedDay));
   const selectedDayMeta = weekDays[selectedDayIndex];
-  const selectedDaySchedules = scheduleBlocks.filter((block) => block.startedAt.slice(0, 10) === selectedDay);
-  const selectedDayFocuses = focusSessions.filter((session) => session.startedAt.slice(0, 10) === selectedDay);
+  const formatShanghaiTime = (value: number) =>
+    new Intl.DateTimeFormat("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Shanghai",
+    }).format(value);
+  const overlapRange = (date: string, startedAt: string, endedAt: string) => {
+    const dayStartMs = Date.parse(`${date}T00:00:00+08:00`);
+    const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+    const startMs = new Date(startedAt).getTime();
+    const endMs = new Date(endedAt).getTime();
+    const overlapStart = Math.max(startMs, dayStartMs);
+    const overlapEnd = Math.min(endMs, dayEndMs);
+    if (overlapEnd <= overlapStart) return null;
+    return { startMs: overlapStart, endMs: overlapEnd };
+  };
+  const selectedDaySchedules = scheduleBlocks.filter((block) =>
+    overlapRange(selectedDay, block.startedAt, block.endedAt)
+  );
+  const selectedDayFocuses = focusSessions.filter((session) => {
+    const sessionEnd = session.endedAt || new Date().toISOString();
+    return overlapRange(selectedDay, session.startedAt, sessionEnd);
+  });
 
   // Y-axis Hours: 07:00 to 24:00 (17 hours)
   const startHourRange = 7;
@@ -247,12 +269,18 @@ export default function CalendarPage() {
 
               {/* Day Headers & Column Content Area */}
               {weekDays.map((wd, dayIdx) => {
-                const daySchedules = scheduleBlocks.filter(
-                  (s) => s.startedAt.slice(0, 10) === wd.date
-                );
-                const dayFocuses = focusSessions.filter(
-                  (f) => f.startedAt.slice(0, 10) === wd.date
-                );
+                const daySchedules = scheduleBlocks.flatMap((schedule) => {
+                  const range = overlapRange(wd.date, schedule.startedAt, schedule.endedAt);
+                  return range ? [{ schedule, range }] : [];
+                });
+                const dayFocuses = focusSessions.flatMap((focus) => {
+                  const range = overlapRange(
+                    wd.date,
+                    focus.startedAt,
+                    focus.endedAt || new Date().toISOString()
+                  );
+                  return range ? [{ focus, range }] : [];
+                });
 
                 return (
                   <div key={wd.date} className="flex flex-col relative min-w-0">
@@ -279,8 +307,11 @@ export default function CalendarPage() {
                               trackFilter === "both" ? "w-1/2" : "w-full"
                             }`}
                           >
-                            {daySchedules.map((sch) => {
-                              const pos = computeTimePosition(sch.startedAt, sch.endedAt);
+                            {daySchedules.map(({ schedule: sch, range }) => {
+                              const pos = computeTimePosition(
+                                new Date(range.startMs).toISOString(),
+                                new Date(range.endMs).toISOString()
+                              );
                               const popoverPosClass = getPopoverPositionClass(pos.top, dayIdx);
 
                               return (
@@ -297,7 +328,7 @@ export default function CalendarPage() {
                                       <ArrowRight className="w-3 h-3 opacity-0 group-hover/block:opacity-100 shrink-0 text-blue-500" />
                                     </div>
                                     <div className="text-[9px] font-mono opacity-80 tabular-nums">
-                                      {sch.startedAt.slice(11, 16)}–{sch.endedAt.slice(11, 16)}
+                                      {formatShanghaiTime(range.startMs)}–{formatShanghaiTime(range.endMs)}
                                     </div>
                                   </div>
 
@@ -312,7 +343,7 @@ export default function CalendarPage() {
                                       </span>
                                     </div>
                                     <div className="space-y-1 text-[11px] font-mono text-zinc-300 tabular-nums">
-                                      <div>时间：{sch.startedAt.slice(11, 16)} – {sch.endedAt.slice(11, 16)}</div>
+                                      <div>时间：{formatShanghaiTime(range.startMs)} – {formatShanghaiTime(range.endMs)}</div>
                                       {sch.location && <div>地点：{sch.location}</div>}
                                       {sch.recurrenceLabel && (
                                         <div className="text-[10px] text-zinc-400">重复：{sch.recurrenceLabel}</div>
@@ -332,8 +363,11 @@ export default function CalendarPage() {
                               trackFilter === "both" ? "w-1/2" : "w-full"
                             }`}
                           >
-                            {dayFocuses.map((foc) => {
-                              const pos = computeTimePosition(foc.startedAt, foc.endedAt);
+                            {dayFocuses.map(({ focus: foc, range }) => {
+                              const pos = computeTimePosition(
+                                new Date(range.startMs).toISOString(),
+                                new Date(range.endMs).toISOString()
+                              );
                               const seg = foc.segments[0];
                               const entry = seg?.entryId ? api.getEntryById(seg.entryId) : null;
                               const entryTitle = entry ? entry.title : "未关联专注";
@@ -353,7 +387,7 @@ export default function CalendarPage() {
                                       <ArrowRight className="w-3 h-3 opacity-0 group-hover/block:opacity-100 shrink-0 text-purple-500" />
                                     </div>
                                     <div className="text-[9px] font-mono opacity-80 tabular-nums">
-                                      {foc.startedAt.slice(11, 16)}–{foc.endedAt?.slice(11, 16) || "进行中"}
+                                      {formatShanghaiTime(range.startMs)}–{foc.endedAt ? formatShanghaiTime(range.endMs) : "进行中"}
                                     </div>
                                     {foc.segments.length > 1 && (
                                       <div className="text-[9px] text-purple-600 dark:text-purple-300 font-semibold truncate">
@@ -373,7 +407,7 @@ export default function CalendarPage() {
                                       </span>
                                     </div>
                                     <div className="space-y-1 text-[11px] font-mono text-zinc-300 tabular-nums">
-                                      <div>时间：{foc.startedAt.slice(11, 16)} – {foc.endedAt?.slice(11, 16) || "进行中"}</div>
+                                      <div>时间：{formatShanghaiTime(range.startMs)} – {foc.endedAt ? formatShanghaiTime(range.endMs) : "进行中"}</div>
                                       <div>类型：{foc.captureMode === "timer" ? "实时计时" : "手动补录"}</div>
                                       {foc.outcome && (
                                         <div className="text-[10px] text-emerald-400">成果：{foc.outcome}</div>
@@ -403,12 +437,18 @@ export default function CalendarPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-x-auto">
           <div className="min-w-[800px] grid grid-cols-7 gap-2">
             {weekDays.map((wd) => {
-              const daySchedules = scheduleBlocks.filter(
-                (s) => s.startedAt.slice(0, 10) === wd.date
-              );
-              const dayFocuses = focusSessions.filter(
-                (f) => f.startedAt.slice(0, 10) === wd.date
-              );
+              const daySchedules = scheduleBlocks.flatMap((schedule) => {
+                const range = overlapRange(wd.date, schedule.startedAt, schedule.endedAt);
+                return range ? [{ schedule, range }] : [];
+              });
+              const dayFocuses = focusSessions.flatMap((focus) => {
+                const range = overlapRange(
+                  wd.date,
+                  focus.startedAt,
+                  focus.endedAt || new Date().toISOString()
+                );
+                return range ? [{ focus, range }] : [];
+              });
 
               return (
                 <div
@@ -430,7 +470,7 @@ export default function CalendarPage() {
                       日程轨道
                     </span>
                     {daySchedules.length > 0 ? (
-                      daySchedules.map((sch) => (
+                      daySchedules.map(({ schedule: sch, range }) => (
                         <div
                           key={sch.id}
                           onClick={() => handleScheduleClick(sch)}
@@ -441,7 +481,7 @@ export default function CalendarPage() {
                             <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 shrink-0 text-blue-500" />
                           </div>
                           <div className="text-[10px] font-mono opacity-80 tabular-nums">
-                            {sch.startedAt.slice(11, 16)}–{sch.endedAt.slice(11, 16)}
+                            {formatShanghaiTime(range.startMs)}–{formatShanghaiTime(range.endMs)}
                           </div>
                         </div>
                       ))
@@ -456,7 +496,7 @@ export default function CalendarPage() {
                       专注事实轨道
                     </span>
                     {dayFocuses.length > 0 ? (
-                      dayFocuses.map((foc) => {
+                      dayFocuses.map(({ focus: foc, range }) => {
                         const seg = foc.segments[0];
                         const entryTitle = seg?.entryId
                           ? api.getEntryById(seg.entryId)?.title
@@ -472,7 +512,7 @@ export default function CalendarPage() {
                               <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 shrink-0 text-purple-500" />
                             </div>
                             <div className="text-[10px] font-mono opacity-80 tabular-nums">
-                              {foc.startedAt.slice(11, 16)}–{foc.endedAt?.slice(11, 16) || "进行中"}
+                              {formatShanghaiTime(range.startMs)}–{foc.endedAt ? formatShanghaiTime(range.endMs) : "进行中"}
                             </div>
                             {foc.segments.length > 1 && (
                               <div className="text-[9px] text-purple-600 dark:text-purple-400 font-semibold">
@@ -524,26 +564,41 @@ export default function CalendarPage() {
               <div className="space-y-2">
                 <h3 className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                   <BookOpen className="w-4 h-4" aria-hidden="true" />
-                  <span>课程日程轨道 (08:00 – 09:35)</span>
+                  <span>课程日程轨道</span>
                 </h3>
-                <div
-                  onClick={() =>
-                    handleScheduleClick(
-                      scheduleBlocks.find((s) => s.id === "sch_ics2_wed") ||
-                        scheduleBlocks[0]
-                    )
-                  }
-                  className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg cursor-pointer hover:border-blue-400 transition-colors flex items-center justify-between group"
-                >
-                  <div>
-                    <div className="font-semibold text-blue-900 dark:text-blue-200">
-                      ICS2 计算机系统基础
+                <div className="space-y-2">
+                  {selectedDaySchedules.length > 0 ? (
+                    selectedDaySchedules.map((schedule) => {
+                      const range = overlapRange(selectedDay, schedule.startedAt, schedule.endedAt)!;
+                      return (
+                        <div
+                          key={schedule.id}
+                          onClick={() => handleScheduleClick(schedule)}
+                          className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg cursor-pointer hover:border-blue-400 transition-colors flex items-center justify-between gap-3 group"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-blue-900 dark:text-blue-200 truncate">
+                              {schedule.title}
+                            </div>
+                            <div className="text-zinc-500 font-mono text-[11px] mt-0.5 tabular-nums">
+                              {formatShanghaiTime(range.startMs)} – {formatShanghaiTime(range.endMs)}
+                              {schedule.location ? ` • ${schedule.location}` : ""}
+                            </div>
+                            {schedule.recurrenceLabel && (
+                              <div className="text-[10px] text-blue-600 dark:text-blue-300 mt-1">
+                                {schedule.recurrenceLabel}
+                              </div>
+                            )}
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-blue-500 opacity-60 group-hover:opacity-100 shrink-0" />
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40">
+                      该日没有匹配的课程日程
                     </div>
-                    <div className="text-zinc-500 font-mono text-[11px] mt-0.5 tabular-nums">
-                      08:00 – 09:35 • 3302 教室
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-blue-500 opacity-60 group-hover:opacity-100" />
+                  )}
                 </div>
               </div>
             )}
@@ -553,50 +608,98 @@ export default function CalendarPage() {
                 <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <h3 className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
                     <Clock className="w-4 h-4" aria-hidden="true" />
-                    <span>专注轨道片段 (08:20 – 09:05 - 上课重叠)</span>
+                    <span>专注轨道片段</span>
                   </h3>
-                  <div
-                    onClick={() => handleFocusClick("entry_ostep_io")}
-                    className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg cursor-pointer hover:border-purple-400 transition-colors flex items-center justify-between group"
-                  >
-                    <div>
-                      <div className="font-semibold text-purple-900 dark:text-purple-200">
-                        OSTEP IO 驱动研读
-                      </div>
-                      <div className="text-zinc-500 font-mono text-[11px] mt-0.5 tabular-nums">
-                        08:20 – 09:05 (45 分钟) • 归属：IO & Files
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-purple-500 opacity-60 group-hover:opacity-100" />
-                  </div>
-                </div>
+                  <div className="space-y-2">
+                    {selectedDayFocuses.length > 0 ? (
+                      selectedDayFocuses.map((focus) => {
+                        const focusRange = overlapRange(
+                          selectedDay,
+                          focus.startedAt,
+                          focus.endedAt || new Date().toISOString()
+                        )!;
+                        const segments = focus.segments
+                          .map((segment) => {
+                            const segmentRange = overlapRange(
+                              selectedDay,
+                              segment.startedAt,
+                              segment.endedAt
+                            );
+                            if (!segmentRange) return null;
+                            const entry = segment.entryId
+                              ? api.getEntryById(segment.entryId)
+                              : null;
+                            return {
+                              id: segment.id,
+                              title: entry?.title || "未关联片段",
+                              startMs: segmentRange.startMs,
+                              endMs: segmentRange.endMs,
+                            };
+                          })
+                          .filter(
+                            (segment): segment is {
+                              id: string;
+                              title: string;
+                              startMs: number;
+                              endMs: number;
+                            } => segment !== null
+                          );
+                        const focusTitle = focus.segments[0]?.entryId
+                          ? api.getEntryById(focus.segments[0].entryId)?.title || "未关联专注"
+                          : "未关联专注";
 
-                <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                  <h3 className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" aria-hidden="true" />
-                    <span>专注轨道片段 (14:00 – 15:30 - 双段拆分)</span>
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div
-                      onClick={() => handleFocusClick("entry_japanese")}
-                      className="p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 rounded-lg cursor-pointer hover:border-purple-400 transition-colors flex items-center justify-between group"
-                    >
-                      <div>
-                        <div className="font-semibold font-mono tabular-nums">14:00 – 14:40 (40m)</div>
-                        <div className="text-[11px] text-zinc-500">归属：学日语</div>
+                        return (
+                          <div
+                            key={focus.id}
+                            onClick={() => handleFocusClick(focus.segments[0]?.entryId || null)}
+                            className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg cursor-pointer hover:border-purple-400 transition-colors flex flex-col gap-2 group"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-purple-900 dark:text-purple-200 truncate">
+                                  {focusTitle}
+                                </div>
+                                <div className="text-zinc-500 font-mono text-[11px] mt-0.5 tabular-nums">
+                                  {formatShanghaiTime(focusRange.startMs)} – {focus.endedAt ? formatShanghaiTime(focusRange.endMs) : "进行中"}
+                                  {focus.captureMode === "manual" ? " • 手动补录" : " • 实时计时"}
+                                </div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-purple-500 opacity-60 group-hover:opacity-100 shrink-0" />
+                            </div>
+
+                            {focus.outcome && (
+                              <div className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                                成果：{focus.outcome}
+                              </div>
+                            )}
+                            {focus.note && (
+                              <div className="text-[11px] text-zinc-500">
+                                备注：{focus.note}
+                              </div>
+                            )}
+                            {segments.length > 0 && (
+                              <div className="space-y-1 border-t border-purple-200/70 dark:border-purple-900/60 pt-2">
+                                {segments.map((segment) => (
+                                  <div
+                                    key={segment.id}
+                                    className="flex items-center justify-between gap-2 text-[10px] text-purple-700 dark:text-purple-300 font-mono tabular-nums"
+                                  >
+                                    <span className="truncate">{segment.title}</span>
+                                    <span className="shrink-0">
+                                      {formatShanghaiTime(segment.startMs)} – {formatShanghaiTime(segment.endMs)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40">
+                        该日没有匹配的专注记录
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-purple-500 opacity-60 group-hover:opacity-100" />
-                    </div>
-                    <div
-                      onClick={() => handleFocusClick("entry_lab4_sub")}
-                      className="p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 rounded-lg cursor-pointer hover:border-purple-400 transition-colors flex items-center justify-between group"
-                    >
-                      <div>
-                        <div className="font-semibold font-mono tabular-nums">14:40 – 15:30 (50m)</div>
-                        <div className="text-[11px] text-zinc-500">归属：Lab 4 - LockLab</div>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-purple-500 opacity-60 group-hover:opacity-100" />
-                    </div>
+                    )}
                   </div>
                 </div>
               </>

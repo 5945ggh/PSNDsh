@@ -168,6 +168,11 @@ export type StatisticsPayload = {
   totalSeconds: number;
   unassignedSeconds: number;
   daily: Array<{ date: string; seconds: number }>;
+  entryBreakdown: Array<{
+    entryId: string;
+    directSeconds: number;
+    aggregateSeconds: number;
+  }>;
   roots: Array<{
     entryId: string;
     directSeconds: number;

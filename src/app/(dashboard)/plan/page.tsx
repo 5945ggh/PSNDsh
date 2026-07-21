@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useMock } from "@/context/MockContext";
-import { Entry, EntryCompletionMode } from "@/types/mock";
+import { Entry, EntryCompletionMode, WeekPlan } from "@/types/mock";
 import {
   ChevronRight,
   ChevronDown,
@@ -30,9 +30,6 @@ export default function PlanPage() {
   const weekPlan = api.getWeekPlan(selectedWeek);
   const [newTitle, setNewTitle] = useState("");
   const [newMode, setNewMode] = useState<EntryCompletionMode>("completable");
-  const [isNoteEditing, setIsNoteEditing] = useState(false);
-  const [noteContent, setNoteContent] = useState(weekPlan.note);
-
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -334,7 +331,7 @@ export default function PlanPage() {
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h2 className="font-semibold text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400">
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
-                <span>本周承接项 ({weekPlan.items.length})</span>
+                <span>该周计划项 ({weekPlan.items.length})</span>
               </h2>
               <span className="text-[10px] font-mono text-zinc-400">
                 周起始：{weekPlan.weekStart}
@@ -364,7 +361,7 @@ export default function PlanPage() {
 
                     <button
                       onClick={() => api.removeFromWeekPlan(ent.id, selectedWeek)}
-                      aria-label="从本周移出"
+                      aria-label="从该周移出"
                       className="text-zinc-400 hover:text-red-500 p-1 rounded shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     >
                       <CalendarMinus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -375,41 +372,54 @@ export default function PlanPage() {
             </div>
           </div>
 
-          {/* Free Markdown Week Note */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-              <h3 className="font-semibold text-xs flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
-                <FileText className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
-                <span>周备忘与批注</span>
-              </h3>
-              <button
-                onClick={() => {
-                  if (isNoteEditing) {
-                    api.updateWeekPlanNote(noteContent, selectedWeek);
-                  }
-                  setIsNoteEditing(!isNoteEditing);
-                }}
-                className="text-blue-600 dark:text-blue-400 text-[11px] hover:underline font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-              >
-                {isNoteEditing ? "保存批注" : "编辑批注"}
-              </button>
-            </div>
-
-            {isNoteEditing ? (
-              <textarea
-                rows={6}
-                value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
-                className="w-full p-2.5 text-xs font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              />
-            ) : (
-              <div className="prose prose-sm dark:prose-invert text-xs text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-                {weekPlan.note || "点击编辑，记录本周想法与 Markdown 批注…"}
-              </div>
-            )}
-          </div>
+          <WeekNoteCard
+            key={`${weekPlan.weekStart}:${weekPlan.note}`}
+            weekPlan={weekPlan}
+            onSave={(note) => api.updateWeekPlanNote(note, selectedWeek)}
+          />
         </div>
       </div>
     </div>
   );
 }
+
+const WeekNoteCard: React.FC<{
+  weekPlan: WeekPlan;
+  onSave: (note: string) => void;
+}> = ({ weekPlan, onSave }) => {
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+  const [noteContent, setNoteContent] = useState(weekPlan.note);
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+        <h3 className="font-semibold text-xs flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+          <FileText className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
+          <span>周备忘与批注</span>
+        </h3>
+        <button
+          onClick={() => {
+            if (isNoteEditing) onSave(noteContent);
+            setIsNoteEditing((editing) => !editing);
+          }}
+          className="text-blue-600 dark:text-blue-400 text-[11px] hover:underline font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+        >
+          {isNoteEditing ? "保存批注" : "编辑批注"}
+        </button>
+      </div>
+
+      {isNoteEditing ? (
+        <textarea
+          rows={6}
+          value={noteContent}
+          onChange={(event) => setNoteContent(event.target.value)}
+          className="w-full p-2.5 text-xs font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        />
+      ) : (
+        <div className="prose prose-sm dark:prose-invert text-xs text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
+          {weekPlan.note || "点击编辑，记录本周想法与 Markdown 批注…"}
+        </div>
+      )}
+    </div>
+  );
+};

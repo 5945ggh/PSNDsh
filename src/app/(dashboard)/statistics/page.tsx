@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useMock } from "@/context/MockContext";
+import type { StatisticsPayload } from "@/types/mock";
 import {
   BarChart3,
   PieChart,
@@ -19,9 +20,26 @@ export default function StatisticsPage() {
 
   const stats = api.getStatisticsPayload(scale);
   const entries = api.getEntries();
+  const entryStatsById = new Map(
+    stats.entryBreakdown.map((item) => [item.entryId, item] as const)
+  );
 
   const totalHours = (stats.totalSeconds / 3600).toFixed(1);
   const unassignedHours = (stats.unassignedSeconds / 3600).toFixed(1);
+  const scaleLabel = scale === "day" ? "今日" : scale === "week" ? "本周" : "本月";
+  const strongestRoot = stats.roots.reduce<StatisticsPayload["roots"][number] | null>(
+    (best, item) => {
+      if (!best || item.aggregateSeconds > best.aggregateSeconds) return item;
+      return best;
+    },
+    null
+  );
+  const strongestEntry = strongestRoot
+    ? entries.find((entry) => entry.id === strongestRoot.entryId) || null
+    : null;
+  const strongestShare = stats.totalSeconds > 0 && strongestRoot
+    ? (strongestRoot.aggregateSeconds / stats.totalSeconds) * 100
+    : 0;
 
   const rootEntries = entries.filter((e) => e.parentId === null);
 
@@ -58,7 +76,7 @@ export default function StatisticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>总专注时长 ({scale === "week" ? "本周" : "阶段"})</span>
+            <span>总专注时长（{scaleLabel}）</span>
             <Clock className="w-4 h-4 text-blue-500" aria-hidden="true" />
           </div>
           <div className="text-3xl font-bold font-mono text-zinc-900 dark:text-zinc-100 tabular-nums">
@@ -80,14 +98,16 @@ export default function StatisticsPage() {
 
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>主要投入方向</span>
+            <span>主要投入方向（{scaleLabel}）</span>
             <TrendingUp className="w-4 h-4 text-purple-500" aria-hidden="true" />
           </div>
           <div className="text-xl font-bold text-zinc-900 dark:text-zinc-100 truncate">
-            ICS2
+            {strongestEntry?.title || "暂无"}
           </div>
           <p className="text-[11px] text-zinc-400 font-mono tabular-nums">
-            聚合投入：5.25 小时 (41%)
+            {strongestRoot
+              ? `聚合投入：${(strongestRoot.aggregateSeconds / 3600).toFixed(1)} 小时 (${strongestShare.toFixed(0)}%)`
+              : "暂无可统计投入"}
           </p>
         </div>
       </div>
@@ -96,28 +116,36 @@ export default function StatisticsPage() {
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-4">
         <h2 className="text-sm font-semibold flex items-center gap-2 text-zinc-800 dark:text-zinc-200 text-pretty">
           <BarChart3 className="w-4 h-4 text-blue-500" aria-hidden="true" />
-          <span>每日专注趋势</span>
+          <span>{scaleLabel}专注趋势</span>
         </h2>
 
-        <div className="grid grid-cols-7 gap-2 items-end h-40 pt-6 px-2 bg-zinc-50 dark:bg-zinc-800/30 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-          {stats.daily.map((d) => {
-            const h = (d.seconds / 3600).toFixed(1);
-            const heightPct = Math.min(100, Math.max(10, (d.seconds / 14400) * 100));
-            return (
-              <div key={d.date} className="flex flex-col items-center gap-2 h-full justify-end group">
-                <span className="text-[10px] font-mono font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
-                  {h}h
-                </span>
-                <div
-                  className="w-full max-w-[36px] bg-blue-500 hover:bg-blue-600 rounded-t transition-all"
-                  style={{ height: `${heightPct}%` }}
-                />
-                <span className="text-[10px] font-mono text-zinc-400">
-                  {d.date.slice(5)}
-                </span>
-              </div>
-            );
-          })}
+        <div className="overflow-x-auto">
+          <div
+            className="grid gap-2 items-end h-40 pt-6 px-2 bg-zinc-50 dark:bg-zinc-800/30 rounded-lg border border-zinc-200/60 dark:border-zinc-800"
+            style={{
+              gridTemplateColumns: `repeat(${stats.daily.length}, minmax(0, 1fr))`,
+              minWidth: `${Math.max(7, stats.daily.length) * 44}px`,
+            }}
+          >
+            {stats.daily.map((d) => {
+              const h = (d.seconds / 3600).toFixed(1);
+              const heightPct = Math.min(100, Math.max(10, (d.seconds / 14400) * 100));
+              return (
+                <div key={d.date} className="flex flex-col items-center gap-2 h-full justify-end group">
+                  <span className="text-[10px] font-mono font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
+                    {h}h
+                  </span>
+                  <div
+                    className="w-full max-w-[36px] bg-blue-500 hover:bg-blue-600 rounded-t transition-all"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    {scale === "day" ? d.date : d.date.slice(5)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -137,6 +165,7 @@ export default function StatisticsPage() {
           {rootEntries.map((root) => {
             const isExpanded = expandedRootId === root.id;
             const children = entries.filter((e) => e.parentId === root.id);
+            const rootStats = entryStatsById.get(root.id);
 
             return (
               <div
@@ -164,10 +193,10 @@ export default function StatisticsPage() {
 
                   <div className="flex items-center gap-4 font-mono text-[11px] tabular-nums">
                     <span className="text-zinc-500">
-                      直接: {(root.directFocusSeconds / 3600).toFixed(1)}h
+                      直接: {((rootStats?.directSeconds ?? 0) / 3600).toFixed(1)}h
                     </span>
                     <span className="text-purple-600 dark:text-purple-400 font-semibold">
-                      聚合: {(root.aggregateFocusSeconds / 3600).toFixed(1)}h
+                      聚合: {((rootStats?.aggregateSeconds ?? 0) / 3600).toFixed(1)}h
                     </span>
                   </div>
                 </div>
@@ -175,18 +204,11 @@ export default function StatisticsPage() {
                 {isExpanded && children.length > 0 && (
                   <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 space-y-2 pl-8">
                     {children.map((child) => (
-                      <div
+                      <ChildStatsRow
                         key={child.id}
-                        className="flex items-center justify-between text-zinc-600 dark:text-zinc-400"
-                      >
-                        <span>• {child.title}</span>
-                        <div className="flex items-center gap-4 font-mono text-[10px] tabular-nums">
-                          <span>直接: {(child.directFocusSeconds / 3600).toFixed(1)}h</span>
-                          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                            聚合: {(child.aggregateFocusSeconds / 3600).toFixed(1)}h
-                          </span>
-                        </div>
-                      </div>
+                        title={child.title}
+                        stats={entryStatsById.get(child.id)}
+                      />
                     ))}
                   </div>
                 )}
@@ -194,6 +216,26 @@ export default function StatisticsPage() {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ChildStatsRow({
+  title,
+  stats,
+}: {
+  title: string;
+  stats?: { directSeconds: number; aggregateSeconds: number } | undefined;
+}) {
+  return (
+    <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400">
+      <span>• {title}</span>
+      <div className="flex items-center gap-4 font-mono text-[10px] tabular-nums">
+        <span>直接: {((stats?.directSeconds ?? 0) / 3600).toFixed(1)}h</span>
+        <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+          聚合: {((stats?.aggregateSeconds ?? 0) / 3600).toFixed(1)}h
+        </span>
       </div>
     </div>
   );

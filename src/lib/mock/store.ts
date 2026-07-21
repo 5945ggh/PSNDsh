@@ -17,17 +17,90 @@ import {
   MOCK_CAPABILITIES_NORMAL,
   MOCK_CAPABILITIES_REG_CLOSED,
   MOCK_ENTRIES_NORMAL,
-  MOCK_WEEK_PLAN_NORMAL,
+  MOCK_WEEK_PLANS_NORMAL,
   MOCK_SCHEDULE_BLOCKS_NORMAL,
   MOCK_FOCUS_SESSIONS_NORMAL,
   MOCK_ICS_PREVIEW,
 } from "./fixtures";
 
+const DEFAULT_WEEK_START = "2026-06-22";
+const REFERENCE_TODAY = "2026-06-26";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const cloneWeekPlan = (plan: WeekPlan): WeekPlan => ({
+  weekStart: plan.weekStart,
+  note: plan.note,
+  items: plan.items.map((item) => ({ ...item })),
+});
+
+const parseYmd = (date: string) => {
+  const [year, month, day] = date.split("-").map((value) => Number(value));
+  return Date.UTC(year, month - 1, day);
+};
+
+const formatYmd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+const shiftYmd = (date: string, days: number) => formatYmd(parseYmd(date) + days * DAY_MS);
+
+const toRangeBounds = (startDate: string, endDate: string) => ({
+  startMs: Date.parse(`${startDate}T00:00:00+08:00`),
+  endMs: Date.parse(`${endDate}T00:00:00+08:00`),
+});
+
+const intersectSeconds = (
+  startedAt: string,
+  endedAt: string,
+  startMs: number,
+  endMs: number
+) => {
+  const segmentStart = new Date(startedAt).getTime();
+  const segmentEnd = new Date(endedAt).getTime();
+  const overlapStart = Math.max(segmentStart, startMs);
+  const overlapEnd = Math.min(segmentEnd, endMs);
+  return Math.max(0, overlapEnd - overlapStart) / 1000;
+};
+
+const buildDailyBuckets = (startDate: string, count: number) =>
+  Array.from({ length: count }, (_, index) => {
+    const date = shiftYmd(startDate, index);
+    const { startMs, endMs } = toRangeBounds(date, shiftYmd(date, 1));
+    return { date, startMs, endMs };
+  });
+
+const getScaleRange = (scale: "day" | "week" | "month" = "week") => {
+  if (scale === "day") {
+    return {
+      label: "今日",
+      startDate: REFERENCE_TODAY,
+      dailyCount: 1,
+    };
+  }
+
+  if (scale === "month") {
+    return {
+      label: "本月",
+      startDate: "2026-06-01",
+      dailyCount: 30,
+    };
+  }
+
+  return {
+    label: "本周",
+    startDate: DEFAULT_WEEK_START,
+    dailyCount: 7,
+  };
+};
+
 export class MockDataStore {
   private scenario: ScenarioPreset = "normal";
   private user: UserProfile | null = MOCK_USER;
   private entries: Entry[] = [...MOCK_ENTRIES_NORMAL];
-  private weekPlan: WeekPlan = { ...MOCK_WEEK_PLAN_NORMAL };
+  private weekPlans = new Map<string, WeekPlan>(
+    Object.entries(MOCK_WEEK_PLANS_NORMAL).map(([weekStart, plan]) => [
+      weekStart,
+      cloneWeekPlan(plan),
+    ])
+  );
   private scheduleBlocks: ScheduleBlock[] = [...MOCK_SCHEDULE_BLOCKS_NORMAL];
   private focusSessions: FocusSession[] = [...MOCK_FOCUS_SESSIONS_NORMAL];
   private listeners: Array<() => void> = [];
@@ -58,17 +131,27 @@ export class MockDataStore {
     this.scenario = preset;
     if (preset === "empty") {
       this.entries = [];
-      this.weekPlan = {
-        weekStart: "2026-06-22",
-        note: "",
-        items: [],
-      };
+      this.weekPlans = new Map([
+        [
+          DEFAULT_WEEK_START,
+          {
+            weekStart: DEFAULT_WEEK_START,
+            note: "",
+            items: [],
+          },
+        ],
+      ]);
       this.scheduleBlocks = [];
       this.focusSessions = [];
     } else {
       this.user = MOCK_USER;
       this.entries = [...MOCK_ENTRIES_NORMAL];
-      this.weekPlan = { ...MOCK_WEEK_PLAN_NORMAL };
+      this.weekPlans = new Map(
+        Object.entries(MOCK_WEEK_PLANS_NORMAL).map(([weekStart, plan]) => [
+          weekStart,
+          cloneWeekPlan(plan),
+        ])
+      );
       this.scheduleBlocks = [...MOCK_SCHEDULE_BLOCKS_NORMAL];
       this.focusSessions = [...MOCK_FOCUS_SESSIONS_NORMAL];
       this.recalculateEntryFocusSeconds();
@@ -252,30 +335,42 @@ export class MockDataStore {
           }
         : entry
     );
-    this.weekPlan.items = this.weekPlan.items.filter(
-      (item) => !toDelete.has(item.entryId)
-    );
+    for (const weekPlan of this.weekPlans.values()) {
+      weekPlan.items = weekPlan.items.filter((item) => !toDelete.has(item.entryId));
+    }
     this.recalculateEntryFocusSeconds();
     this.notify();
   }
 
   // --- WEEK PLAN ---
 
+  private getOrCreateWeekPlan(weekStart?: string) {
+    const normalizedWeekStart = weekStart || DEFAULT_WEEK_START;
+    const existing = this.weekPlans.get(normalizedWeekStart);
+    if (existing) return existing;
+
+    const created: WeekPlan = {
+      weekStart: normalizedWeekStart,
+      note: "",
+      items: [],
+    };
+    this.weekPlans.set(normalizedWeekStart, created);
+    return created;
+  }
+
   public getWeekPlan(weekStart?: string): WeekPlan {
-    void weekStart;
-    return this.weekPlan;
+    return cloneWeekPlan(this.getOrCreateWeekPlan(weekStart));
   }
 
   public updateWeekPlanNote(note: string, weekStart?: string) {
-    void weekStart;
-    this.weekPlan.note = note;
+    this.getOrCreateWeekPlan(weekStart).note = note;
     this.notify();
   }
 
   public addToWeekPlan(entryId: string, weekStart?: string) {
-    void weekStart;
-    if (!this.weekPlan.items.some((i) => i.entryId === entryId)) {
-      this.weekPlan.items.push({
+    const weekPlan = this.getOrCreateWeekPlan(weekStart);
+    if (!weekPlan.items.some((i) => i.entryId === entryId)) {
+      weekPlan.items.push({
         entryId,
         source: "manual",
         sortKey: `wp_${Date.now()}`,
@@ -285,8 +380,8 @@ export class MockDataStore {
   }
 
   public removeFromWeekPlan(entryId: string, weekStart?: string) {
-    void weekStart;
-    this.weekPlan.items = this.weekPlan.items.filter(
+    const weekPlan = this.getOrCreateWeekPlan(weekStart);
+    weekPlan.items = weekPlan.items.filter(
       (i) => i.entryId !== entryId
     );
     this.notify();
@@ -507,10 +602,12 @@ export class MockDataStore {
       weekSeconds += duration;
     }
 
+    const currentWeekPlan = this.getOrCreateWeekPlan(DEFAULT_WEEK_START);
+
     const todayEntries = this.entries.filter(
       (e) =>
         e.status === "active" &&
-        this.weekPlan.items.some((w) => w.entryId === e.id)
+        currentWeekPlan.items.some((w) => w.entryId === e.id)
     );
 
     const deadlineEntries = this.entries.filter(
@@ -560,42 +657,85 @@ export class MockDataStore {
   }
 
   public getStatisticsPayload(scale?: "day" | "week" | "month"): StatisticsPayload {
-    void scale;
+    const { startDate, dailyCount } = getScaleRange(scale);
+    const dailyBuckets = buildDailyBuckets(startDate, dailyCount).map((bucket) => ({
+      date: bucket.date,
+      startMs: bucket.startMs,
+      endMs: bucket.endMs,
+      seconds: 0,
+    }));
+    const rangeStartMs = dailyBuckets[0]?.startMs ?? toRangeBounds(startDate, shiftYmd(startDate, 1)).startMs;
+    const rangeEndMs = dailyBuckets[dailyBuckets.length - 1]?.endMs ?? toRangeBounds(startDate, shiftYmd(startDate, 1)).endMs;
+
     let totalSeconds = 0;
     let unassignedSeconds = 0;
+    const directSecondsByEntry = new Map<string, number>();
 
     for (const session of this.focusSessions) {
       if (!session.endedAt) continue;
       for (const segment of session.segments) {
-        const dur =
-          (new Date(segment.endedAt).getTime() -
-            new Date(segment.startedAt).getTime()) /
-          1000;
-        totalSeconds += dur;
+        const segmentSeconds = intersectSeconds(
+          segment.startedAt,
+          segment.endedAt,
+          rangeStartMs,
+          rangeEndMs
+        );
+        if (segmentSeconds <= 0) continue;
+
+        totalSeconds += segmentSeconds;
         if (!segment.entryId) {
-          unassignedSeconds += dur;
+          unassignedSeconds += segmentSeconds;
+        } else {
+          directSecondsByEntry.set(
+            segment.entryId,
+            (directSecondsByEntry.get(segment.entryId) || 0) + segmentSeconds
+          );
+        }
+
+        for (const bucket of dailyBuckets) {
+          bucket.seconds += intersectSeconds(
+            segment.startedAt,
+            segment.endedAt,
+            bucket.startMs,
+            bucket.endMs
+          );
         }
       }
     }
 
+    const directMap = new Map<string, number>();
+    for (const [entryId, seconds] of directSecondsByEntry.entries()) {
+      directMap.set(entryId, seconds);
+    }
+
+    const computeAggregate = (entryId: string): number => {
+      const entry = this.entries.find((candidate) => candidate.id === entryId);
+      if (!entry) return 0;
+      let total = directMap.get(entryId) || 0;
+      for (const child of this.entries.filter((candidate) => candidate.parentId === entryId)) {
+        total += computeAggregate(child.id);
+      }
+      return total;
+    };
+
     const roots = this.entries
       .filter((e) => e.parentId === null)
-      .map((e) => ({
-        entryId: e.id,
-        directSeconds: e.directFocusSeconds,
-        aggregateSeconds: e.aggregateFocusSeconds,
+      .map((entry) => ({
+        entryId: entry.id,
+        directSeconds: directMap.get(entry.id) || 0,
+        aggregateSeconds: computeAggregate(entry.id),
       }));
+    const entryBreakdown = this.entries.map((entry) => ({
+      entryId: entry.id,
+      directSeconds: directMap.get(entry.id) || 0,
+      aggregateSeconds: computeAggregate(entry.id),
+    }));
 
     return {
       totalSeconds,
       unassignedSeconds,
-      daily: [
-        { date: "2026-06-22", seconds: 7200 },
-        { date: "2026-06-23", seconds: 10800 },
-        { date: "2026-06-24", seconds: 14400 },
-        { date: "2026-06-25", seconds: 9000 },
-        { date: "2026-06-26", seconds: 3600 },
-      ],
+      daily: dailyBuckets.map(({ date, seconds }) => ({ date, seconds })),
+      entryBreakdown,
       roots,
     };
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { useMock } from "@/context/MockContext";
 import { X, PlusCircle, AlertCircle } from "lucide-react";
@@ -17,8 +18,6 @@ export const FocusManualModal: React.FC = () => {
   const [outcome, setOutcome] = useState("");
   const [note, setNote] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  if (!isManualModalOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,28 +43,32 @@ export const FocusManualModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manual-modal-title"
-        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
-      >
-        <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <PlusCircle className="w-4 h-4 text-blue-500" aria-hidden="true" />
-            <h2 id="manual-modal-title" className="font-semibold text-base">补录专注记录</h2>
+    <Dialog.Root open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-2xl animate-in fade-in zoom-in-95 duration-150 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+        >
+          <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PlusCircle className="w-4 h-4 text-blue-500" aria-hidden="true" />
+              <Dialog.Title asChild>
+                <h2 className="font-semibold text-base">补录专注记录</h2>
+              </Dialog.Title>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="关闭对话框"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </Dialog.Close>
           </div>
-          <button
-            onClick={() => setIsManualModalOpen(false)}
-            aria-label="关闭对话框"
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            <X className="w-5 h-5" aria-hidden="true" />
-          </button>
-        </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+          <form onSubmit={handleSubmit} className="overflow-y-auto p-5 space-y-4 text-xs">
           {errorMsg && (
             <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
@@ -164,13 +167,14 @@ export const FocusManualModal: React.FC = () => {
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setIsManualModalOpen(false)}
-              className="px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-            >
-              取消
-            </button>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                取消
+              </button>
+            </Dialog.Close>
             <button
               type="submit"
               className="px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
@@ -178,8 +182,9 @@ export const FocusManualModal: React.FC = () => {
               保存补录
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

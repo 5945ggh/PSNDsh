@@ -35,7 +35,7 @@ const entries: Entry[] = [
   },
 ];
 
-const session: FocusSession = {
+const session: FocusSession & { endedAt: string } = {
   id: "focus-1",
   startedAt: "2026-06-26T10:00:00.000Z",
   endedAt: "2026-06-26T11:00:00.000Z",
