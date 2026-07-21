@@ -334,15 +334,15 @@ export default function CalendarPage() {
 
                                   {/* Smart Positioned Hover Popover Detail */}
                                   <div
-                                    className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-52 p-3 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-xs space-y-1.5 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${popoverPosClass}`}
+                                    className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-64 p-4 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-sm space-y-2 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${popoverPosClass}`}
                                   >
-                                    <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-1 flex items-center justify-between">
+                                    <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-2 flex items-center justify-between gap-2">
                                       <span className="truncate">{sch.title}</span>
                                       <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-900 text-blue-200">
                                         日程 (点击跳转)
                                       </span>
                                     </div>
-                                    <div className="space-y-1 text-[11px] font-mono text-zinc-300 tabular-nums">
+                                    <div className="space-y-1.5 text-xs font-mono text-zinc-300 tabular-nums">
                                       <div>时间：{formatShanghaiTime(range.startMs)} – {formatShanghaiTime(range.endMs)}</div>
                                       {sch.location && <div>地点：{sch.location}</div>}
                                       {sch.recurrenceLabel && (
@@ -398,15 +398,15 @@ export default function CalendarPage() {
 
                                   {/* Smart Positioned Hover Popover Detail */}
                                   <div
-                                    className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-52 p-3 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-xs space-y-1.5 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${popoverPosClass}`}
+                                    className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-64 p-4 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-sm space-y-2 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${popoverPosClass}`}
                                   >
-                                    <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-1 flex items-center justify-between">
+                                    <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-2 flex items-center justify-between gap-2">
                                       <span className="truncate">{entryTitle}</span>
                                       <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-900 text-purple-200">
                                         专注 (点击跳转)
                                       </span>
                                     </div>
-                                    <div className="space-y-1 text-[11px] font-mono text-zinc-300 tabular-nums">
+                                    <div className="space-y-1.5 text-xs font-mono text-zinc-300 tabular-nums">
                                       <div>时间：{formatShanghaiTime(range.startMs)} – {foc.endedAt ? formatShanghaiTime(range.endMs) : "进行中"}</div>
                                       <div>类型：{foc.captureMode === "timer" ? "实时计时" : "手动补录"}</div>
                                       {foc.outcome && (
