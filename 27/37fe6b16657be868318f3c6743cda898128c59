@@ -1,0 +1,19 @@
+src/app/(dashboard)/calendar/page.tsx
+  s_548895eef3a38a::t_b92dd5535b4221 337,339,345,401,403,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2737fe6b16657be868318f3c6743cda898128c59",
+  "prompts": {},
+  "sessions": {
+    "s_548895eef3a38a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f80a7-5074-7692-974c-eeb975953fd2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
