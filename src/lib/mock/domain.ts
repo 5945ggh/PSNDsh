@@ -1,29 +1,8 @@
 import { Entry, EntryStatus, FocusSegment, FocusSession } from "@/types/mock";
+import { ApplicationError } from "@/lib/application/error";
 
-export type MockErrorCode =
-  | "ENTRY_NOT_FOUND"
-  | "ENTRY_MOVE_INVALID"
-  | "ENTRY_STATUS_INVALID"
-  | "FOCUS_ALREADY_ACTIVE"
-  | "FOCUS_NOT_FOUND"
-  | "FOCUS_OVERLAP"
-  | "SEGMENTS_INVALID_PARTITION"
-  | "REGISTRATION_CLOSED"
-  | "USERNAME_TAKEN"
-  | "PASSWORD_TOO_WEAK"
-  | "PASSWORD_MISMATCH"
-  | "INVALID_CREDENTIALS";
-
-export class MockDomainError extends Error {
-  constructor(
-    public readonly code: MockErrorCode,
-    message: string,
-    public readonly details?: Record<string, unknown>
-  ) {
-    super(`${code}: ${message}`);
-    this.name = "MockDomainError";
-  }
-}
+export const MockDomainError = ApplicationError;
+export type MockErrorCode = ConstructorParameters<typeof ApplicationError>[0];
 
 const toMilliseconds = (value: string): number => new Date(value).getTime();
 

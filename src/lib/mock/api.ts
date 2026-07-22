@@ -1,5 +1,6 @@
 import { mockStore } from "./store";
-import { LoginInput, MockApplicationService, RegisterInput } from "./service";
+import { MockApplicationService } from "./service";
+import { LoginInput, RegisterInput } from "@/lib/application/contract";
 
 /**
  * Client-side stand-in for the documented same-origin JSON API. Components use

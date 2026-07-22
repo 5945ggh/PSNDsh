@@ -7,6 +7,7 @@ import {
   ScenarioPreset,
   UserProfile,
 } from "@/types/mock";
+import { ApplicationService, LoginInput, RegisterInput } from "@/lib/application/contract";
 import { MockDataStore } from "./store";
 import {
   assertEntryMoveIsValid,
@@ -16,16 +17,10 @@ import {
   MockDomainError,
 } from "./domain";
 
-export type RegisterInput = {
-  username: string;
-  password: string;
-  passwordConfirmation: string;
-};
-
-export type LoginInput = Pick<RegisterInput, "username" | "password">;
+export type { LoginInput, RegisterInput } from "@/lib/application/contract";
 
 /** Coordinates mock use cases. Domain checks belong here, not in React. */
-export class MockApplicationService {
+export class MockApplicationService implements ApplicationService {
   constructor(private readonly store: MockDataStore) {}
 
   subscribe(listener: () => void) {
@@ -97,12 +92,13 @@ export class MockApplicationService {
     if (updates.parentId !== undefined && updates.parentId !== entry.parentId) {
       assertEntryMoveIsValid(this.getEntries(), id, updates.parentId);
     }
-    return this.store.updateEntry(id, updates);
+    return this.store.updateEntry(id, updates) as Entry;
   }
 
   moveEntry(id: string, newParentId: string | null) {
     assertEntryMoveIsValid(this.getEntries(), id, newParentId);
-    return this.store.moveEntry(id, newParentId);
+    this.store.moveEntry(id, newParentId);
+    return this.store.getEntryById(id) as Entry;
   }
 
   deleteEntry(id: string) {
