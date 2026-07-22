@@ -1,0 +1,96 @@
+src/lib/persistence/sqlite-service.ts
+  s_4db4ab8703344b::t_83fb1154042320 1-375,377,379-380,382-387,389-569,571,573-583,588-618,622-651
+  s_4db4ab8703344b::t_8f1e556e330328 388,572
+  s_4db4ab8703344b::t_78397fc12bc2ba 584-587
+  s_4db4ab8703344b::t_6dcaae8b0f4bac 619-621
+  s_4db4ab8703344b::t_a615b15b2bea75 376,378,381,570
+src/lib/api/http.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 9-14,20-21
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-8,15-19,22-38
+src/app/api/v1/capabilities/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-12
+src/app/api/v1/me/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1-12
+src/lib/mock/api.ts
+  s_4db4ab8703344b::t_fcccab20222915 2-3
+src/lib/application/contract.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-90
+src/app/api/auth/logout/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1-8
+src/lib/application/error.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-26
+src/lib/mock/domain.ts
+  s_4db4ab8703344b::t_51aae24bd7887f 2,4-5
+src/app/api/auth/register/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1-17
+src/app/api/v1/week-plans/[weekStart]/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-10,15-19,21-22,27-28
+  s_4db4ab8703344b::t_fcccab20222915 11-14,20,23-26
+src/lib/api/client.ts
+  s_4db4ab8703344b::t_2aab0d7e1ed3e6 10-11,54-55
+  s_4db4ab8703344b::t_4bce2cecca3c6d 27
+  s_4db4ab8703344b::t_d83c54cb98df21 1-9,12-26,28-53,56-59
+src/app/api/v1/statistics/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1-8
+src/lib/db/migrate.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-36
+drizzle.config.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-10
+src/lib/mock/service.ts
+  s_4db4ab8703344b::t_fcccab20222915 10,20
+  s_4db4ab8703344b::t_6dcaae8b0f4bac 23
+  s_4db4ab8703344b::t_0430f3368bf607 100-101
+  s_4db4ab8703344b::t_432fbde20d292a 95
+src/lib/db/schema.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-2,4-16,18-32,34-162
+  s_4db4ab8703344b::t_78397fc12bc2ba 3,33
+  s_4db4ab8703344b::t_51aae24bd7887f 17
+drizzle/0000_persistent_boundary.sql
+  s_4db4ab8703344b::t_51aae24bd7887f 6
+  s_4db4ab8703344b::t_fb3c67d11c721f 1-5,7-91
+src/app/api/v1/dashboard/route.ts
+  s_4db4ab8703344b::t_fcccab20222915 1-5
+src/app/api/v1/entries/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-21
+src/app/api/v1/calendar/route.ts
+  s_4db4ab8703344b::t_2aab0d7e1ed3e6 1-8
+src/app/api/v1/focus/current/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-24
+src/lib/db/index.ts
+  s_4db4ab8703344b::t_fb3c67d11c721f 1,4-15,17-33
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 2-3,16
+src/app/api/v1/entries/[id]/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1,3-30,32-33
+  s_4db4ab8703344b::t_d83c54cb98df21 2,31
+vitest.config.ts
+  s_4db4ab8703344b::t_1f0e70d9ffdce8 1-10
+src/lib/persistence/sqlite-service.test.ts
+  s_4db4ab8703344b::t_c789ce8463b035 35,140-142,145
+  s_4db4ab8703344b::t_1199bb35f0cb7c 1-34,36-139,160-161
+  s_4db4ab8703344b::t_e75863bf20e186 143-144,146-159
+src/app/api/v1/focus/sessions/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-18
+src/app/api/v1/schedule-blocks/[id]/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1,6
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 2-5,7-8
+src/app/api/v1/schedule-blocks/route.ts
+  s_4db4ab8703344b::t_9b3f4814eb0f1a 1-27
+src/app/api/auth/login/route.ts
+  s_4db4ab8703344b::t_d83c54cb98df21 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f858d4d66b91e192923dcedfe261ddfe98b3ce5b",
+  "prompts": {},
+  "sessions": {
+    "s_4db4ab8703344b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83df-a597-7c10-813c-53dcfa209e5b",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
