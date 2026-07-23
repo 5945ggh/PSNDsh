@@ -1,0 +1,22 @@
+e2e/persistent-api.spec.ts
+  s_a118e18015d124::t_1fd9cf323a5217 20,29-31
+  s_a118e18015d124::t_5520134e77bfe3 32
+src/app/(dashboard)/page.tsx
+  s_a118e18015d124::t_c2ddfea2933c9f 3,17,33,35-37,50-75,294-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "91d47e669779c233ad7cd9dc048b553575edeacb",
+  "prompts": {},
+  "sessions": {
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
