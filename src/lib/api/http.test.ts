@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApplicationError } from "@/lib/application/error";
 import {
   SESSION_COOKIE,
+  SAME_ORIGIN_HEADER,
+  assertSameOrigin,
   clearSessionCookie,
   createSessionToken,
   jsonError,
@@ -70,5 +72,41 @@ describe("HTTP session boundary", () => {
     const response = noContent();
     expect(response.status).toBe(204);
     await expect(response.text()).resolves.toBe("");
+  });
+
+  it("requires a same-origin signal for state-changing requests", () => {
+    expect(() => assertSameOrigin(new Request("https://app.example/api/v1/entries", {
+      method: "POST",
+      headers: { origin: "https://evil.example" },
+    }))).toThrow(/CSRF_INVALID/);
+    expect(() => assertSameOrigin(new Request("https://app.example/api/v1/entries", {
+      method: "POST",
+      headers: { origin: "https://app.example" },
+    }))).not.toThrow();
+    expect(() => assertSameOrigin(new Request("https://app.example/api/v1/entries", {
+      method: "POST",
+    }))).toThrow(/CSRF_INVALID/);
+    expect(() => assertSameOrigin(new Request("https://app.example/api/v1/entries", {
+      method: "POST",
+      headers: { [SAME_ORIGIN_HEADER]: "1" },
+    }))).not.toThrow();
+    expect(() => assertSameOrigin(new Request("https://internal:3000/api/v1/entries", {
+      method: "POST",
+      headers: { origin: "https://dashboard.example", [SAME_ORIGIN_HEADER]: "1" },
+    }))).not.toThrow();
+  });
+
+  it("honors the configured public origin behind a reverse proxy", () => {
+    vi.stubEnv("PUBLIC_ORIGIN", "https://dashboard.example");
+    expect(() => assertSameOrigin(new Request("http://internal:3000/api/v1/entries", {
+      method: "POST",
+      headers: { origin: "https://dashboard.example" },
+    }))).not.toThrow();
+  });
+
+  it("returns Retry-After for rate-limited errors", async () => {
+    const response = jsonError(new ApplicationError("RATE_LIMITED", "请求过于频繁，请稍后再试", { retryAfterSeconds: 17 }));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("17");
   });
 });

@@ -21,6 +21,7 @@
 /data/*.sqlite
 /data/*.sqlite-*
 /backups/
+/.next-e2e-*/
 
 # next.js
 /.next/

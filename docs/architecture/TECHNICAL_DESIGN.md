@@ -326,7 +326,8 @@ REGISTRATION_MODE=first-user
 | `APP_TIMEZONE` | 否 | `Asia/Shanghai` | `effectiveTimezone` |
 | `WEATHER_LATITUDE` | 首版不使用 | 无 | 后续实例天气位置 |
 | `WEATHER_LONGITUDE` | 首版不使用 | 无 | 后续实例天气位置 |
-| `PUBLIC_BASE_URL` | 生产部署需要 | 无 | Cookie 与回调基准地址 |
+| `PUBLIC_ORIGIN` | 生产部署需要 | 无 | 写请求同源校验和公开 origin；优先使用 |
+| `PUBLIC_BASE_URL` | 兼容配置 | 无 | `PUBLIC_ORIGIN` 的旧名称兼容项 |
 
 `.env.example` 只能放占位值，不得提交真实密钥。
 

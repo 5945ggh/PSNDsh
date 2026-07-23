@@ -23,6 +23,43 @@ const sessionSecret = () => {
   return DEVELOPMENT_SESSION_SECRET;
 };
 
+const normalizedOrigin = (value: string) => value.trim().replace(/\/$/, "");
+export const SAME_ORIGIN_HEADER = "x-pd-same-origin";
+
+export const assertSameOrigin = (request: Request) => {
+  if (request.headers.get(SAME_ORIGIN_HEADER) === "1") return;
+  const origin = request.headers.get("origin")?.trim();
+  const referer = request.headers.get("referer")?.trim();
+  let candidate = origin ?? null;
+  if (!candidate && referer) {
+    try {
+      candidate = new URL(referer).origin;
+    } catch {
+      throw new ApplicationError("CSRF_INVALID", "写请求来源无效");
+    }
+  }
+  const expected = normalizedOrigin(
+    process.env.PUBLIC_ORIGIN?.trim()
+      || process.env.PUBLIC_BASE_URL?.trim()
+      || new URL(request.url).origin
+  );
+
+  if (!candidate || candidate === "null") {
+    throw new ApplicationError("CSRF_INVALID", "写请求必须来自同源页面");
+  }
+
+  let candidateOrigin: string;
+  try {
+    candidateOrigin = normalizedOrigin(new URL(candidate).origin);
+  } catch {
+    throw new ApplicationError("CSRF_INVALID", "写请求来源无效");
+  }
+
+  if (candidateOrigin !== expected) {
+    throw new ApplicationError("CSRF_INVALID", "写请求来源不受信任");
+  }
+};
+
 const signSession = (payload: string) =>
   createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
 
@@ -108,22 +145,28 @@ export const noContent = () => new Response(null, { status: 204 });
 
 export const jsonError = (error: unknown) => {
   if (error instanceof ApplicationError) {
-    const status = error.code === "UNAUTHORIZED" || error.code === "INVALID_CREDENTIALS"
-      ? 401
-      : error.code.endsWith("_NOT_FOUND")
-        ? 404
-        : error.code === "REGISTRATION_CLOSED"
-          ? 403
-          : error.code === "PASSWORD_TOO_WEAK" || error.code === "PASSWORD_MISMATCH" || error.code === "REQUEST_INVALID" || error.code === "ICS_PARSE_FAILED"
-            ? 400
-            : 409;
-    return NextResponse.json({
+    const status = error.code === "RATE_LIMITED"
+      ? 429
+      : error.code === "CSRF_INVALID" || error.code === "REGISTRATION_CLOSED"
+        ? 403
+        : error.code === "UNAUTHORIZED" || error.code === "INVALID_CREDENTIALS"
+          ? 401
+          : error.code.endsWith("_NOT_FOUND")
+            ? 404
+            : error.code === "PASSWORD_TOO_WEAK" || error.code === "PASSWORD_MISMATCH" || error.code === "REQUEST_INVALID" || error.code === "ICS_PARSE_FAILED"
+              ? 400
+              : 409;
+    const response = NextResponse.json({
       error: {
         code: error.code,
         message: error.message.replace(`${error.code}: `, ""),
         details: error.details ?? {},
       },
     }, { status });
+    if (error.code === "RATE_LIMITED") {
+      response.headers.set("Retry-After", String(error.details?.retryAfterSeconds ?? 60));
+    }
+    return response;
   }
   if (error instanceof ZodError) {
     return NextResponse.json({
@@ -141,6 +184,7 @@ export const jsonError = (error: unknown) => {
 };
 
 export const readJson = async (request: Request) => {
+  assertSameOrigin(request);
   try {
     return await request.json() as unknown;
   } catch {

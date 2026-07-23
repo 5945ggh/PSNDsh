@@ -21,7 +21,20 @@ corepack pnpm build
 corepack pnpm db:backup
 ```
 
-不要提交 `.env.local` 或其他真实环境文件；后端实现开始后，以根目录 `.env.example` 为模板创建本地配置。当前骨架不要求数据库或认证环境变量即可启动，表中变量是后续服务端实现的配置基线。
+不要提交 `.env.local` 或其他真实环境文件；以根目录 `.env.example` 为模板创建本地配置。持久化生产启动必须配置 `DATABASE_URL`、足够随机的 `AUTH_SECRET` 和公开访问地址 `PUBLIC_ORIGIN`（也兼容 `PUBLIC_BASE_URL`）。
+
+## Docker 单容器启动
+
+首版支持单应用容器加一个 SQLite 持久化卷。认证限流是进程内固定窗口实现，因此生产部署保持单实例；需要多实例时必须先把限流状态迁移到共享存储。
+
+```bash
+export AUTH_SECRET="$(openssl rand -base64 32)"
+export PUBLIC_ORIGIN=http://localhost:3000
+docker compose up --build -d
+docker compose ps
+```
+
+应用数据写入 `personal-dashboard-data` volume，不能依赖容器临时层。停止、更新或恢复数据库前先执行 `corepack pnpm exec docker compose down`；完整的备份与恢复步骤见 [SQLite 备份与恢复](OPERATIONS.md)。生产环境应将 `PUBLIC_ORIGIN` 设置为最终 HTTPS origin，并通过反向代理提供 TLS。
 
 ## 当前目录职责
 

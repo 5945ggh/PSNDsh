@@ -118,6 +118,10 @@ export interface ApiAdapter {
 export class PersistentApiAdapter implements ApiAdapter {
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const headers = new Headers(init?.headers);
+    const method = (init?.method ?? "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+      headers.set("x-pd-same-origin", "1");
+    }
     if (init?.body !== undefined && !headers.has("content-type")) {
       headers.set("content-type", "application/json");
     }

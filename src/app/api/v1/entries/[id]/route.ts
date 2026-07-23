@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { jsonData, jsonError, noContent, readJson, serviceForRequest } from "@/lib/api/http";
+import { assertSameOrigin, jsonData, jsonError, noContent, readJson, serviceForRequest } from "@/lib/api/http";
 import { ApplicationError } from "@/lib/application/error";
 
 const updateInput = z.object({
@@ -29,6 +29,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    assertSameOrigin(request);
     serviceForRequest(request).deleteEntry((await context.params).id);
     return noContent();
   } catch (error) { return jsonError(error); }

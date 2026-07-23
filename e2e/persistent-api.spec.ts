@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const unique = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3100"}`;
 
 const shanghaiDateKey = (offsetDays = 0) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -95,7 +96,7 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   const ownerEntry = (await ownerEntries.json()).data.find((entry: { title: string }) => entry.title === entryTitle);
   expect(ownerEntry).toBeTruthy();
 
-  const contextB = await browser.newContext({ baseURL: "http://127.0.0.1:3100" });
+  const contextB = await browser.newContext({ baseURL });
   const pageB = await contextB.newPage();
   const usernameB = unique("other");
   await pageB.goto("/register");
@@ -232,6 +233,67 @@ END:VCALENDAR`),
   await importDialog.getByRole("button", { name: /确认写入选中的 1 项日程/ }).click();
   expect((await confirmResponse).status()).toBe(201);
   await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
+
+  const importedSchedules = await page.request.get("/api/v1/schedule-blocks");
+  expect(importedSchedules.status()).toBe(200);
+  const importedScheduleData = (await importedSchedules.json()).data;
+  expect(importedScheduleData.filter((item: { title: string }) => item.title === title)).toHaveLength(1);
+
+  await page.getByRole("button", { name: "导入日程表" }).click();
+  const duplicateImportDialog = page.getByRole("dialog", { name: "导入日程表" });
+  await duplicateImportDialog.getByLabel("选择 .ics 日程表文件").setInputFiles({
+    name: "schedule.ics",
+    mimeType: "text/calendar",
+    buffer: Buffer.from(`BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:playwright-ics-event
+DTSTAMP:20260722T000000Z
+DTSTART:${today.replaceAll("-", "")}T090000
+DTEND:${today.replaceAll("-", "")}T100000
+SUMMARY:${title}
+LOCATION:教室 A
+DESCRIPTION:重复导入检查
+END:VEVENT
+END:VCALENDAR`),
+  });
+  await duplicateImportDialog.getByRole("button", { name: "解析日程表预览" }).click();
+  await expect(duplicateImportDialog.getByText(/已存在 1 个同源实例/)).toBeVisible();
+  await expect(duplicateImportDialog.getByRole("button", { name: "确认写入选中的 0 项日程" })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await duplicateImportDialog.getByRole("button", { name: "确认写入选中的 0 项日程" }).click();
+
+  const importsResponse = await page.request.get("/api/v1/schedule-blocks/imports");
+  expect(importsResponse.status()).toBe(200);
+  const imports = (await importsResponse.json()).data;
+  expect(imports).toHaveLength(1);
+  expect(imports[0].blockCount).toBe(1);
+
+  const contextB = await page.context().browser()?.newContext({ baseURL });
+  expect(contextB).toBeTruthy();
+  const pageB = await contextB!.newPage();
+  await pageB.goto("/register");
+  await pageB.getByLabel("账号").fill(unique("ics-other"));
+  await pageB.getByLabel("密码", { exact: true }).fill("password123");
+  await pageB.getByLabel("确认密码").fill("password123");
+  await pageB.getByRole("button", { name: "完成注册并进入" }).click();
+  await expect(pageB).toHaveURL(/\/$/);
+  const otherImportsResponse = await pageB.request.get("/api/v1/schedule-blocks/imports");
+  expect(otherImportsResponse.status()).toBe(200);
+  expect((await otherImportsResponse.json()).data).toHaveLength(0);
+  expect((await pageB.request.delete(`/api/v1/schedule-blocks/imports/${imports[0].id}`, {
+    headers: { origin: baseURL, "x-pd-same-origin": "1" },
+  })).status()).toBe(404);
+  await contextB!.close();
+
+  await page.getByRole("button", { name: "管理导入批次" }).click();
+  const manager = page.getByRole("dialog", { name: "已导入的日程批次" });
+  await expect(manager.getByText("schedule.ics", { exact: true })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await manager.getByRole("button", { name: "删除 schedule.ics 导入批次" }).click();
+  await expect(manager.getByText("当前账号还没有可管理的 ICS 导入批次。", { exact: true })).toBeVisible();
+  const schedulesAfterDelete = await page.request.get("/api/v1/schedule-blocks");
+  expect((await schedulesAfterDelete.json()).data).toHaveLength(0);
 });
 
 test("week notes render Markdown and remain stable after save", async ({ page }) => {

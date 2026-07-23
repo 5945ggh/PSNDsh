@@ -3,13 +3,17 @@ import { z } from "zod";
 import { jsonError, readJson, setSessionCookie } from "@/lib/api/http";
 import { getRuntimeDatabase } from "@/lib/db";
 import { SqliteApplicationService } from "@/lib/persistence/sqlite-service";
+import { assertRateLimit, authKey, registerRateLimiter } from "@/lib/security/rate-limit";
 
 const inputSchema = z.object({ username: z.string().min(1), password: z.string(), passwordConfirmation: z.string() });
 
 export async function POST(request: Request) {
   try {
+    const input = inputSchema.parse(await readJson(request));
+    const key = authKey(request, input.username);
+    assertRateLimit(registerRateLimiter.allow(key));
     const service = new SqliteApplicationService(getRuntimeDatabase(), { userId: null });
-    const session = service.register(inputSchema.parse(await readJson(request)));
+    const session = service.register(input);
     const response = NextResponse.json({ data: session }, { status: 201 });
     return setSessionCookie(response, session.user!.id);
   } catch (error) { return jsonError(error); }

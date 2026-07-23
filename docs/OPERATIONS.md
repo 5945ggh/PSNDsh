@@ -49,3 +49,30 @@ DATABASE_URL=file:./data/personal-dashboard.db \
 `--replace` 会先在目标目录创建一致性的 `*.pre-restore-*.db` 备份，再替换目标文件，并保留被替换的原主数据库文件以便人工回退。恢复完成后应启动同一应用版本，登录并核对代表性账号、条目、周计划、日程和专注记录。
 
 浏览器会话是签名 Cookie，不保存在 SQLite 中；数据库恢复不会让浏览器自动恢复旧会话，重新登录即可。
+
+## Docker 发布检查
+
+构建和启动单容器：
+
+```bash
+export AUTH_SECRET="$(openssl rand -base64 32)"
+export PUBLIC_ORIGIN=https://dashboard.example.com
+docker compose build
+docker compose up -d
+docker compose ps
+docker compose logs --tail=100 personal-dashboard
+```
+
+发布前确认容器状态为 `healthy`，数据卷名为 `personal-dashboard-data`，并且应用以非 root 用户运行。`AUTH_SECRET` 不写入仓库；SQLite 数据库和备份均包含密码哈希及业务数据，必须限制宿主机权限并加密保存。
+
+## 发布前恢复演练记录
+
+每次更换应用版本至少执行一次以下流程，并保留命令输出或运维记录：
+
+1. 在运行实例上执行 `db:backup`，然后用 `db:verify` 校验备份。
+2. 停止应用，恢复到全新的 `recovery-drill.db`，再次执行 `db:verify`。
+3. 使用同一应用版本启动恢复实例，重新登录。
+4. 抽查账号资料、条目树、本周计划、ICS 导入批次和专注记录。
+5. 确认恢复实例健康后再替换正式数据卷；正式替换必须使用 `--replace`，并保留回退文件直到抽查完成。
+
+恢复期间不要复制正在使用的 `.db`、`-wal` 或 `-shm` 文件，也不要让两个应用进程同时写入同一个 SQLite 文件。

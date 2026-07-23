@@ -1,0 +1,14 @@
+.git
+.omx
+.next
+.next-e2e-*
+node_modules
+data
+backups
+test-results
+coverage
+.env*
+!.env.example
+*.tsbuildinfo
+*.log
+.DS_Store
