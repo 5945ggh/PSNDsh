@@ -1,0 +1,27 @@
+e2e/persistent-api.spec.ts
+  s_a118e18015d124::t_7d3954cd432082 64-67,80,82-87,113,115-116
+  s_a118e18015d124::t_bec79ba84dac85 114
+  s_a118e18015d124::t_9a839fb5b7b663 117
+src/app/(dashboard)/plan/page.tsx
+  s_a118e18015d124::t_f6fd9b2339b20c 148-173
+  s_a118e18015d124::t_3cc92df56098f9 3,5,22-24,27-52,62-64,66,68,94,96,102-105,108-147,174,177,297,302-303,306,308,313-314,317,320,330-331,338,340,353-354,357-365
+  s_a118e18015d124::t_1eac28803d3c78 263,406,419-426,429-433,435-481,485-489,492-504,545,550-552,555,574-678
+src/app/(dashboard)/entries/[id]/page.tsx
+  s_a118e18015d124::t_f94d06c9239c5d 106,109,276,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "15758adbb6c2c4509c7bb4b9ff50e15710b07dc2",
+  "prompts": {},
+  "sessions": {
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
