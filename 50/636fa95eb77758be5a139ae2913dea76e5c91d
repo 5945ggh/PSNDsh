@@ -1,0 +1,76 @@
+content/quotations/summer.json
+  s_1175c4d4280d55::t_164ec598ddf519 1-10
+docs/testing/PRD_ACCEPTANCE_AUDIT.md
+  s_1175c4d4280d55::t_a7ec1c86305bea 3
+  s_1175c4d4280d55::t_5be5ce1771aa18 1-2,4-36
+package.json
+  s_1175c4d4280d55::t_164ec598ddf519 12-15
+docs/README.md
+  s_1175c4d4280d55::t_5be5ce1771aa18 10,12-13
+src/lib/ambient/quotations.ts
+  s_1175c4d4280d55::t_164ec598ddf519 1-6,19-50,62-80,100-102,105-122
+  s_1175c4d4280d55::t_c895e94ead5d8d 52-61
+  s_1175c4d4280d55::t_7acb5dbd735462 51
+DESIGN.md
+  s_1175c4d4280d55::t_2f0d39978a42fa 85,97
+src/lib/ambient/quotations.test.ts
+  s_1175c4d4280d55::t_c895e94ead5d8d 5,23-34
+  s_1175c4d4280d55::t_507aa3875bc30f 35-36
+content/quotations/spring.json
+  s_1175c4d4280d55::t_164ec598ddf519 1-10
+docs/testing/TEST_STRATEGY.md
+  s_1175c4d4280d55::t_5be5ce1771aa18 65
+content/quotations/autumn.json
+  s_1175c4d4280d55::t_164ec598ddf519 1-10
+docs/OPERATIONS.md
+  s_1175c4d4280d55::t_5be5ce1771aa18 1-51
+docs/architecture/TECHNICAL_DESIGN.md
+  s_1175c4d4280d55::t_5be5ce1771aa18 307,326-327
+content/quotations/winter.json
+  s_1175c4d4280d55::t_164ec598ddf519 1-10
+scripts/database-backup.mjs
+  s_1175c4d4280d55::t_98a9b4c2e972b5 6,9
+  s_1175c4d4280d55::t_55abc10e647690 1-5,7-8,10-18
+scripts/database-restore.mjs
+  s_1175c4d4280d55::t_55abc10e647690 1-24
+src/lib/persistence/sqlite-service.test.ts
+  s_1175c4d4280d55::t_a5e56cb18ee384 4,233
+  s_1175c4d4280d55::t_a7b98bb7e71268 306-308,310
+  s_1175c4d4280d55::t_43734123dde0a6 299-305,309,311-324
+scripts/lib/sqlite-snapshot.mjs
+  s_1175c4d4280d55::t_55abc10e647690 1-5,7-21,27-60,66-126
+  s_1175c4d4280d55::t_98a9b4c2e972b5 6,22-26,61-65
+scripts/database-verify.mjs
+  s_1175c4d4280d55::t_55abc10e647690 1-16
+src/app/(dashboard)/page.tsx
+  s_1175c4d4280d55::t_8d108ba69deb27 19-30,44,53
+  s_1175c4d4280d55::t_2f0d39978a42fa 92-93
+src/lib/db/sqlite-snapshot.test.ts
+  s_1175c4d4280d55::t_55abc10e647690 1-73
+docs/content/QUOTATION_DATA_PACK.md
+  s_1175c4d4280d55::t_5be5ce1771aa18 1-55
+docs/SETUP.md
+  s_1175c4d4280d55::t_4bd8b8315ebf00 21,39
+  s_1175c4d4280d55::t_4c42eb79f34ef2 40
+docs/product/PRD.md
+  s_1175c4d4280d55::t_c973124c59c3cf 504-512,516-521,525-531,535-541,545
+  s_1175c4d4280d55::t_5be5ce1771aa18 358-359,375,546-547,549
+.gitignore
+  s_1175c4d4280d55::t_164ec598ddf519 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "50636fa95eb77758be5a139ae2913dea76e5c91d",
+  "prompts": {},
+  "sessions": {
+    "s_1175c4d4280d55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a0d-33cc-7842-960a-74eb411f3494",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
