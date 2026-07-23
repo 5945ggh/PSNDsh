@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // node-ical depends on Node-only Temporal internals and must not be bundled by Turbopack.
+  serverExternalPackages: ["node-ical"],
 };
 
 export default nextConfig;

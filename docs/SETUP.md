@@ -31,8 +31,10 @@ docs/          产品、架构、设计、测试与初始化文档
 .env.example   服务端配置占位模板
 ```
 
-当前首页是脚手架占位页，业务页面和 mock 服务由后续前端样例任务实现。数据库 schema、迁移和领域服务尚未开始实现。
+当前实现已包含登录/注册、首页、计划、日历、统计和设置页面，以及可在持久化模式下运行的同源 JSON API、SQLite schema、迁移与应用服务。`NEXT_PUBLIC_DATA_TRANSPORT` 未设置时使用持久化 API；显式设为 `mock` 时保留前端样例场景切换能力。
+
+当前持久化模式已覆盖账号资料、条目、周计划、专注、手工日程、日历、统计、人工审核的本地季节名句、当前账号的结构化 JSON 导出，以及 ICS 文件的预览确认导入。ICS 重复事件会在未来 180 天展开为具体日程；全天事件、无时区重复事件、天气、作品级名句预抓取和部署容器仍是后续批次。
 
 ## 初始化范围
 
-本次初始化锁定了 Next.js、React、TypeScript、Tailwind CSS、ESLint、Radix primitives、Lucide、Zod、Drizzle ORM 和 SQLite 驱动，并生成 `pnpm-lock.yaml`。Better Auth、FullCalendar、ICS 解析库和天气/名句适配器仍按技术设计中的待验证项处理，未在空骨架阶段预先绑定实现。
+项目锁定了 Next.js、React、TypeScript、Tailwind CSS、ESLint、Radix primitives、Lucide、Zod、Drizzle ORM、SQLite 驱动和 `node-ical@0.26.1`，并生成 `pnpm-lock.yaml`。ICS 解析器只在 Node 服务端路由中使用；实现边界与受限重复展开策略见 [ADR 0001](architecture/adr/0001-ics-import-parser.md)。Better Auth、FullCalendar、天气与名句预抓取适配器仍按技术设计中的待验证项处理，尚未接入。

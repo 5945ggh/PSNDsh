@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
+import type { IcsImportPreview } from "@/types/mock";
 import { X, FileCode, CheckCircle, AlertTriangle, ArrowRight } from "lucide-react";
 
 interface IcsImportModalProps {
@@ -9,17 +10,30 @@ interface IcsImportModalProps {
   onClose: () => void;
 }
 
+const isIcsFile = (file: File) =>
+  file.name.toLowerCase().endsWith(".ics") || file.type === "text/calendar";
+
 export const IcsImportModal: React.FC<IcsImportModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { api } = useMock();
-  const previewData = api.getIcsPreview();
-
-  const [selectedUids, setSelectedUids] = useState<Set<string>>(
-    new Set(previewData.rows.filter((r) => r.selected).map((r) => r.sourceUid))
-  );
+  const { api, mutate } = useData();
+  const [previewData, setPreviewData] = useState<IcsImportPreview | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [step, setStep] = useState<"file" | "preview">("file");
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const closeAndReset = () => {
+    onClose();
+    setStep("file");
+    setSelectedFile(null);
+    setFileError(null);
+    setPreviewData(null);
+    setSelectedUids(new Set());
+    setIsPreviewLoading(false);
+  };
 
   if (!isOpen) return null;
 
@@ -32,11 +46,53 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
     });
   };
 
-  const handleConfirm = () => {
-    const count = api.confirmIcsImport(Array.from(selectedUids));
+  const handleConfirm = async () => {
+    if (!previewData) return;
+    const count = await mutate(
+      () => api.confirmIcsImport(previewData.importId, Array.from(selectedUids)),
+      { backgroundRefresh: true }
+    );
     alert(`成功导入 ${count} 门课程/日程至日历表！`);
-    onClose();
+    closeAndReset();
   };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    setFileError(null);
+    if (!file) return;
+
+    if (!isIcsFile(file)) {
+      setFileError("请选择 .ics 后缀的日程表文件。");
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!selectedFile) {
+      setFileError("请先选择一个 .ics 日程表文件。");
+      return;
+    }
+    if (fileError || !isIcsFile(selectedFile)) {
+      setFileError("请选择 .ics 后缀的日程表文件。");
+      return;
+    }
+    setIsPreviewLoading(true);
+    setFileError(null);
+    try {
+      const preview = await api.previewIcsImport(selectedFile.name, await selectedFile.text());
+      setPreviewData(preview);
+      setSelectedUids(
+        new Set(preview.rows.filter((row) => row.selected).map((row) => row.sourceUid))
+      );
+      setStep("preview");
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "解析日程表失败");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const canPreview = Boolean(selectedFile && !fileError && !isPreviewLoading);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -50,10 +106,10 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
         <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileCode className="w-5 h-5 text-purple-500" aria-hidden="true" />
-            <h2 id="ics-modal-title" className="font-semibold text-base">导入 ICS 日历文件</h2>
+            <h2 id="ics-modal-title" className="font-semibold text-base">导入日程表</h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={closeAndReset}
             aria-label="关闭对话框"
             className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
@@ -64,30 +120,66 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
         {/* Content */}
         <div className="p-5 overflow-y-auto space-y-4 text-xs">
           {step === "file" ? (
-            <div className="space-y-4 text-center py-6">
-              <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 hover:border-purple-500 transition-colors">
+            <div className="space-y-4 py-6">
+              <label className="block border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 hover:border-purple-500 transition-colors text-center cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-purple-500">
                 <FileCode className="w-10 h-10 text-zinc-400 mx-auto mb-2" aria-hidden="true" />
-                <p className="font-medium text-sm">选择 .ics 格式的课表或日历文件</p>
+                <p className="font-medium text-sm">选择 .ics 格式的日程表文件</p>
                 <p className="text-zinc-400 text-xs mt-1">
                   解析后将先进行两阶段预览与确认
                 </p>
-              </div>
+                <input
+                  type="file"
+                  accept=".ics,text/calendar"
+                  aria-label="选择 .ics 日程表文件"
+                  onChange={handleFileChange}
+                  className="sr-only"
+                  aria-describedby="ics-file-help"
+                />
+                <span
+                  id="ics-file-help"
+                  className="mt-3 inline-flex rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  选择 .ics 文件
+                </span>
+              </label>
+
+              {selectedFile && (
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-800/30">
+                  <div className="font-medium text-zinc-800 dark:text-zinc-200">
+                    已选择：{selectedFile.name}
+                  </div>
+                  <div className="mt-1 text-[11px] text-zinc-500">
+                    大小：{Math.max(1, Math.round(selectedFile.size / 1024))} KB
+                  </div>
+                </div>
+              )}
+
+              {fileError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-left text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                  {fileError}
+                </div>
+              )}
 
               <button
-                onClick={() => setStep("preview")}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+                onClick={() => { void handlePreview(); }}
+                disabled={!canPreview}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span>解析课表预览</span>
+                <span>
+                  {isPreviewLoading
+                    ? "正在解析..."
+                    : "解析日程表预览"}
+                </span>
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
-          ) : (
+          ) : previewData ? (
             <div className="space-y-4">
               <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 p-3 rounded-lg flex items-center justify-between text-purple-900 dark:text-purple-200">
                 <div>
                   <div className="font-medium">文件：{previewData.fileName}</div>
                   <div className="text-[10px] opacity-80">
-                    解析出 {previewData.rows.length} 条有效日程，1 条规则自动过滤
+                    解析出 {previewData.rows.length} 条可确认日程，{previewData.errors.length} 条已过滤
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-200 dark:bg-purple-900">
@@ -162,13 +254,17 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                 </div>
               )}
             </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              暂无可预览的日程表解析结果。
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
           <button
-            onClick={onClose}
+            onClick={closeAndReset}
             className="px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-700 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             取消

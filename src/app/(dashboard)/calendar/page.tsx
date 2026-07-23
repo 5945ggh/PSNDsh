@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { IcsImportModal } from "@/components/calendar/IcsImportModal";
-import { ScheduleBlock } from "@/types/mock";
+import { ScheduleEditorModal } from "@/components/calendar/ScheduleEditorModal";
+import { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/types/mock";
 import {
   ChevronLeft,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
   ArrowRight,
   X,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
@@ -48,21 +50,66 @@ const getShanghaiDecimalHour = (value: Date) => {
   return hour + minute / 60;
 };
 
+const scheduleAccentColor = (colorKey: string | null) => {
+  const colors: Record<string, string> = {
+    blue: "#2563eb",
+    green: "#059669",
+    amber: "#d97706",
+    rose: "#e11d48",
+  };
+  return colors[colorKey ?? "blue"] ?? colors.blue;
+};
+
+const currentShanghaiWeekStart = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SHANGHAI_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: string) => Number(parts.find((item) => item.type === type)?.value ?? 0);
+  const current = new Date(Date.UTC(part("year"), part("month") - 1, part("day")));
+  const weekday = current.getUTCDay() || 7;
+  current.setUTCDate(current.getUTCDate() - weekday + 1);
+  return current.toISOString().slice(0, 10);
+};
+
+const shiftDateKey = (date: string, days: number) => {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+};
+
+const weekDaysFor = (weekStart: string) =>
+  Array.from({ length: 7 }, (_, index) => {
+    return {
+      date: shiftDateKey(weekStart, index),
+      dayName: `周${["一", "二", "三", "四", "五", "六", "日"][index]}`,
+    };
+  });
+
 export default function CalendarPage() {
   const router = useRouter();
-  const { api } = useMock();
+  const { api, data, mutate, version } = useData();
   const { setIsManualModalOpen } = useFocusTimer();
 
-  const scheduleBlocks = api.getScheduleBlocks();
-  const focusSessions = api.getFocusSessions();
-  const entries = api.getEntries();
+  const [weekStart, setWeekStart] = useState(currentShanghaiWeekStart);
+  const [calendar, setCalendar] = useState<CalendarPayload | null>(null);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(true);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const scheduleBlocks = calendar?.scheduleBlocks ?? [];
+  const focusSessions = calendar?.focusSessions ?? [];
+  const entries = data.entries;
+  const getEntryById = (id: string) => entries.find((entry) => entry.id === id);
 
   const [isIcsOpen, setIsIcsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact" | "day">("grid");
   const [hasChosenViewMode, setHasChosenViewMode] = useState(false);
   const [trackFilter, setTrackFilter] = useState<"both" | "schedule" | "focus">("both");
-  const [selectedDay, setSelectedDay] = useState("2026-06-24");
+  const weekDays = useMemo(() => weekDaysFor(weekStart), [weekStart]);
+  const [selectedDay, setSelectedDay] = useState(currentShanghaiWeekStart);
   const [activeScheduleModal, setActiveScheduleModal] = useState<ScheduleBlock | null>(null);
+  const [scheduleEditor, setScheduleEditor] = useState<ScheduleBlock | "new" | null>(null);
   const isMobileViewport = useSyncExternalStore(
     subscribeToMobileViewport,
     getMobileViewportSnapshot,
@@ -74,15 +121,35 @@ export default function CalendarPage() {
     setHasChosenViewMode(true);
   };
 
-  const weekDays = [
-    { date: "2026-06-22", dayName: "周一" },
-    { date: "2026-06-23", dayName: "周二" },
-    { date: "2026-06-24", dayName: "周三" }, // Overlap day
-    { date: "2026-06-25", dayName: "周四" }, // Cross-day focus
-    { date: "2026-06-26", dayName: "周五" },
-    { date: "2026-06-27", dayName: "周六" },
-    { date: "2026-06-28", dayName: "周日" },
-  ];
+  const refreshCalendar = useCallback(async () => {
+    setIsCalendarLoading(true);
+    setCalendarError(null);
+    try {
+      const nextWeekStart = weekStart;
+      setCalendar(await api.getCalendarPayload(
+        `${nextWeekStart}T00:00:00+08:00`,
+        `${shiftDateKey(nextWeekStart, 7)}T00:00:00+08:00`
+      ));
+    } catch (error) {
+      setCalendarError(error instanceof Error ? error.message : "日历数据加载失败");
+    } finally {
+      setIsCalendarLoading(false);
+    }
+  }, [api, weekStart]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refreshCalendar();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [refreshCalendar, version]);
+
+  const changeWeek = (nextWeekStart: string) => {
+    setWeekStart(nextWeekStart);
+    setSelectedDay(nextWeekStart);
+  };
+  const isCurrentWeek = weekStart === currentShanghaiWeekStart();
+
   const selectedDayIndex = Math.max(0, weekDays.findIndex((day) => day.date === selectedDay));
   const selectedDayMeta = weekDays[selectedDayIndex];
   const formatShanghaiTime = (value: number) =>
@@ -149,25 +216,8 @@ export default function CalendarPage() {
     return `${verticalClass} ${horizontalClass}`;
   };
 
-  // Helper to find associated entry for a schedule block title
-  const findEntryByTitle = (title: string) => {
-    return entries.find(
-      (e) =>
-        title.includes(e.title) ||
-        e.title.includes(title.slice(0, 4)) ||
-        (title.includes("ICS2") && e.id === "entry_ics2") ||
-        (title.includes("伦理") && e.id === "entry_ai_ethics") ||
-        (title.includes("LockLab") && e.id === "entry_lab4")
-    );
-  };
-
   const handleScheduleClick = (sch: ScheduleBlock) => {
-    const matched = findEntryByTitle(sch.title);
-    if (matched) {
-      router.push(`/entries/${matched.id}`);
-    } else {
-      setActiveScheduleModal(sch);
-    }
+    setActiveScheduleModal(sch);
   };
 
   const handleFocusClick = (entryId: string | null) => {
@@ -178,10 +228,44 @@ export default function CalendarPage() {
     }
   };
 
+  const saveSchedule = async (input: ScheduleBlockInput) => {
+    if (scheduleEditor === "new") {
+      await mutate(() => api.addScheduleBlock(input), {
+        refresh: false,
+        update: (snapshot, schedule) => ({
+          ...snapshot,
+          scheduleBlocks: [...snapshot.scheduleBlocks, schedule],
+        }),
+      });
+    } else if (scheduleEditor) {
+      await mutate(() => api.updateScheduleBlock(scheduleEditor.id, input), {
+        refresh: false,
+        update: (snapshot, schedule) => ({
+          ...snapshot,
+          scheduleBlocks: snapshot.scheduleBlocks.map((item) => item.id === schedule.id ? schedule : item),
+        }),
+      });
+    }
+    await refreshCalendar();
+  };
+
+  const deleteSchedule = async (schedule: ScheduleBlock) => {
+    if (!window.confirm(`确定删除“${schedule.title}”吗？`)) return;
+    await mutate(() => api.deleteScheduleBlock(schedule.id), {
+      refresh: false,
+      update: (snapshot) => ({
+        ...snapshot,
+        scheduleBlocks: snapshot.scheduleBlocks.filter((item) => item.id !== schedule.id),
+      }),
+    });
+    setActiveScheduleModal(null);
+    await refreshCalendar();
+  };
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* Fixed Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+      <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-pretty">周历与时间面板</h1>
           <p className="text-xs text-zinc-500 mt-1">
@@ -191,6 +275,38 @@ export default function CalendarPage() {
 
         {/* Fixed Control Toolbar */}
         <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 text-xs bg-zinc-50 dark:bg-zinc-800" aria-label="周导航">
+            <button
+              onClick={() => changeWeek(shiftDateKey(weekStart, -7))}
+              aria-label="上一周"
+              className="p-1.5 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+            </button>
+            {isCurrentWeek ? (
+              <span
+                aria-current="date"
+                className="px-2 py-1.5 font-medium text-zinc-500 dark:text-zinc-400 select-none"
+              >
+                本周
+              </span>
+            ) : (
+              <button
+                onClick={() => changeWeek(currentShanghaiWeekStart())}
+                className="px-2 py-1.5 font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              >
+                返回本周
+              </button>
+            )}
+            <button
+              onClick={() => changeWeek(shiftDateKey(weekStart, 7))}
+              aria-label="下一周"
+              className="p-1.5 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+
           <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 text-xs bg-zinc-50 dark:bg-zinc-800">
             <button
               onClick={() => selectViewMode("grid")}
@@ -249,7 +365,15 @@ export default function CalendarPage() {
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
           >
             <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>导入 ICS 课表</span>
+            <span>导入日程表</span>
+          </button>
+
+          <button
+            onClick={() => setScheduleEditor("new")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>新增日程</span>
           </button>
 
           <button
@@ -257,9 +381,17 @@ export default function CalendarPage() {
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium shadow-sm hover:opacity-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>补录专注 / 日程</span>
+            <span>补录专注</span>
           </button>
         </div>
+      </div>
+
+      <div aria-live="polite" className="text-xs text-zinc-500">
+        {isCalendarLoading
+          ? "正在加载本周日程与专注记录..."
+          : calendarError
+            ? `日历数据加载失败：${calendarError}`
+            : `${weekStart} 至 ${weekDays[6]?.date}，日程与专注分别独立呈现`}
       </div>
 
       {/* Track Legend Notice */}
@@ -325,7 +457,7 @@ export default function CalendarPage() {
                 });
 
                 return (
-                  <div key={wd.date} className="flex flex-col relative min-w-0">
+                  <div key={wd.date} data-testid={`calendar-day-${wd.date}`} className="flex flex-col relative min-w-0">
                     {/* Header */}
                     <div className="text-center pb-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 z-10 sticky top-0">
                       <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-200">
@@ -345,6 +477,12 @@ export default function CalendarPage() {
                         {/* Sub-column A: Schedule Track */}
                         {(trackFilter === "both" || trackFilter === "schedule") && (
                           <div
+                            onDoubleClick={(event) => {
+                              if (event.target === event.currentTarget) {
+                                setSelectedDay(wd.date);
+                                setScheduleEditor("new");
+                              }
+                            }}
                             className={`relative border-r border-dashed border-zinc-200/50 dark:border-zinc-800/40 ${
                               trackFilter === "both" ? "w-1/2" : "w-full"
                             }`}
@@ -364,7 +502,7 @@ export default function CalendarPage() {
                                   className="absolute inset-x-0.5 group/block z-10 hover:z-50 cursor-pointer"
                                 >
                                   {/* Visual Block Card */}
-                                  <div className="w-full h-full p-1.5 rounded bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-[11px] overflow-hidden shadow-2xs hover:border-blue-400 hover:shadow-md transition-all">
+                                  <div style={{ borderLeftWidth: "3px", borderLeftColor: scheduleAccentColor(sch.colorKey) }} className="w-full h-full p-1.5 rounded bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-[11px] overflow-hidden shadow-2xs hover:border-blue-400 hover:shadow-md transition-all">
                                     <div className="font-semibold truncate leading-tight flex items-center justify-between">
                                       <span className="truncate">{sch.title}</span>
                                       <ArrowRight className="w-3 h-3 opacity-0 group-hover/block:opacity-100 shrink-0 text-blue-500" />
@@ -411,7 +549,7 @@ export default function CalendarPage() {
                                 new Date(range.endMs).toISOString()
                               );
                               const seg = foc.segments[0];
-                              const entry = seg?.entryId ? api.getEntryById(seg.entryId) : null;
+                              const entry = seg?.entryId ? getEntryById(seg.entryId) : null;
                               const entryTitle = entry ? entry.title : "未关联专注";
                               const popoverPosClass = getPopoverPositionClass(pos.top, dayIdx);
 
@@ -516,6 +654,7 @@ export default function CalendarPage() {
                         <div
                           key={sch.id}
                           onClick={() => handleScheduleClick(sch)}
+                          style={{ borderLeftWidth: "3px", borderLeftColor: scheduleAccentColor(sch.colorKey) }}
                           className="p-2 rounded border text-xs space-y-0.5 bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 cursor-pointer hover:border-blue-400 transition-colors group"
                         >
                           <div className="font-medium truncate flex items-center justify-between">
@@ -541,7 +680,7 @@ export default function CalendarPage() {
                       dayFocuses.map(({ focus: foc, range }) => {
                         const seg = foc.segments[0];
                         const entryTitle = seg?.entryId
-                          ? api.getEntryById(seg.entryId)?.title
+                          ? getEntryById(seg.entryId)?.title
                           : "未关联专注";
                         return (
                           <div
@@ -616,6 +755,7 @@ export default function CalendarPage() {
                         <div
                           key={schedule.id}
                           onClick={() => handleScheduleClick(schedule)}
+                          style={{ borderLeftWidth: "3px", borderLeftColor: scheduleAccentColor(schedule.colorKey) }}
                           className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg cursor-pointer hover:border-blue-400 transition-colors flex items-center justify-between gap-3 group"
                         >
                           <div className="min-w-0">
@@ -669,7 +809,7 @@ export default function CalendarPage() {
                             );
                             if (!segmentRange) return null;
                             const entry = segment.entryId
-                              ? api.getEntryById(segment.entryId)
+                              ? getEntryById(segment.entryId)
                               : null;
                             return {
                               id: segment.id,
@@ -687,7 +827,7 @@ export default function CalendarPage() {
                             } => segment !== null
                           );
                         const focusTitle = focus.segments[0]?.entryId
-                          ? api.getEntryById(focus.segments[0].entryId)?.title || "未关联专注"
+                          ? getEntryById(focus.segments[0].entryId)?.title || "未关联专注"
                           : "未关联专注";
 
                         return (
@@ -816,25 +956,43 @@ export default function CalendarPage() {
 
               <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                 <button
-                  onClick={() => {
-                    api.deleteScheduleBlock(activeScheduleModal.id);
-                    setActiveScheduleModal(null);
-                  }}
+                  onClick={() => void deleteSchedule(activeScheduleModal)}
                   className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:underline text-xs"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>删除日程</span>
                 </button>
-                <button
-                  onClick={() => setActiveScheduleModal(null)}
-                  className="px-3 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium"
-                >
-                  知道了
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setScheduleEditor(activeScheduleModal);
+                      setActiveScheduleModal(null);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                  >
+                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>编辑日程</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveScheduleModal(null)}
+                    className="px-3 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium"
+                  >
+                    知道了
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {scheduleEditor && (
+        <ScheduleEditorModal
+          schedule={scheduleEditor === "new" ? null : scheduleEditor}
+          defaultDate={selectedDay}
+          onClose={() => setScheduleEditor(null)}
+          onSave={saveSchedule}
+        />
       )}
 
       {/* ICS Modal */}
