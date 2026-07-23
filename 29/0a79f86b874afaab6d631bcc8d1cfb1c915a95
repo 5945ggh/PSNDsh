@@ -1,0 +1,105 @@
+src/components/calendar/ScheduleEditorModal.tsx
+  s_a118e18015d124::t_a43e72e4eaa6bc 32-37,48,57-61,75-78,84,90-95,154-186
+  s_a118e18015d124::t_e639dec93f30bb 187
+src/lib/mock/api.ts
+  s_a118e18015d124::t_0551feec3748fd 38-39
+docs/architecture/TECHNICAL_DESIGN.md
+  s_a118e18015d124::t_f7559fa241027b 261
+src/lib/db/schema.ts
+  s_a118e18015d124::t_12d224922dbf58 133-145,155,162-163,177
+src/lib/api/adapter.ts
+  s_a118e18015d124::t_0551feec3748fd 74-75
+src/lib/schedule/ics-import.ts
+  s_a118e18015d124::t_c17571dfa312d3 58-67,154-162,195-200
+  s_a118e18015d124::t_0ed6bcc9277292 91,191-192
+src/app/(dashboard)/calendar/page.tsx
+  s_a118e18015d124::t_f771488411f83e 8,25,108,374-382,960-968,1012,1022-1026
+src/lib/application/contract.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 11,96-97
+src/lib/schedule/ics-preview-store.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 6,11,13,22
+src/app/api/v1/schedule-blocks/imports/[importId]/route.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 1-8
+src/lib/mock/store.ts
+  s_a118e18015d124::t_0551feec3748fd 554
+src/lib/schedule/fixtures/recurrence-and-exceptions.ics
+  s_a118e18015d124::t_86537c0180b276 13
+src/lib/persistence/sqlite-service.test.ts
+  s_a118e18015d124::t_86537c0180b276 167-168,175,179-220
+  s_a118e18015d124::t_c17571dfa312d3 221,223-267
+  s_a118e18015d124::t_80b0380e91c4d8 222
+docs/product/PRD.md
+  s_a118e18015d124::t_f7559fa241027b 77,319-321,578
+src/lib/schedule/ics-import.test.ts
+  s_a118e18015d124::t_86537c0180b276 25
+  s_a118e18015d124::t_c17571dfa312d3 49,69-73,77
+  s_a118e18015d124::t_94f8938849996a 67
+  s_a118e18015d124::t_e84a7ac8d20ae4 41
+  s_a118e18015d124::t_9adef4045f6739 82
+src/lib/mock/service.ts
+  s_a118e18015d124::t_0551feec3748fd 43
+  s_a118e18015d124::t_3512e16fac455d 44
+src/types/mock.ts
+  s_a118e18015d124::t_9adef4045f6739 92
+  s_a118e18015d124::t_247cf87ae767b9 99-101,135-136
+  s_a118e18015d124::t_12d224922dbf58 108,116-122
+  s_a118e18015d124::t_b83fcb112f74f2 102
+  s_a118e18015d124::t_0a1ea79d82e31f 140
+src/lib/api/schedule-input.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 18
+src/lib/schedule/ics-preview-store.test.ts
+  s_a118e18015d124::t_247cf87ae767b9 9,12
+src/components/calendar/ScheduleImportManager.tsx
+  s_a118e18015d124::t_fe9935dbfe9be4 1-28,47-107
+  s_a118e18015d124::t_c17571dfa312d3 29,35-36,38,40,44-46
+  s_a118e18015d124::t_3512e16fac455d 30-34,37,39,41-43
+src/lib/api/client.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 19,103-104,298-304
+  s_a118e18015d124::t_406ec1777ed276 305
+e2e/persistent-api.spec.ts
+  s_a118e18015d124::t_9adef4045f6739 59,74
+src/components/calendar/IcsImportModal.tsx
+  s_a118e18015d124::t_c17571dfa312d3 210-211
+  s_a118e18015d124::t_75425ec9c54832 221-230
+docs/SETUP.md
+  s_a118e18015d124::t_f7559fa241027b 37
+src/app/api/v1/schedule-blocks/imports/ics/preview/route.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 21-36
+drizzle/0001_schedule_imports.sql
+  s_a118e18015d124::t_12d224922dbf58 1-13
+src/app/api/v1/schedule-blocks/imports/route.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 1-5
+src/app/api/v1/schedule-blocks/imports/ics/[importId]/confirm/route.ts
+  s_a118e18015d124::t_0e1ff1f4c98913 16-17,19-22
+docs/testing/TEST_STRATEGY.md
+  s_a118e18015d124::t_f7559fa241027b 54,56
+docs/architecture/adr/0001-ics-import-parser.md
+  s_a118e18015d124::t_f7559fa241027b 20-22,28,30,41
+  s_a118e18015d124::t_8fc6d9c6ab8492 17
+src/lib/persistence/sqlite-service.ts
+  s_a118e18015d124::t_63b388d67fc913 9,39,306,313-315
+  s_a118e18015d124::t_b83fcb112f74f2 131-140,150-160
+  s_a118e18015d124::t_5df4e3ceff6ae2 689,692-702,704-705,710,717-718,723-744
+  s_a118e18015d124::t_51e1ea23879bde 597-606,612-636,647
+  s_a118e18015d124::t_dd0fa73134e833 611
+  s_a118e18015d124::t_c17571dfa312d3 607-610
+  s_a118e18015d124::t_224cfe3520e25f 662-663,684-685
+  s_a118e18015d124::t_fe5819fd599cd3 656,668
+  s_a118e18015d124::t_dab0c9a090364e 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "290a79f86b874afaab6d631bcc8d1cfb1c915a95",
+  "prompts": {},
+  "sessions": {
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
