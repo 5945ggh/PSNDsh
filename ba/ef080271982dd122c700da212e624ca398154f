@@ -1,0 +1,76 @@
+src/lib/api/schedule-template-input.ts
+  s_a118e18015d124::t_809ba6fe30aed8 1-37
+src/app/api/v1/schedule-template-applications/route.ts
+  s_a118e18015d124::t_76029645eaf2dc 1-9
+drizzle/0002_schedule_templates.sql
+  s_a118e18015d124::t_f4cc9e2e956597 1-36,76
+  s_a118e18015d124::t_0e02f0e40986b9 37-75,77
+src/app/api/v1/schedule-template-applications/[id]/route.ts
+  s_a118e18015d124::t_76029645eaf2dc 1-11
+src/lib/application/contract.ts
+  s_a118e18015d124::t_809ba6fe30aed8 12-15,102-103,105-109
+  s_a118e18015d124::t_b05b9333706dac 104
+src/lib/persistence/sqlite-service.test.ts
+  s_a118e18015d124::t_b443445488006c 223-344
+src/components/calendar/ScheduleTemplateManager.tsx
+  s_a118e18015d124::t_8d264ab6d724c4 3,81,96,99-102,111-127,241
+  s_a118e18015d124::t_83b5a4274286d0 1-2,4-80,82-95,97-98,103-110,128-240,242-268
+src/lib/persistence/sqlite-service.ts
+  s_a118e18015d124::t_81a94e2a240d14 10-12,43-47,70,325,757-841,871-983
+  s_a118e18015d124::t_b05b9333706dac 842-870
+  s_a118e18015d124::t_ec7762e7f44db5 984
+src/types/mock.ts
+  s_a118e18015d124::t_f4cc9e2e956597 99,102,124-138,145-174
+  s_a118e18015d124::t_809ba6fe30aed8 139-144
+  s_a118e18015d124::t_5552fc89ae6928 175
+src/lib/db/schema.ts
+  s_a118e18015d124::t_809ba6fe30aed8 189-190,206,209,213-216
+  s_a118e18015d124::t_f4cc9e2e956597 146-188,228-230
+src/app/api/v1/schedule-templates/[id]/apply/route.ts
+  s_a118e18015d124::t_76029645eaf2dc 1-15
+src/lib/mock/service.ts
+  s_a118e18015d124::t_8d264ab6d724c4 46-47
+  s_a118e18015d124::t_af8e5b954ac526 45,51
+  s_a118e18015d124::t_d51ad521708b72 48-50,52
+src/lib/api/adapter.ts
+  s_a118e18015d124::t_af8e5b954ac526 76-77,79-83
+  s_a118e18015d124::t_b05b9333706dac 78
+src/lib/application/error.ts
+  s_a118e18015d124::t_d51ad521708b72 11-12
+src/app/(dashboard)/calendar/page.tsx
+  s_a118e18015d124::t_40ca85945f9582 9,27,111,386-393,1038-1040
+  s_a118e18015d124::t_e916d268151911 1041-1042
+src/lib/api/client.ts
+  s_a118e18015d124::t_b05b9333706dac 111,329-335
+  s_a118e18015d124::t_af8e5b954ac526 20-23,109-110,112-116,322-328,336-364
+  s_a118e18015d124::t_7f99f483614952 365
+src/app/api/v1/schedule-templates/[id]/route.ts
+  s_a118e18015d124::t_b05b9333706dac 1-27
+  s_a118e18015d124::t_76029645eaf2dc 28-37
+e2e/persistent-api.spec.ts
+  s_a118e18015d124::t_8f386c1da83d8d 299-340,342-355
+  s_a118e18015d124::t_332156b57d2dcf 341
+src/app/api/v1/schedule-templates/[id]/preview/route.ts
+  s_a118e18015d124::t_76029645eaf2dc 1-15
+src/app/api/v1/schedule-templates/route.ts
+  s_a118e18015d124::t_76029645eaf2dc 1-28
+src/lib/mock/api.ts
+  s_a118e18015d124::t_af8e5b954ac526 40-41,43-47
+  s_a118e18015d124::t_b05b9333706dac 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "baef080271982dd122c700da212e624ca398154f",
+  "prompts": {},
+  "sessions": {
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": null
+    }
+  }
+}
