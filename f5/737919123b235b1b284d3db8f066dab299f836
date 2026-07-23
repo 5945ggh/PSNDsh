@@ -1,0 +1,55 @@
+src/lib/ambient/quotations.test.ts
+  s_1175c4d4280d55::t_9fdcec7d0a0693 1-30
+src/app/api/v1/export/route.ts
+  s_1175c4d4280d55::t_c0566a4c8363c3 1-17
+DESIGN.md
+  s_1175c4d4280d55::t_6b12caed155c30 57,84
+  s_1175c4d4280d55::t_6a1a7db4d8b8ac 79,97
+  s_1175c4d4280d55::t_137ab99d723f89 5,9
+  s_2a1569f8bb81ee::t_d40609af62e628 6,85
+docs/product/PRD.md
+  s_2a1569f8bb81ee::t_3b9d2c77dd3f08 4
+  s_1175c4d4280d55::t_189f746c295cac 321
+  s_1175c4d4280d55::t_9fdcec7d0a0693 369-370
+  s_1175c4d4280d55::t_e0c15d730b6410 546
+  s_2a1569f8bb81ee::t_d40609af62e628 5,70,259,371-375,380,439,453,465,545
+  s_1175c4d4280d55::t_6b12caed155c30 77,318-320,577
+docs/testing/TEST_STRATEGY.md
+  s_2a1569f8bb81ee::t_d40609af62e628 40-44,85
+  s_1175c4d4280d55::t_137ab99d723f89 75
+  s_1175c4d4280d55::t_e0c15d730b6410 64
+  s_1175c4d4280d55::t_6b12caed155c30 51-57,73,84,93
+src/lib/ambient/quotations.ts
+  s_1175c4d4280d55::t_9fdcec7d0a0693 1-51
+docs/architecture/TECHNICAL_DESIGN.md
+  s_1175c4d4280d55::t_ec630ceb1b86d9 3
+  s_1175c4d4280d55::t_9fdcec7d0a0693 280-282
+  s_2a1569f8bb81ee::t_3b9d2c77dd3f08 4
+  s_1175c4d4280d55::t_e0c15d730b6410 300
+  s_2a1569f8bb81ee::t_d40609af62e628 14,34,66,76,91,112,283-284,290,314,335,361
+  s_1175c4d4280d55::t_6b12caed155c30 35,260-262,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f5737919123b235b1b284d3db8f066dab299f836",
+  "prompts": {},
+  "sessions": {
+    "s_1175c4d4280d55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a0d-33cc-7842-960a-74eb411f3494",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_2a1569f8bb81ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f880f-b924-7db2-b03b-151cc0036dee",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
