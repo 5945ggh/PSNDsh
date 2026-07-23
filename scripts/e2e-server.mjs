@@ -31,10 +31,26 @@ const child = spawn(
   },
 );
 
+let restoreInFlight = false;
+const restoreTsconfig = async () => {
+  if (restoreInFlight) return;
+  restoreInFlight = true;
+  try {
+    const current = await readFile(tsconfigPath);
+    if (!current.equals(originalTsconfig)) await writeFile(tsconfigPath, originalTsconfig);
+  } catch {
+    // The child may briefly replace the file while Next initializes its project.
+  } finally {
+    restoreInFlight = false;
+  }
+};
+const restoreTimer = setInterval(() => void restoreTsconfig(), 250);
+
 let cleaned = false;
 const cleanup = async () => {
   if (cleaned) return;
   cleaned = true;
+  clearInterval(restoreTimer);
   await Promise.all([
     rm(databasePath, { force: true }),
     rm(`${databasePath}-wal`, { force: true }),
