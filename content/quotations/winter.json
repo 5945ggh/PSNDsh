@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "catalogVersion": "2026.07.23.initial.1",
+  "season": "winter",
+  "months": [12, 1, 2],
+  "quotations": [
+    { "id": "winter-snow", "text": "忽如一夜春风来，千树万树梨花开。", "author": "岑参", "work": "《白雪歌送武判官归京》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "winter-plum", "text": "墙角数枝梅，凌寒独自开。", "author": "王安石", "work": "《梅花》", "sourceUrl": "https://www.gushiwen.cn/" }
+  ]
+}

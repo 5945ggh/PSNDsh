@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "catalogVersion": "2026.07.23.initial.1",
+  "season": "autumn",
+  "months": [9, 10, 11],
+  "quotations": [
+    { "id": "autumn-mountain", "text": "空山新雨后，天气晚来秋。", "author": "王维", "work": "《山居秋暝》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-clear", "text": "自古逢秋悲寂寥，我言秋日胜春朝。", "author": "刘禹锡", "work": "《秋词》", "sourceUrl": "https://www.gushiwen.cn/" }
+  ]
+}

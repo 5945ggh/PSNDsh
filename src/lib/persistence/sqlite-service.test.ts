@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { ApplicationError } from "@/lib/application/error";
+import { QUOTATION_CATALOG_VERSION } from "@/lib/ambient/quotations";
 import { openDatabase } from "@/lib/db";
 import { entries, users } from "@/lib/db/schema";
 import { SqliteApplicationService } from "./sqlite-service";
@@ -229,7 +230,7 @@ describe("SqliteApplicationService", () => {
       work: expect.any(String),
       source: "builtin",
       sourceUrl: "https://www.gushiwen.cn/",
-      catalogVersion: "2026.07.22-manual.1",
+      catalogVersion: QUOTATION_CATALOG_VERSION,
     });
     expect(payload.quotation.text).not.toBe("");
   });
@@ -291,6 +292,32 @@ describe("SqliteApplicationService", () => {
       app.logout();
       expect(app.login({ username: "new-user", password: "password123" }).user?.id).toBe(stored?.id);
     } finally {
+      if (previousMode === undefined) delete process.env.REGISTRATION_MODE;
+      else process.env.REGISTRATION_MODE = previousMode;
+    }
+  });
+
+  it("honors open, closed, and invalid registration modes", () => {
+    const previousMode = process.env.REGISTRATION_MODE;
+    const empty = openDatabase(":memory:");
+    const app = new SqliteApplicationService(empty.db, { userId: null, clock: () => currentTime });
+    try {
+      process.env.REGISTRATION_MODE = "open";
+      expect(() => app.register({ username: "", password: "password123", passwordConfirmation: "password123" })).toThrow(/账号不能为空/);
+      expect(() => app.register({ username: "weak", password: "short", passwordConfirmation: "short" })).toThrow(/PASSWORD_TOO_WEAK/);
+      expect(() => app.register({ username: "mismatch", password: "password123", passwordConfirmation: "different" })).toThrow(/PASSWORD_MISMATCH/);
+      expect(app.register({ username: "first", password: "password123", passwordConfirmation: "password123" }).user?.username).toBe("first");
+      expect(() => app.register({ username: "first", password: "password123", passwordConfirmation: "password123" })).toThrow(/USERNAME_TAKEN/);
+      expect(app.register({ username: "second", password: "password123", passwordConfirmation: "password123" }).user?.username).toBe("second");
+
+      process.env.REGISTRATION_MODE = "closed";
+      expect(app.getCapabilities().registration.available).toBe(false);
+      expect(() => app.register({ username: "third", password: "password123", passwordConfirmation: "password123" })).toThrow(/REGISTRATION_CLOSED/);
+
+      process.env.REGISTRATION_MODE = "not-a-mode";
+      expect(() => app.getCapabilities()).toThrow(/Invalid REGISTRATION_MODE/);
+    } finally {
+      empty.sqlite.close();
       if (previousMode === undefined) delete process.env.REGISTRATION_MODE;
       else process.env.REGISTRATION_MODE = previousMode;
     }

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "catalogVersion": "2026.07.23.initial.1",
+  "season": "spring",
+  "months": [3, 4, 5],
+  "quotations": [
+    { "id": "spring-rain", "text": "好雨知时节，当春乃发生。", "author": "杜甫", "work": "《春夜喜雨》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-breeze", "text": "等闲识得东风面，万紫千红总是春。", "author": "朱熹", "work": "《春日》", "sourceUrl": "https://www.gushiwen.cn/" }
+  ]
+}

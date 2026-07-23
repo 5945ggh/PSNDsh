@@ -16,6 +16,18 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+const currentShanghaiDateLabel = () => {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    weekday: "long",
+  }).formatToParts(new Date());
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}年${value("month")}月${value("day")}日 ${value("weekday")}`;
+};
+
 export default function DashboardPage() {
   const { data } = useData();
   const { activeFocus, startFocus, formattedTime } = useFocusTimer();
@@ -29,6 +41,7 @@ export default function DashboardPage() {
 
   const todayHours = (focusSummary.todaySeconds / 3600).toFixed(1);
   const weekHours = (focusSummary.weekSeconds / 3600).toFixed(1);
+  const currentDateLabel = currentShanghaiDateLabel();
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full">
@@ -37,9 +50,7 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-              <span>2026年6月26日 星期五</span>
-              <span>•</span>
-              <span className="text-zinc-600 dark:text-zinc-400">夏至</span>
+              <span>{currentDateLabel}</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-pretty mt-1">
               早安，{profile.nickname || profile.username}
@@ -78,8 +89,8 @@ export default function DashboardPage() {
               <>
                 <CloudOff className="w-4 h-4 text-zinc-400" aria-hidden="true" />
                 <div>
-                  <div className="font-medium text-zinc-500">天气暂时不可用</div>
-                  <div className="text-[10px] text-zinc-400">接口连接超时</div>
+                  <div className="font-medium text-zinc-500">天气未配置</div>
+                  <div className="text-[10px] text-zinc-400">首版不启用天气服务</div>
                 </div>
               </>
             )}

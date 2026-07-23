@@ -7,7 +7,10 @@
 - [设计契约](../DESIGN.md)：UI/UX 与前端实现共同遵循的长期设计原则。
 - [前端样例任务书](design/FRONTEND_MOCK_BRIEF.md)：交给前端样例 Agent 的页面、流程、mock 接口和交付要求。
 - [薄测策略](testing/TEST_STRATEGY.md)：当前阶段只锁定高风险不变量和关键流程的测试范围。
+- [PRD 首版验收审计](testing/PRD_ACCEPTANCE_AUDIT.md)：已实现能力、测试证据与明确延期边界。
 - [项目初始化与本地运行](SETUP.md)：Node/Corepack/pnpm 约定、目录职责和当前初始化范围。
+- [SQLite 备份与恢复](OPERATIONS.md)：一致性快照、恢复演练与敏感数据处理要求。
+- [季节名句数据包](content/QUOTATION_DATA_PACK.md)：供人工审核或后续预抓取流程提交的本地内容格式。
 
 ## 需求来源
 

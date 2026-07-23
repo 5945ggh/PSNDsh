@@ -304,6 +304,7 @@ REGISTRATION_MODE=first-user
 - SQLite 文件与必要 sidecar 必须通过一致性快照或 SQLite backup API 备份，不能在活跃写入时直接复制未知状态文件。
 - 同版本空实例恢复后执行迁移版本检查、外键检查和代表性计数或查询。
 - 数据库备份包含密码哈希和会话等敏感信息，部署文档必须提示权限和加密保存责任。
+- 当前通过 `db:backup`、`db:verify` 与 `db:restore` CLI 实施；恢复不在运行中的 Web 进程内执行，默认只允许空实例，`--replace` 必须显式确认。具体演练步骤见 [运维文档](../OPERATIONS.md)。
 
 ## 11. 部署与配置
 
@@ -322,8 +323,8 @@ REGISTRATION_MODE=first-user
 | `AUTH_SECRET` | 是 | 无 | 会话或认证库密钥 |
 | `REGISTRATION_MODE` | 否 | `first-user` | 注册开放策略 |
 | `APP_TIMEZONE` | 否 | `Asia/Shanghai` | `effectiveTimezone` |
-| `WEATHER_LATITUDE` | 首页天气需要 | 无 | 实例天气位置 |
-| `WEATHER_LONGITUDE` | 首页天气需要 | 无 | 实例天气位置 |
+| `WEATHER_LATITUDE` | 首版不使用 | 无 | 后续实例天气位置 |
+| `WEATHER_LONGITUDE` | 首版不使用 | 无 | 后续实例天气位置 |
 | `PUBLIC_BASE_URL` | 生产部署需要 | 无 | Cookie 与回调基准地址 |
 
 `.env.example` 只能放占位值，不得提交真实密钥。

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "catalogVersion": "2026.07.23.initial.1",
+  "season": "summer",
+  "months": [6, 7, 8],
+  "quotations": [
+    { "id": "summer-lotus", "text": "接天莲叶无穷碧，映日荷花别样红。", "author": "杨万里", "work": "《晓出净慈寺送林子方》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-pond", "text": "小荷才露尖尖角，早有蜻蜓立上头。", "author": "杨万里", "work": "《小池》", "sourceUrl": "https://www.gushiwen.cn/" }
+  ]
+}

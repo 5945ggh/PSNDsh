@@ -1,3 +1,9 @@
+import { z } from "zod";
+import autumnPack from "../../../content/quotations/autumn.json";
+import springPack from "../../../content/quotations/spring.json";
+import summerPack from "../../../content/quotations/summer.json";
+import winterPack from "../../../content/quotations/winter.json";
+
 export type QuotationSeason = "spring" | "summer" | "autumn" | "winter";
 
 export type Quotation = {
@@ -10,20 +16,68 @@ export type Quotation = {
   catalogVersion: string;
 };
 
-export const QUOTATION_CATALOG_VERSION = "2026.07.22-manual.1";
+const quotationSchema = z.object({
+  id: z.string().trim().min(1),
+  text: z.string().trim().min(1),
+  author: z.string().trim().min(1),
+  work: z.string().trim().min(1),
+  sourceUrl: z.string().url(),
+  months: z.array(z.number().int().min(1).max(12)).min(1).optional(),
+}).strict();
 
-// This initial offline pack is hand-curated. Per-work source URLs are verified
-// when the controlled Gushiwen import process is introduced.
-export const QUOTATION_CATALOG: readonly Quotation[] = [
-  { id: "spring-rain", season: "spring", text: "好雨知时节，当春乃发生。", author: "杜甫", work: "《春夜喜雨》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "spring-breeze", season: "spring", text: "等闲识得东风面，万紫千红总是春。", author: "朱熹", work: "《春日》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "summer-lotus", season: "summer", text: "接天莲叶无穷碧，映日荷花别样红。", author: "杨万里", work: "《晓出净慈寺送林子方》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "summer-pond", season: "summer", text: "小荷才露尖尖角，早有蜻蜓立上头。", author: "杨万里", work: "《小池》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "autumn-mountain", season: "autumn", text: "空山新雨后，天气晚来秋。", author: "王维", work: "《山居秋暝》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "autumn-clear", season: "autumn", text: "自古逢秋悲寂寥，我言秋日胜春朝。", author: "刘禹锡", work: "《秋词》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "winter-snow", season: "winter", text: "忽如一夜春风来，千树万树梨花开。", author: "岑参", work: "《白雪歌送武判官归京》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-  { id: "winter-plum", season: "winter", text: "墙角数枝梅，凌寒独自开。", author: "王安石", work: "《梅花》", sourceUrl: "https://www.gushiwen.cn/", catalogVersion: QUOTATION_CATALOG_VERSION },
-];
+const quotationPackSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  catalogVersion: z.string().trim().min(1),
+  season: z.enum(["spring", "summer", "autumn", "winter"]),
+  months: z.array(z.number().int().min(1).max(12)).min(1),
+  quotations: z.array(quotationSchema).min(1),
+}).strict().superRefine((pack, context) => {
+  const uniqueIds = new Set(pack.quotations.map((quotation) => quotation.id));
+  if (uniqueIds.size !== pack.quotations.length) {
+    context.addIssue({ code: "custom", message: `${pack.season} 数据包中存在重复 id` });
+  }
+});
+
+export type QuotationDataPack = z.infer<typeof quotationPackSchema>;
+
+const parsedPacks = [springPack, summerPack, autumnPack, winterPack].map((pack) =>
+  quotationPackSchema.parse(pack)
+);
+
+const uniquePackSeasons = new Set(parsedPacks.map((pack) => pack.season));
+if (uniquePackSeasons.size !== 4) {
+  throw new Error("名句数据包必须恰好覆盖春、夏、秋、冬四季");
+}
+
+const coveredMonths = parsedPacks.flatMap((pack) => pack.months);
+if (new Set(coveredMonths).size !== 12 || coveredMonths.length !== 12) {
+  throw new Error("名句数据包必须无重叠地覆盖全部 1-12 月");
+}
+
+const quotationIds = parsedPacks.flatMap((pack) => pack.quotations.map((quotation) => quotation.id));
+if (new Set(quotationIds).size !== quotationIds.length) {
+  throw new Error("名句 id 必须在全部数据包中唯一");
+}
+
+const catalogVersions = new Set(parsedPacks.map((pack) => pack.catalogVersion));
+if (catalogVersions.size !== 1) {
+  throw new Error("同一发布版本的名句数据包必须使用相同 catalogVersion");
+}
+
+export const QUOTATION_DATA_PACKS: readonly QuotationDataPack[] = parsedPacks;
+export const QUOTATION_CATALOG_VERSION = parsedPacks[0]!.catalogVersion;
+
+export const QUOTATION_CATALOG: readonly Quotation[] = parsedPacks.flatMap((pack) =>
+  pack.quotations.map((quotation) => ({
+    id: quotation.id,
+    season: pack.season,
+    text: quotation.text,
+    author: quotation.author,
+    work: quotation.work,
+    sourceUrl: quotation.sourceUrl,
+    catalogVersion: pack.catalogVersion,
+  }))
+);
 
 const localDateParts = (date: Date, timezone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -43,9 +97,27 @@ export const seasonForMonth = (month: number): QuotationSeason => {
   return "winter";
 };
 
+const stableIndex = (year: number, month: number, day: number, count: number) =>
+  Math.abs(year * 372 + month * 31 + day) % count;
+
 export const selectSeasonalQuotation = (date: Date, timezone: string): Quotation => {
   const { year, month, day } = localDateParts(date, timezone);
-  const candidates = QUOTATION_CATALOG.filter((quotation) => quotation.season === seasonForMonth(month));
-  const index = Math.abs(year * 372 + month * 31 + day) % candidates.length;
-  return candidates[index]!;
+  const pack = parsedPacks.find((candidate) => candidate.months.includes(month));
+  if (!pack) throw new Error(`没有覆盖 ${month} 月的名句数据包`);
+
+  const candidates = pack.quotations.filter(
+    (quotation) => !quotation.months || quotation.months.includes(month)
+  );
+  const selected = candidates[stableIndex(year, month, day, candidates.length)];
+  if (!selected) throw new Error(`${pack.season} 数据包中没有可展示的名句`);
+
+  return {
+    id: selected.id,
+    season: pack.season,
+    text: selected.text,
+    author: selected.author,
+    work: selected.work,
+    sourceUrl: selected.sourceUrl,
+    catalogVersion: pack.catalogVersion,
+  };
 };

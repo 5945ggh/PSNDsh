@@ -82,7 +82,7 @@
 - Success: 就地更新并使用简短反馈，不以庆祝动画打断工作流
 - Disabled: 说明禁用原因，例如已有活动计时器或注册已关闭
 - ICS import: 文件选择后保持两阶段“预览 -> 确认”；过滤项和窗口限制在预览内说明，确认过期后保留文件选择并提示重新解析
-- Offline/slow network: 天气异步降级；季节名句由本地内容包直接展示，不应因网络进入错误状态；核心写入失败不得假装成功；活动计时 UI 明确同步状态
+- Offline/slow network: 首版天气明确为未配置；季节名句由本地 JSON 数据包直接展示，不应因网络进入错误状态；核心写入失败不得假装成功；活动计时 UI 明确同步状态
 
 ## Content voice
 
@@ -94,7 +94,7 @@
 
 - Framework/styling system: Next.js、React、TypeScript、Tailwind CSS、Radix primitives、Lucide
 - Design-token constraints: 颜色和尺寸使用语义 token；日程、专注、完成和危险状态不能散落硬编码色值
-- Performance constraints: 活动计时数字不触发全页刷新；确认写入后的数据重校验不卸载当前工作台，深树和周历更新避免明显重排；天气异步加载，名句从本地内容包读取
+- Performance constraints: 活动计时数字不触发全页刷新；确认写入后的数据重校验不卸载当前工作台，深树和周历更新避免明显重排；首版不加载天气，名句从版本化本地 JSON 数据包读取
 - Compatibility constraints: 响应式 Web；桌面和手机现代浏览器；鼠标、键盘和触摸可用
 - Test/screenshot expectations: 前端样例交付桌面和手机关键页面截图；正式实现后再建立稳定视觉基线
 - Source priority: PRD 决定产品语义，本文决定设计原则，前端样例提供视觉与交互参考但不是像素级强约束

@@ -9,7 +9,10 @@
     "start": "next start",
     "test": "vitest run",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:backup": "node scripts/database-backup.mjs",
+    "db:verify": "node scripts/database-verify.mjs",
+    "db:restore": "node scripts/database-restore.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.20",
