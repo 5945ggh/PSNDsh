@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useFocusTimer } from "@/context/FocusTimerContext";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { Play, Square, Timer, PlusCircle } from "lucide-react";
 
 export const GlobalFocusBar: React.FC = () => {
@@ -13,11 +13,11 @@ export const GlobalFocusBar: React.FC = () => {
     triggerStopFocus,
     setIsManualModalOpen,
   } = useFocusTimer();
-  const { api } = useMock();
+  const { data } = useData();
 
   const activeSegment = activeFocus?.segments?.[0];
   const assignedEntry = activeSegment?.entryId
-    ? api.getEntryById(activeSegment.entryId)
+    ? data.entries.find((entry) => entry.id === activeSegment.entryId)
     : null;
 
   return (

@@ -1,22 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { User, Lock, AlertCircle, ShieldOff, ArrowLeft } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { api } = useMock();
-  const capabilities = api.getCapabilities();
+  const { api, data, mutate, pendingMutations, status } = useData();
+  const capabilities = data.capabilities;
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!capabilities.registration.available) {
+  useEffect(() => {
+    if (status === "ready" && data.session.user) router.replace("/");
+  }, [data.session.user, router, status]);
+
+  if (status === "ready" && capabilities && !capabilities.registration.available) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
         <div className="max-w-sm w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-xl text-center">
@@ -39,12 +43,12 @@ export default function RegisterPage() {
     );
   }
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
     try {
-      api.register({ username, password, passwordConfirmation: confirmPassword });
+      await mutate(() => api.register({ username, password, passwordConfirmation: confirmPassword }));
       router.push("/");
     } catch (error: unknown) {
       setErrorMsg(error instanceof Error ? error.message : "注册失败");
@@ -71,13 +75,14 @@ export default function RegisterPage() {
 
         <form onSubmit={handleRegister} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="register-username" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               账号
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
               <input
                 type="text"
+                id="register-username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="设置登录账号"
@@ -88,13 +93,14 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="register-password" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               密码
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
               <input
                 type="password"
+                id="register-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="密码至少 6 位"
@@ -105,13 +111,14 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="register-password-confirmation" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               确认密码
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
               <input
                 type="password"
+                id="register-password-confirmation"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="再次输入密码"
@@ -123,9 +130,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
+            disabled={pendingMutations > 0}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs transition-colors shadow-sm"
           >
-            <span>完成注册并进入</span>
+            <span>{pendingMutations > 0 ? "正在注册..." : "完成注册并进入"}</span>
           </button>
         </form>
 

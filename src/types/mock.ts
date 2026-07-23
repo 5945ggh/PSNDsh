@@ -107,6 +107,8 @@ export type ScheduleBlockInput = {
   recurrence: ScheduleRecurrence;
 };
 
+export type UpdateScheduleBlockInput = Partial<ScheduleBlockInput>;
+
 export type CalendarPayload = {
   scheduleBlocks: ScheduleBlock[];
   focusSessions: FocusSession[];
@@ -161,6 +163,8 @@ export type DashboardPayload = {
     author: string;
     work: string;
     source: "cache" | "builtin";
+    sourceUrl: string;
+    catalogVersion: string;
   };
 };
 
@@ -178,6 +182,17 @@ export type StatisticsPayload = {
     directSeconds: number;
     aggregateSeconds: number;
   }>;
+};
+
+export type UserDataExport = {
+  schemaVersion: "1.0";
+  exportedAt: string;
+  effectiveTimezone: string;
+  profile: UserProfile;
+  entries: Entry[];
+  weekPlans: WeekPlan[];
+  focusSessions: FocusSession[];
+  scheduleBlocks: ScheduleBlock[];
 };
 
 export type ScenarioPreset =

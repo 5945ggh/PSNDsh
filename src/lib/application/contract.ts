@@ -1,17 +1,29 @@
 import {
   AuthSession,
+  CalendarPayload,
   Capabilities,
   DashboardPayload,
   Entry,
   FocusSegment,
   FocusSession,
-  IcsImportPreview,
   ScheduleBlock,
   ScheduleBlockInput,
+  UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
+  UserDataExport,
   WeekPlan,
 } from "@/types/mock";
+import { z } from "zod";
+
+const optionalProfileText = z.string().trim().max(80).nullable().optional();
+
+export const profileUpdateSchema = z.object({
+  nickname: optionalProfileText,
+  email: z.string().trim().email("邮箱格式不正确").max(254).nullable().optional(),
+}).strict();
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
 export type RegisterInput = {
   username: string;
@@ -81,10 +93,10 @@ export interface ApplicationService {
 
   getScheduleBlocks(): ScheduleBlock[];
   addScheduleBlock(input: ScheduleBlockInput): ScheduleBlock;
+  updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock;
   deleteScheduleBlock(id: string): void;
-  getIcsPreview(): IcsImportPreview;
-  confirmIcsImport(selectedSourceUids: string[]): number;
-
+  getCalendarPayload(from?: string, to?: string): CalendarPayload;
   getDashboardPayload(): DashboardPayload;
   getStatisticsPayload(scale?: "day" | "week" | "month"): StatisticsPayload;
+  exportUserData(): UserDataExport;
 }

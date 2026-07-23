@@ -1,26 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { User, Lock, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { api } = useMock();
-  const capabilities = api.getCapabilities();
+  const { api, data, mutate, pendingMutations, status } = useData();
+  const capabilities = data.capabilities;
 
   const [username, setUsername] = useState("ningcc");
   const [password, setPassword] = useState("password123");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (status === "ready" && data.session.user) router.replace("/");
+  }, [data.session.user, router, status]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
     try {
-      api.login({ username, password });
+      await mutate(() => api.login({ username, password }));
       router.push("/");
     } catch (error: unknown) {
       setErrorMsg(error instanceof Error ? error.message : "INVALID_CREDENTIALS: 账号或密码不正确");
@@ -47,13 +51,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="login-username" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               账号
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
               <input
                 type="text"
+                id="login-username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent outline-none focus:ring-2 focus:ring-blue-500"
@@ -63,13 +68,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="login-password" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               密码
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
               <input
                 type="password"
+                id="login-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent outline-none focus:ring-2 focus:ring-blue-500"
@@ -80,14 +86,15 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            disabled={pendingMutations > 0}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs transition-colors shadow-sm"
           >
-            <span>直接登录</span>
+            <span>{pendingMutations > 0 ? "正在登录..." : "直接登录"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
 
-        {capabilities.registration.available ? (
+        {capabilities?.registration.available ? (
           <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4 text-center text-xs text-zinc-500">
             还没有账号？{" "}
             <Link

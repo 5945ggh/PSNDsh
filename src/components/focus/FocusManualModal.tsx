@@ -3,15 +3,16 @@
 import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useFocusTimer } from "@/context/FocusTimerContext";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { X, PlusCircle, AlertCircle } from "lucide-react";
 
 export const FocusManualModal: React.FC = () => {
   const { isManualModalOpen, setIsManualModalOpen } = useFocusTimer();
-  const { api } = useMock();
-  const entries = api.getEntries();
+  const { api, data, mutate, pendingMutations } = useData();
+  const entries = data.entries;
 
-  const [dateStr, setDateStr] = useState("2026-06-26");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("14:00");
   const [endTime, setEndTime] = useState("15:30");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -19,20 +20,26 @@ export const FocusManualModal: React.FC = () => {
   const [note, setNote] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const startedAt = `${dateStr}T${startTime}:00+08:00`;
-    const endedAt = `${dateStr}T${endTime}:00+08:00`;
+    const startedAt = `${startDate}T${startTime}:00+08:00`;
+    const endedAt = `${endDate}T${endTime}:00+08:00`;
 
     try {
-      api.addManualFocusSession({
+      await mutate(() => api.addManualFocusSession({
         startedAt,
         endedAt,
         note: note || null,
         outcome: outcome || null,
         entryId: selectedEntryId || null,
+      }), {
+        backgroundRefresh: true,
+        update: (snapshot, session) => ({
+          ...snapshot,
+          focusSessions: [session, ...snapshot.focusSessions.filter((item) => item.id !== session.id)],
+        }),
       });
       setIsManualModalOpen(false);
     } catch (err: unknown) {
@@ -77,14 +84,28 @@ export const FocusManualModal: React.FC = () => {
           )}
 
           <div>
-            <label htmlFor="manual-date" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-              日期
+            <label htmlFor="manual-start-date" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+              开始日期
             </label>
             <input
-              id="manual-date"
+              id="manual-start-date"
               type="date"
-              value={dateStr}
-              onChange={(e) => setDateStr(e.target.value)}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="manual-end-date" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+              结束日期
+            </label>
+            <input
+              id="manual-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               required
             />
@@ -177,9 +198,10 @@ export const FocusManualModal: React.FC = () => {
             </Dialog.Close>
             <button
               type="submit"
+              disabled={pendingMutations > 0}
               className="px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              保存补录
+              {pendingMutations > 0 ? "正在保存..." : "保存补录"}
             </button>
           </div>
           </form>

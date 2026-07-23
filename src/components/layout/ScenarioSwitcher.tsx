@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { ScenarioPreset } from "@/types/mock";
 import { Sliders, Check, X } from "lucide-react";
 
 export const ScenarioSwitcher: React.FC = () => {
-  const { scenario, setScenario } = useMock();
+  const { scenario, setScenario, isMockTransport } = useData();
   const [isOpen, setIsOpen] = useState(false);
 
   const presets: Array<{ id: ScenarioPreset; label: string; desc: string }> = [
@@ -16,6 +16,8 @@ export const ScenarioSwitcher: React.FC = () => {
     { id: "weather_stale", label: "天气数据旧缓存", desc: "演示旧缓存观察时间标记" },
     { id: "weather_unavailable", label: "天气服务降级", desc: "演示气象接口超时降级" },
   ];
+
+  if (!isMockTransport) return null;
 
   return (
     <aside aria-label="Mock 场景切换控制台" className="fixed bottom-20 right-4 z-50 md:bottom-4">

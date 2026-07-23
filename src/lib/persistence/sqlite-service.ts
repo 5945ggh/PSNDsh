@@ -19,6 +19,7 @@ import {
   UpdateEntryInput,
 } from "@/lib/application/contract";
 import { ApplicationError } from "@/lib/application/error";
+import { selectSeasonalQuotation } from "@/lib/ambient/quotations";
 import {
   assertEntryMoveIsValid,
   assertEntryStatusIsValid,
@@ -32,12 +33,13 @@ import {
   Entry,
   FocusSegment,
   FocusSession,
-  IcsImportPreview,
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleRecurrence,
+  UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
+  UserDataExport,
   WeekPlan,
   WeekPlanItem,
 } from "@/types/mock";
@@ -295,14 +297,15 @@ export class SqliteApplicationService implements ApplicationService {
     return {
       registration: { available: mode === "open" || (mode === "first-user" && count === 0) },
       effectiveTimezone: this.timezone,
-      features: { weather: false, quotation: false, icsImport: false },
+      features: { weather: false, quotation: true, icsImport: true },
     };
   }
 
   getSession(): AuthSession { return { user: this.getUser() }; }
   getUser(): UserProfile | null {
-    const row = this.getUserRow();
-    return row ? this.toUser(row) : null;
+    const userId = this.requireUserId();
+    const row = this.db.select().from(users).where(eq(users.id, userId)).get();
+    return this.toUser(row!);
   }
 
   register(input: RegisterInput): AuthSession {
@@ -563,6 +566,21 @@ export class SqliteApplicationService implements ApplicationService {
     return this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.userId, this.requireUserId())).orderBy(asc(scheduleBlocks.startedAt)).all().map((row) => this.toSchedule(row));
   }
 
+  getCalendarPayload(from?: string, to?: string) {
+    if (!from || !to) {
+      return { scheduleBlocks: this.getScheduleBlocks(), focusSessions: this.getFocusSessions() };
+    }
+    assertPositiveRange(from, to);
+    const fromMs = parseDate(from);
+    const toMs = parseDate(to);
+    const overlaps = (startedAt: string, endedAt: string | null) =>
+      parseDate(startedAt) < toMs && parseDate(endedAt ?? nowIso(this.clock)) > fromMs;
+    return {
+      scheduleBlocks: this.getScheduleBlocks().filter((block) => overlaps(block.startedAt, block.endedAt)),
+      focusSessions: this.getFocusSessions().filter((session) => overlaps(session.startedAt, session.endedAt)),
+    };
+  }
+
   addScheduleBlock(input: ScheduleBlockInput): ScheduleBlock {
     const userId = this.requireUserId();
     assertPositiveRange(input.startedAt, input.endedAt);
@@ -572,18 +590,51 @@ export class SqliteApplicationService implements ApplicationService {
     return this.toSchedule(this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, row.id)).get() as ScheduleRow);
   }
 
+  updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock {
+    const current = this.db.select().from(scheduleBlocks).where(and(eq(scheduleBlocks.id, id), eq(scheduleBlocks.userId, this.requireUserId()))).get();
+    if (!current) throw new ApplicationError("SCHEDULE_NOT_FOUND", "日程不存在");
+    const next = {
+      kind: input.kind ?? current.kind,
+      title: input.title === undefined ? current.title : input.title.trim(),
+      startedAt: input.startedAt ?? current.startedAt,
+      endedAt: input.endedAt ?? current.endedAt,
+      location: input.location === undefined ? current.location : normalizeOptionalText(input.location),
+      colorKey: input.colorKey === undefined ? current.colorKey : input.colorKey ?? "blue",
+      recurrenceJson: input.recurrence === undefined
+        ? current.recurrenceJson
+        : input.recurrence ? JSON.stringify(input.recurrence) : null,
+    };
+    if (!next.title) throw new ApplicationError("REQUEST_INVALID", "日程标题不能为空");
+    assertPositiveRange(next.startedAt, next.endedAt);
+    this.db.update(scheduleBlocks).set({ ...next, updatedAt: nowIso(this.clock) }).where(eq(scheduleBlocks.id, current.id)).run();
+    return this.toSchedule(this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, current.id)).get() as ScheduleRow);
+  }
+
   deleteScheduleBlock(id: string): void {
     const result = this.db.delete(scheduleBlocks).where(and(eq(scheduleBlocks.id, id), eq(scheduleBlocks.userId, this.requireUserId()))).run();
     if (result.changes === 0) throw new ApplicationError("SCHEDULE_NOT_FOUND", "日程不存在");
   }
 
-  getIcsPreview(): IcsImportPreview {
-    return { importId: "persistent-boundary", fileName: "", rows: [], errors: [] };
-  }
-
-  confirmIcsImport(selectedSourceUids: string[]): number {
-    void selectedSourceUids;
-    return 0;
+  importIcsScheduleBlocks(blocks: ScheduleBlockInput[]): number {
+    const userId = this.requireUserId();
+    const createdAt = nowIso(this.clock);
+    this.db.transaction((tx) => {
+      tx.insert(scheduleBlocks).values(blocks.map((block) => ({
+        id: randomUUID(),
+        userId,
+        kind: block.kind,
+        title: block.title.trim(),
+        startedAt: block.startedAt,
+        endedAt: block.endedAt,
+        location: normalizeOptionalText(block.location),
+        colorKey: block.colorKey ?? "purple",
+        recurrenceJson: null,
+        source: "ics" as const,
+        createdAt,
+        updatedAt: createdAt,
+      }))).run();
+    });
+    return blocks.length;
   }
 
   private rangeForScale(scale: "day" | "week" | "month" = "week") {
@@ -624,7 +675,49 @@ export class SqliteApplicationService implements ApplicationService {
     return { totalSeconds, unassignedSeconds, daily: buckets.map(({ date, seconds }) => ({ date, seconds })), entryBreakdown, roots };
   }
 
+  exportUserData(): UserDataExport {
+    const userId = this.requireUserId();
+    const allEntryRows = this.db
+      .select()
+      .from(entries)
+      .where(eq(entries.userId, userId))
+      .orderBy(asc(entries.sortKey))
+      .all();
+    const plans = this.db
+      .select()
+      .from(weekPlans)
+      .where(eq(weekPlans.userId, userId))
+      .orderBy(asc(weekPlans.weekStart))
+      .all();
+
+    return {
+      schemaVersion: "1.0",
+      exportedAt: nowIso(this.clock),
+      effectiveTimezone: this.timezone,
+      profile: this.toUser(this.getUserRow()!),
+      entries: allEntryRows.map((entry) => this.toEntry(entry, allEntryRows)),
+      weekPlans: plans.map((plan) => ({
+        weekStart: plan.weekStart,
+        note: plan.note,
+        items: this.db
+          .select()
+          .from(weekPlanEntries)
+          .where(eq(weekPlanEntries.weekPlanId, plan.id))
+          .orderBy(asc(weekPlanEntries.sortKey))
+          .all()
+          .map((item): WeekPlanItem => ({
+            entryId: item.entryId,
+            source: item.source,
+            sortKey: item.sortKey,
+          })),
+      })),
+      focusSessions: this.getFocusSessions(),
+      scheduleBlocks: this.getScheduleBlocks(),
+    };
+  }
+
   getDashboardPayload(): DashboardPayload {
+    const now = this.clock();
     const today = localDateKey(this.clock(), this.timezone);
     const week = this.getStatisticsPayload("week");
     const plan = this.getWeekPlan();
@@ -635,14 +728,17 @@ export class SqliteApplicationService implements ApplicationService {
     const nextSchedule = this.getScheduleBlocks().find((block) => parseDate(block.endedAt) >= this.clock().getTime()) ?? null;
     return {
       profile: this.getUser() as UserProfile,
-      now: nowIso(this.clock),
+      now: nowIso(() => now),
       nextSchedule,
       activeFocus: this.getActiveFocus(),
       todayEntries,
       deadlineEntries,
       focusSummary: { todaySeconds: todayBucket?.seconds ?? 0, weekSeconds: week.totalSeconds, dailySeconds: week.daily },
       weather: { status: "unavailable" },
-      quotation: { text: "", author: "", work: "", source: "builtin" },
+      quotation: {
+        ...selectSeasonalQuotation(now, this.timezone),
+        source: "builtin",
+      },
     };
   }
 }

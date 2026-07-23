@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useFocusTimer } from "@/context/FocusTimerContext";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { FocusSegment, FocusSession } from "@/types/mock";
 import { X, Split, Save, AlertCircle, Plus, Trash2 } from "lucide-react";
 
@@ -20,8 +20,8 @@ export const FocusSplitModal: React.FC = () => {
 const FocusSplitModalDialog: React.FC<{ activeFocus: FocusSession }> = ({ activeFocus }) => {
   const { isSplitModalOpen, setIsSplitModalOpen, finishStopFocus, elapsedSeconds, formattedTime } =
     useFocusTimer();
-  const { api } = useMock();
-  const entries = api.getEntries();
+  const { data } = useData();
+  const entries = data.entries;
 
   const [outcome, setOutcome] = useState("");
   const [note, setNote] = useState("");

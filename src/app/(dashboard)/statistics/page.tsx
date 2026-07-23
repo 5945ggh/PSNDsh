@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useMock } from "@/context/MockContext";
+import React, { useEffect, useState } from "react";
+import { useData } from "@/context/MockContext";
 import type { StatisticsPayload } from "@/types/mock";
 import {
   BarChart3,
@@ -14,12 +14,29 @@ import {
 } from "lucide-react";
 
 export default function StatisticsPage() {
-  const { api } = useMock();
+  const { api, data, version } = useData();
   const [scale, setScale] = useState<"day" | "week" | "month">("week");
   const [expandedRootId, setExpandedRootId] = useState<string | null>("entry_ics2");
+  const [statisticsCache, setStatisticsCache] = useState<Partial<Record<string, StatisticsPayload>>>({});
+  const cacheKey = `${version}:${scale}`;
+  const stats = statisticsCache[cacheKey] ?? (scale === "week" ? data.statistics.week : undefined);
 
-  const stats = api.getStatisticsPayload(scale);
-  const entries = api.getEntries();
+  useEffect(() => {
+    if (stats) return;
+    let cancelled = false;
+    void api.getStatisticsPayload(scale).then((payload) => {
+      if (!cancelled) {
+        setStatisticsCache((current) => ({ ...current, [cacheKey]: payload }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, cacheKey, scale, stats]);
+  const entries = data.entries;
+  if (!stats) {
+    return <div className="p-8 text-sm text-zinc-500">正在加载统计数据...</div>;
+  }
   const entryStatsById = new Map(
     stats.entryBreakdown.map((item) => [item.entryId, item] as const)
   );

@@ -12,7 +12,10 @@ export type ApplicationErrorCode =
   | "USERNAME_TAKEN"
   | "PASSWORD_TOO_WEAK"
   | "PASSWORD_MISMATCH"
-  | "INVALID_CREDENTIALS";
+  | "INVALID_CREDENTIALS"
+  | "REQUEST_INVALID"
+  | "ICS_PARSE_FAILED"
+  | "ICS_PREVIEW_EXPIRED";
 
 export class ApplicationError extends Error {
   constructor(

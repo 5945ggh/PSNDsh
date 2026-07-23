@@ -1,20 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMock } from "@/context/MockContext";
-import { User, Database, Save, Info } from "lucide-react";
+import { useData } from "@/context/MockContext";
+import { User, Database, Download, Save, Info } from "lucide-react";
 
 export default function SettingsPage() {
-  const { api } = useMock();
-  const user = api.getUser();
+  const { api, data, isMockTransport, mutate, pendingMutations } = useData();
+  const user = data.session?.user;
 
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [email, setEmail] = useState(user?.email || "");
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    api.updateUserProfile(nickname || null, email || null);
-    alert("个人资料已更新");
+    try {
+      await mutate(() => api.updateUserProfile(nickname || null, email || null), {
+        backgroundRefresh: true,
+        update: (snapshot, profile) => ({
+          ...snapshot,
+          session: { user: profile },
+          dashboard: snapshot.dashboard
+            ? { ...snapshot.dashboard, profile }
+            : null,
+        }),
+      });
+      alert("个人资料已更新");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "资料保存失败");
+    }
   };
 
   return (
@@ -38,10 +51,11 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="profile-username" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               账号 (Username - 不可编辑)
             </label>
             <input
+              id="profile-username"
               type="text"
               value={user?.username || "ningcc"}
               disabled
@@ -50,10 +64,11 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="profile-nickname" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               显示昵称 (Nickname)
             </label>
             <input
+              id="profile-nickname"
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
@@ -63,10 +78,11 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="profile-email" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               绑定邮箱 (Email)
             </label>
             <input
+              id="profile-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -82,10 +98,11 @@ export default function SettingsPage() {
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
+              disabled={pendingMutations > 0}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium shadow-sm hover:opacity-90 transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>保存资料修改</span>
+              <span>{pendingMutations > 0 ? "正在保存..." : "保存资料修改"}</span>
             </button>
           </div>
         </form>
@@ -101,7 +118,7 @@ export default function SettingsPage() {
         </div>
 
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          正式版本中，系统将提供全量条目树、专注会话及日程块的完整 JSON 导出与备份迁移入口。样例模式下可预览导出数据结构与全量字段规范。
+          JSON 导出包含当前账号的资料、条目、周计划、日程、专注会话和片段。密码、会话与服务端密钥不会被写入导出文件。
         </p>
 
         <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-200/60 dark:border-zinc-800 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 overflow-x-auto">
@@ -109,11 +126,24 @@ export default function SettingsPage() {
   "version": "1.0",
   "exportAt": "2026-06-26T10:00:00Z",
   "user": { "username": "${user?.username}" },
-  "entriesCount": ${api.getEntries().length},
-  "focusSessionsCount": ${api.getFocusSessions().length},
-  "scheduleBlocksCount": ${api.getScheduleBlocks().length}
-}`}
+  "entriesCount": ${data.entries.length},
+  "focusSessionsCount": ${data.focusSessions.length},
+  "scheduleBlocksCount": ${data.scheduleBlocks.length}
+	}`}
         </div>
+
+        {!isMockTransport && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.location.assign("/api/v1/export")}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium shadow-sm hover:opacity-90 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>下载 JSON 导出</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

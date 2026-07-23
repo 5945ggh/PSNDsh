@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GlobalFocusBar } from "./GlobalFocusBar";
 import { ScenarioSwitcher } from "./ScenarioSwitcher";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import {
   Home,
   ListTodo,
@@ -13,12 +13,18 @@ import {
   BarChart3,
   Settings,
   User,
+  LogOut,
 } from "lucide-react";
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
-  const { api } = useMock();
-  const user = api.getUser();
+  const { api, data, mutate } = useData();
+  const user = data.session?.user;
+
+  const handleLogout = async () => {
+    await mutate(() => api.logout(), { refresh: false });
+    window.location.assign("/login");
+  };
 
   const navItems = [
     { label: "首页", href: "/", icon: Home },
@@ -78,7 +84,8 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
 
           <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 px-3">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 justify-between">
+              <div className="flex min-w-0 items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">
                 <User className="w-4 h-4" aria-hidden="true" />
               </div>
@@ -90,6 +97,16 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
                   {user?.email || "未绑定邮箱"}
                 </p>
               </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                aria-label="退出登录"
+                title="退出登录"
+                className="shrink-0 rounded p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           </div>
         </aside>

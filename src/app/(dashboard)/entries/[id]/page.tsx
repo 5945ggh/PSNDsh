@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { EntryCompletionMode, EntryStatus } from "@/types/mock";
 import {
@@ -22,12 +22,12 @@ export default function EntryDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const { api } = useMock();
+  const { api, data, mutate } = useData();
   const { startFocus } = useFocusTimer();
 
-  const entry = api.getEntryById(id);
-  const entries = api.getEntries();
-  const focusSessions = api.getFocusSessions();
+  const entry = data.entries.find((candidate) => candidate.id === id);
+  const entries = data.entries;
+  const focusSessions = data.focusSessions;
 
   const [title, setTitle] = useState(entry?.title || "");
   const [description, setDescription] = useState(entry?.description || "");
@@ -57,7 +57,7 @@ export default function EntryDetailPage() {
     );
   }
 
-  const parentEntry = entry.parentId ? api.getEntryById(entry.parentId) : null;
+  const parentEntry = entry.parentId ? entries.find((candidate) => candidate.id === entry.parentId) ?? null : null;
   const childrenEntries = entries.filter((e) => e.parentId === entry.id);
 
   // Find focus timeline related to this entry
@@ -65,16 +65,22 @@ export default function EntryDetailPage() {
     s.segments.some((seg) => seg.entryId === entry.id)
   );
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      api.updateEntry(entry.id, {
+      await mutate(() => api.updateEntry(entry.id, {
         title,
         description: description || null,
         completionMode,
         status,
         dueAt: dueAt ? `${dueAt}T23:59:59+08:00` : null,
         parentId: parentId || null,
+      }), {
+        backgroundRefresh: true,
+        update: (snapshot, updatedEntry) => ({
+          ...snapshot,
+          entries: snapshot.entries.map((item) => item.id === updatedEntry.id ? updatedEntry : item),
+        }),
       });
       alert("条目修改已保存");
     } catch (error: unknown) {
@@ -82,18 +88,28 @@ export default function EntryDetailPage() {
     }
   };
 
-  const handleArchive = () => {
-    api.updateEntry(entry.id, { status: "archived" });
-    alert("条目已放入归档");
+  const handleArchive = async () => {
+    try {
+      await mutate(() => api.updateEntry(entry.id, { status: "archived" }), {
+        backgroundRefresh: true,
+        update: (snapshot, updatedEntry) => ({
+          ...snapshot,
+          entries: snapshot.entries.map((item) => item.id === updatedEntry.id ? updatedEntry : item),
+        }),
+      });
+      alert("条目已放入归档");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "归档失败");
+    }
   };
 
-  const handleDeletePermanent = () => {
+  const handleDeletePermanent = async () => {
     if (
       confirm(
         `确定要【永久删除】条目 “${entry.title}” 及其所有子节点吗？此操作无法撤销。`
       )
     ) {
-      api.deleteEntry(entry.id);
+      await mutate(() => api.deleteEntry(entry.id));
       router.push("/plan");
     }
   };

@@ -11,6 +11,7 @@ import {
   IcsImportPreview,
   FocusSegment,
   ScheduleBlockInput,
+  UpdateScheduleBlockInput,
 } from "@/types/mock";
 import {
   MOCK_USER,
@@ -22,6 +23,7 @@ import {
   MOCK_FOCUS_SESSIONS_NORMAL,
   MOCK_ICS_PREVIEW,
 } from "./fixtures";
+import { MockDomainError } from "./domain";
 
 const DEFAULT_WEEK_START = "2026-06-22";
 const REFERENCE_TODAY = "2026-06-26";
@@ -530,6 +532,20 @@ export class MockDataStore {
     return this.scheduleBlocks;
   }
 
+  public getCalendarPayload(from?: string, to?: string) {
+    if (!from || !to) {
+      return { scheduleBlocks: this.getScheduleBlocks(), focusSessions: this.getFocusSessions() };
+    }
+    const startMs = Date.parse(from);
+    const endMs = Date.parse(to);
+    const overlaps = (startedAt: string, endedAt: string | null) =>
+      Date.parse(startedAt) < endMs && Date.parse(endedAt ?? new Date().toISOString()) > startMs;
+    return {
+      scheduleBlocks: this.scheduleBlocks.filter((block) => overlaps(block.startedAt, block.endedAt)),
+      focusSessions: this.focusSessions.filter((session) => overlaps(session.startedAt, session.endedAt)),
+    };
+  }
+
   public addScheduleBlock(input: ScheduleBlockInput): ScheduleBlock {
     const newBlock: ScheduleBlock = {
       id: `sch_${Date.now()}`,
@@ -547,6 +563,21 @@ export class MockDataStore {
     this.scheduleBlocks.push(newBlock);
     this.notify();
     return newBlock;
+  }
+
+  public updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock {
+    const index = this.scheduleBlocks.findIndex((block) => block.id === id);
+    if (index < 0) throw new MockDomainError("SCHEDULE_NOT_FOUND", "日程不存在");
+    const updated = { ...this.scheduleBlocks[index], ...input };
+    if (Date.parse(updated.endedAt) <= Date.parse(updated.startedAt)) {
+      throw new MockDomainError("REQUEST_INVALID", "结束时间必须晚于开始时间");
+    }
+    updated.recurrenceLabel = updated.recurrence
+      ? `每周重复 (${updated.recurrence.weekdays.join(", ")})`
+      : null;
+    this.scheduleBlocks[index] = updated;
+    this.notify();
+    return updated;
   }
 
   public deleteScheduleBlock(id: string) {
@@ -652,6 +683,8 @@ export class MockDataStore {
         author: "莱昂纳德·科恩",
         work: "《颂歌》",
         source: "builtin",
+        sourceUrl: "https://www.gushiwen.cn/",
+        catalogVersion: "mock",
       },
     };
   }

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useMock } from "@/context/MockContext";
+import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import {
   Sun,
@@ -17,10 +17,13 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { api } = useMock();
+  const { data } = useData();
   const { activeFocus, startFocus, formattedTime } = useFocusTimer();
 
-  const payload = api.getDashboardPayload();
+  const payload = data.dashboard;
+  if (!payload) {
+    return <div className="p-8 text-sm text-zinc-500">正在加载首页数据...</div>;
+  }
   const { profile, weather, quotation, nextSchedule, todayEntries, deadlineEntries, focusSummary } =
     payload;
 

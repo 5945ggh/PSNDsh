@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { jsonData, jsonError, noContent, readJson, serviceForRequest } from "@/lib/api/http";
+import { ApplicationError } from "@/lib/application/error";
 
 const updateInput = z.object({
   parentId: z.string().nullable().optional(),
@@ -14,7 +15,8 @@ const updateInput = z.object({
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const entry = serviceForRequest(request).getEntryById((await context.params).id);
-    return entry ? jsonData(entry) : new Response(null, { status: 404 });
+    if (!entry) throw new ApplicationError("ENTRY_NOT_FOUND", "条目不存在");
+    return jsonData(entry);
   } catch (error) { return jsonError(error); }
 }
 

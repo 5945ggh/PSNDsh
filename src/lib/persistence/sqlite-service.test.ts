@@ -96,6 +96,83 @@ describe("SqliteApplicationService", () => {
     expect(week.unassignedSeconds).toBe(0);
   });
 
+  it("updates owned schedules and returns calendar records that overlap a requested half-open range", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const focus = appA.addManualFocusSession({
+      startedAt: "2026-06-25T23:30:00+08:00",
+      endedAt: "2026-06-26T00:30:00+08:00",
+      note: null,
+      outcome: null,
+      entryId: null,
+    });
+    const overlapping = appA.addScheduleBlock({
+      kind: "course",
+      title: "跨日课程",
+      startedAt: "2026-06-25T23:45:00+08:00",
+      endedAt: "2026-06-26T00:15:00+08:00",
+      location: "教室 A",
+      colorKey: "blue",
+      recurrence: null,
+    });
+    appA.addScheduleBlock({
+      kind: "other",
+      title: "范围外日程",
+      startedAt: "2026-06-26T02:00:00+08:00",
+      endedAt: "2026-06-26T03:00:00+08:00",
+      location: null,
+      colorKey: "amber",
+      recurrence: null,
+    });
+
+    const calendar = appA.getCalendarPayload(
+      "2026-06-26T00:00:00+08:00",
+      "2026-06-26T01:00:00+08:00"
+    );
+    expect(calendar.scheduleBlocks.map((block) => block.id)).toEqual([overlapping.id]);
+    expect(calendar.focusSessions.map((session) => session.id)).toEqual([focus.id]);
+
+    const updated = appA.updateScheduleBlock(overlapping.id, {
+      title: "已编辑的跨日课程",
+      kind: "plan",
+      location: "线上",
+      colorKey: "green",
+    });
+    expect(updated).toMatchObject({
+      id: overlapping.id,
+      title: "已编辑的跨日课程",
+      kind: "plan",
+      location: "线上",
+      colorKey: "green",
+    });
+    expect(() => appA.updateScheduleBlock(overlapping.id, {
+      startedAt: "2026-06-26T02:00:00+08:00",
+      endedAt: "2026-06-26T01:00:00+08:00",
+    })).toThrow(/SEGMENTS_INVALID_PARTITION/);
+    expect(() => appB.updateScheduleBlock(overlapping.id, { title: "越权修改" })).toThrow(/SCHEDULE_NOT_FOUND/);
+    expect(() => appB.deleteScheduleBlock(overlapping.id)).toThrow(/SCHEDULE_NOT_FOUND/);
+  });
+
+  it("writes confirmed ICS instances only for the current user", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const count = appA.importIcsScheduleBlocks([
+      {
+        kind: "course",
+        title: "已导入课程",
+        startedAt: "2026-06-29T01:00:00.000Z",
+        endedAt: "2026-06-29T02:00:00.000Z",
+        location: "线上",
+        colorKey: "purple",
+        recurrence: null,
+      },
+    ]);
+
+    expect(count).toBe(1);
+    expect(appA.getScheduleBlocks()).toEqual([expect.objectContaining({ title: "已导入课程", recurrence: null })]);
+    expect(appB.getScheduleBlocks()).toEqual([]);
+  });
+
   it("requires gap-free focus partitions and preserves total duration after reassignment", () => {
     const app = service();
     const firstEntry = app.addEntry({ parentId: null, title: "第一项", description: null, completionMode: "completable", dueAt: null });
@@ -137,6 +214,66 @@ describe("SqliteApplicationService", () => {
     expect(appB.getEntryById(entry.id)).toBeUndefined();
     expect(() => appB.updateEntry(entry.id, { title: "越权" })).toThrow(ApplicationError);
     expect(() => appB.addToWeekPlan(entry.id, "2026-06-22")).toThrow(/ENTRY_NOT_FOUND/);
+  });
+
+  it("rejects profile reads without an authenticated user", () => {
+    expect(() => service(null).getUser()).toThrow(/UNAUTHORIZED/);
+  });
+
+  it("serves a local seasonal quotation without an external request", () => {
+    const payload = service().getDashboardPayload();
+
+    expect(payload.quotation).toMatchObject({
+      text: expect.any(String),
+      author: expect.any(String),
+      work: expect.any(String),
+      source: "builtin",
+      sourceUrl: "https://www.gushiwen.cn/",
+      catalogVersion: "2026.07.22-manual.1",
+    });
+    expect(payload.quotation.text).not.toBe("");
+  });
+
+  it("exports only the current user's non-sensitive business data", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const entryA = appA.addEntry({ parentId: null, title: "可导出条目", description: null, completionMode: "completable", dueAt: null });
+    appA.addToWeekPlan(entryA.id, "2026-06-22");
+    appA.addManualFocusSession({
+      startedAt: "2026-06-26T09:00:00.000Z",
+      endedAt: "2026-06-26T09:30:00.000Z",
+      note: "导出测试",
+      outcome: null,
+      entryId: entryA.id,
+    });
+    appA.addScheduleBlock({
+      kind: "course",
+      title: "导出课程",
+      startedAt: "2026-06-26T10:00:00.000Z",
+      endedAt: "2026-06-26T11:00:00.000Z",
+      location: null,
+      colorKey: "blue",
+      recurrence: null,
+    });
+    const entryB = appB.addEntry({ parentId: null, title: "不能导出的条目", description: null, completionMode: "completable", dueAt: null });
+
+    const exported = appA.exportUserData();
+    const serialized = JSON.stringify(exported);
+    expect(exported).toMatchObject({
+      schemaVersion: "1.0",
+      effectiveTimezone: "Asia/Shanghai",
+      profile: { id: USER_A },
+    });
+    expect(exported.entries.map((entry) => entry.id)).toContain(entryA.id);
+    expect(exported.entries.map((entry) => entry.id)).not.toContain(entryB.id);
+    expect(exported.weekPlans).toContainEqual(expect.objectContaining({
+      weekStart: "2026-06-22",
+      items: [expect.objectContaining({ entryId: entryA.id })],
+    }));
+    expect(exported.focusSessions).toHaveLength(1);
+    expect(exported.scheduleBlocks).toHaveLength(1);
+    expect(serialized).not.toContain("passwordHash");
+    expect(serialized).not.toContain("sessionToken");
   });
 
   it("stores a one-way password verifier and closes first-user registration after success", () => {

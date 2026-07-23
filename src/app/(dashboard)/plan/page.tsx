@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useMock } from "@/context/MockContext";
+import { type DataSnapshot, useData } from "@/context/MockContext";
+import { SafeMarkdown } from "@/components/common/SafeMarkdown";
 import { Entry, EntryCompletionMode, WeekPlan } from "@/types/mock";
 import {
   ChevronRight,
@@ -20,16 +21,26 @@ import {
 } from "lucide-react";
 
 export default function PlanPage() {
-  const { api } = useMock();
-  const entries = api.getEntries();
+  const { api, data, mutate } = useData();
+  const entries = data.entries;
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     new Set(["entry_ics2", "entry_ostep", "entry_lab4", "entry_ai_ethics", "entry_other", "entry_github"])
   );
-  const [selectedWeek, setSelectedWeek] = useState("2026-06-22");
-  const weekPlan = api.getWeekPlan(selectedWeek);
+  const weekPlan = data.currentWeekPlan ?? { weekStart: "", note: "", items: [] };
+  const selectedWeek = weekPlan.weekStart || undefined;
   const [newTitle, setNewTitle] = useState("");
   const [newMode, setNewMode] = useState<EntryCompletionMode>("completable");
+  const mergeEntry = (snapshot: DataSnapshot, entry: Entry): DataSnapshot => ({
+    ...snapshot,
+    entries: snapshot.entries.some((item) => item.id === entry.id)
+      ? snapshot.entries.map((item) => item.id === entry.id ? entry : item)
+      : [...snapshot.entries, entry],
+  });
+  const mergeWeekPlan = (snapshot: DataSnapshot, nextWeekPlan: WeekPlan): DataSnapshot => ({
+    ...snapshot,
+    currentWeekPlan: nextWeekPlan,
+  });
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -39,15 +50,18 @@ export default function PlanPage() {
     });
   };
 
-  const handleCreateTopEntry = (e: React.FormEvent) => {
+  const handleCreateTopEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    api.addEntry({
+    await mutate(() => api.addEntry({
       parentId: null,
       title: newTitle.trim(),
       description: null,
       completionMode: newMode,
       dueAt: null,
+    }), {
+      backgroundRefresh: true,
+      update: mergeEntry,
     });
     setNewTitle("");
   };
@@ -175,7 +189,10 @@ export default function PlanPage() {
             <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
               {isInWeekPlan ? (
                 <button
-                  onClick={() => api.removeFromWeekPlan(entry.id, selectedWeek)}
+                  onClick={() => void mutate(() => api.removeFromWeekPlan(entry.id, selectedWeek), {
+                    backgroundRefresh: true,
+                    update: mergeWeekPlan,
+                  })}
                   aria-label="从本周移出"
                   className="p-1 rounded text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
@@ -183,7 +200,10 @@ export default function PlanPage() {
                 </button>
               ) : (
                 <button
-                  onClick={() => api.addToWeekPlan(entry.id, selectedWeek)}
+                  onClick={() => void mutate(() => api.addToWeekPlan(entry.id, selectedWeek), {
+                    backgroundRefresh: true,
+                    update: mergeWeekPlan,
+                  })}
                   aria-label="加入本周计划"
                   className="p-1 rounded text-zinc-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                 >
@@ -193,9 +213,12 @@ export default function PlanPage() {
 
               <button
                 onClick={() =>
-                  api.updateEntry(entry.id, {
+                  void mutate(() => api.updateEntry(entry.id, {
                     status:
                       entry.status === "completed" ? "active" : "completed",
+                  }), {
+                    backgroundRefresh: true,
+                    update: mergeEntry,
                   })
                 }
                 aria-label={entry.status === "completed" ? "标记为未完成" : "标记为已完成"}
@@ -210,12 +233,15 @@ export default function PlanPage() {
 
               <button
                 onClick={() =>
-                  api.addEntry({
+                  void mutate(() => api.addEntry({
                     parentId: entry.id,
                     title: `新子条目 - ${entry.title}`,
                     description: null,
                     completionMode: "completable",
                     dueAt: null,
+                  }), {
+                    backgroundRefresh: true,
+                    update: mergeEntry,
                   })
                 }
                 aria-label="添加子条目"
@@ -248,19 +274,10 @@ export default function PlanPage() {
           </p>
         </div>
 
-        {/* Week Selector */}
         <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/60 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs">
           <Calendar className="w-4 h-4 text-purple-500 shrink-0 ml-1" aria-hidden="true" />
-          <span className="text-zinc-500 font-medium">查看周度：</span>
-          <select
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)}
-            className="bg-transparent font-mono font-medium outline-none text-zinc-800 dark:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-          >
-            <option value="2026-06-22">2026-06-22 (当前周)</option>
-            <option value="2026-06-15">2026-06-15 (上周)</option>
-            <option value="2026-06-08">2026-06-08 (前周)</option>
-          </select>
+          <span className="text-zinc-500 font-medium">本周计划：</span>
+          <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200">{weekPlan.weekStart || "加载中"}</span>
         </div>
       </div>
 
@@ -360,7 +377,10 @@ export default function PlanPage() {
                     </div>
 
                     <button
-                      onClick={() => api.removeFromWeekPlan(ent.id, selectedWeek)}
+                      onClick={() => void mutate(() => api.removeFromWeekPlan(ent.id, selectedWeek), {
+                        backgroundRefresh: true,
+                        update: mergeWeekPlan,
+                      })}
                       aria-label="从该周移出"
                       className="text-zinc-400 hover:text-red-500 p-1 rounded shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     >
@@ -373,9 +393,14 @@ export default function PlanPage() {
           </div>
 
           <WeekNoteCard
-            key={`${weekPlan.weekStart}:${weekPlan.note}`}
+            key={weekPlan.weekStart}
             weekPlan={weekPlan}
-            onSave={(note) => api.updateWeekPlanNote(note, selectedWeek)}
+            onSave={async (note) => {
+              await mutate(() => api.updateWeekPlanNote(note, selectedWeek), {
+                backgroundRefresh: true,
+                update: mergeWeekPlan,
+              });
+            }}
           />
         </div>
       </div>
@@ -385,10 +410,36 @@ export default function PlanPage() {
 
 const WeekNoteCard: React.FC<{
   weekPlan: WeekPlan;
-  onSave: (note: string) => void;
+  onSave: (note: string) => Promise<void>;
 }> = ({ weekPlan, onSave }) => {
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [noteContent, setNoteContent] = useState(weekPlan.note);
+  const [displayedNote, setDisplayedNote] = useState(weekPlan.note);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleToggleEdit = async () => {
+    if (!isNoteEditing) {
+      setNoteContent(displayedNote);
+      setSaveError(null);
+      setIsNoteEditing(true);
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    const previousNote = displayedNote;
+    setDisplayedNote(noteContent);
+    try {
+      await onSave(noteContent);
+      setIsNoteEditing(false);
+    } catch (error) {
+      setDisplayedNote(previousNote);
+      setSaveError(error instanceof Error ? error.message : "保存批注失败");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm space-y-3">
@@ -398,27 +449,39 @@ const WeekNoteCard: React.FC<{
           <span>周备忘与批注</span>
         </h3>
         <button
-          onClick={() => {
-            if (isNoteEditing) onSave(noteContent);
-            setIsNoteEditing((editing) => !editing);
-          }}
-          className="text-blue-600 dark:text-blue-400 text-[11px] hover:underline font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          onClick={() => { void handleToggleEdit(); }}
+          disabled={isSaving}
+          className="text-blue-600 dark:text-blue-400 text-[11px] hover:underline font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded disabled:cursor-wait disabled:opacity-60"
         >
-          {isNoteEditing ? "保存批注" : "编辑批注"}
+          {isSaving ? "保存中…" : isNoteEditing ? "保存批注" : "编辑批注"}
         </button>
       </div>
 
       {isNoteEditing ? (
-        <textarea
-          rows={6}
-          value={noteContent}
-          onChange={(event) => setNoteContent(event.target.value)}
-          className="w-full p-2.5 text-xs font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        />
-      ) : (
-        <div className="prose prose-sm dark:prose-invert text-xs text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-          {weekPlan.note || "点击编辑，记录本周想法与 Markdown 批注…"}
+        <div className="space-y-2">
+          <textarea
+            rows={6}
+            value={noteContent}
+            onChange={(event) => setNoteContent(event.target.value)}
+            aria-label="周备忘 Markdown 内容"
+            className="w-full p-2.5 text-xs font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          />
+          <p className="text-[10px] text-zinc-400">
+            支持 Markdown：标题、列表、**加粗**、*斜体*、`代码` 与链接。
+          </p>
         </div>
+      ) : (
+        <SafeMarkdown
+          content={displayedNote}
+          fallback="点击编辑，记录本周想法与 Markdown 批注…"
+          className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-lg border border-zinc-200/60 dark:border-zinc-800"
+        />
+      )}
+
+      {saveError && (
+        <p className="text-[11px] text-red-600 dark:text-red-400" role="alert">
+          {saveError}
+        </p>
       )}
     </div>
   );

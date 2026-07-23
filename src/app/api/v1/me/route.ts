@@ -1,3 +1,4 @@
+import { profileUpdateSchema } from "@/lib/application/contract";
 import { jsonData, jsonError, readJson, serviceForRequest } from "@/lib/api/http";
 
 export function GET(request: Request) {
@@ -6,7 +7,7 @@ export function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const input = await readJson(request) as { nickname?: string | null; email?: string | null };
+    const input = profileUpdateSchema.parse(await readJson(request));
     return jsonData(serviceForRequest(request).updateUserProfile(input.nickname ?? null, input.email ?? null));
   } catch (error) { return jsonError(error); }
 }

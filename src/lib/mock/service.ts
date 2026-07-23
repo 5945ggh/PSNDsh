@@ -4,7 +4,9 @@ import {
   FocusSegment,
   FocusSession,
   ScheduleBlockInput,
+  UpdateScheduleBlockInput,
   ScenarioPreset,
+  UserDataExport,
   UserProfile,
 } from "@/types/mock";
 import { ApplicationService, LoginInput, RegisterInput } from "@/lib/application/contract";
@@ -38,10 +40,25 @@ export class MockApplicationService implements ApplicationService {
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
+  getCalendarPayload(from?: string, to?: string) { return this.store.getCalendarPayload(from, to); }
   getIcsPreview() { return this.store.getIcsPreview(); }
   getDashboardPayload() { return this.store.getDashboardPayload(); }
   getStatisticsPayload(scale?: "day" | "week" | "month") {
     return this.store.getStatisticsPayload(scale);
+  }
+  exportUserData(): UserDataExport {
+    const profile = this.getUser();
+    if (!profile) throw new MockDomainError("UNAUTHORIZED", "当前没有登录用户");
+    return {
+      schemaVersion: "1.0",
+      exportedAt: new Date().toISOString(),
+      effectiveTimezone: this.getCapabilities().effectiveTimezone,
+      profile,
+      entries: this.getEntries(),
+      weekPlans: [this.getWeekPlan()],
+      focusSessions: this.getFocusSessions(),
+      scheduleBlocks: this.getScheduleBlocks(),
+    };
   }
 
   register(input: RegisterInput): AuthSession {
@@ -164,6 +181,16 @@ export class MockApplicationService implements ApplicationService {
   }
 
   addScheduleBlock(input: ScheduleBlockInput) { return this.store.addScheduleBlock(input); }
-  deleteScheduleBlock(id: string) { this.store.deleteScheduleBlock(id); }
+  updateScheduleBlock(id: string, input: UpdateScheduleBlockInput) {
+    const current = this.store.getScheduleBlocks().find((block) => block.id === id);
+    if (!current) throw new MockDomainError("SCHEDULE_NOT_FOUND", "日程不存在");
+    return this.store.updateScheduleBlock(id, input);
+  }
+  deleteScheduleBlock(id: string) {
+    if (!this.store.getScheduleBlocks().some((block) => block.id === id)) {
+      throw new MockDomainError("SCHEDULE_NOT_FOUND", "日程不存在");
+    }
+    this.store.deleteScheduleBlock(id);
+  }
   confirmIcsImport(selectedUids: string[]) { return this.store.confirmIcsImport(selectedUids); }
 }

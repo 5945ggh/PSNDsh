@@ -93,3 +93,28 @@ describe("MockDataStore statistics", () => {
     expect(week.totalSeconds).toBeLessThan(month.totalSeconds);
   });
 });
+
+describe("MockDataStore calendar", () => {
+  it("updates schedules and filters both tracks by a half-open range", () => {
+    const store = new MockDataStore();
+    const created = store.addScheduleBlock({
+      kind: "course",
+      title: "跨日模拟日程",
+      startedAt: "2026-06-25T23:45:00+08:00",
+      endedAt: "2026-06-26T00:15:00+08:00",
+      location: null,
+      colorKey: "blue",
+      recurrence: null,
+    });
+    const calendar = store.getCalendarPayload(
+      "2026-06-26T00:00:00+08:00",
+      "2026-06-26T01:00:00+08:00"
+    );
+    expect(calendar.scheduleBlocks.some((block) => block.id === created.id)).toBe(true);
+    expect(calendar.focusSessions.length).toBeGreaterThan(0);
+    expect(store.updateScheduleBlock(created.id, { title: "已编辑模拟日程", colorKey: "green" })).toMatchObject({
+      title: "已编辑模拟日程",
+      colorKey: "green",
+    });
+  });
+});

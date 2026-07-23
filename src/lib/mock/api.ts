@@ -36,11 +36,13 @@ export class MockApiAdapter {
   addManualFocusSession(input: Parameters<MockApplicationService["addManualFocusSession"]>[0]) { return this.service.addManualFocusSession(input); }
   getScheduleBlocks() { return this.service.getScheduleBlocks(); }
   addScheduleBlock(input: Parameters<MockApplicationService["addScheduleBlock"]>[0]) { return this.service.addScheduleBlock(input); }
+  updateScheduleBlock(...args: Parameters<MockApplicationService["updateScheduleBlock"]>) { return this.service.updateScheduleBlock(...args); }
   deleteScheduleBlock(id: string) { return this.service.deleteScheduleBlock(id); }
   getIcsPreview() { return this.service.getIcsPreview(); }
   confirmIcsImport(ids: string[]) { return this.service.confirmIcsImport(ids); }
   getDashboardPayload() { return this.service.getDashboardPayload(); }
   getStatisticsPayload(scale?: "day" | "week" | "month") { return this.service.getStatisticsPayload(scale); }
+  getCalendarPayload(from?: string, to?: string) { return this.service.getCalendarPayload(from, to); }
 }
 
 export const mockApi = new MockApiAdapter(new MockApplicationService(mockStore));

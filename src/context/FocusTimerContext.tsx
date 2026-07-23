@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useMock } from "./MockContext";
+import { useData } from "./MockContext";
 import { FocusSession, FocusSegment } from "@/types/mock";
 
 interface FocusTimerContextType {
@@ -12,13 +12,13 @@ interface FocusTimerContextType {
   isManualModalOpen: boolean;
   setIsSplitModalOpen: (open: boolean) => void;
   setIsManualModalOpen: (open: boolean) => void;
-  startFocus: (entryId?: string | null) => void;
+  startFocus: (entryId?: string | null) => Promise<void>;
   triggerStopFocus: () => void;
   finishStopFocus: (
     outcome: string | null,
     note: string | null,
     segments: FocusSegment[]
-  ) => void;
+  ) => Promise<void>;
 }
 
 const FocusTimerContext = createContext<FocusTimerContextType | null>(null);
@@ -26,9 +26,8 @@ const FocusTimerContext = createContext<FocusTimerContextType | null>(null);
 export const FocusTimerProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { api, version } = useMock();
-  void version;
-  const activeFocus: FocusSession | null = api.getActiveFocus();
+  const { api, data, mutate } = useData();
+  const activeFocus: FocusSession | null = data.activeFocus;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -64,9 +63,19 @@ export const FocusTimerProvider: React.FC<{ children: React.ReactNode }> = ({
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }, []);
 
-  const startFocus = (entryId?: string | null) => {
+  const startFocus = async (entryId?: string | null) => {
     try {
-      api.startFocusSession(entryId);
+      await mutate(() => api.startFocusSession(entryId), {
+        backgroundRefresh: true,
+        update: (snapshot, session) => ({
+          ...snapshot,
+          activeFocus: session,
+          focusSessions: [session, ...snapshot.focusSessions.filter((item) => item.id !== session.id)],
+          dashboard: snapshot.dashboard
+            ? { ...snapshot.dashboard, activeFocus: session }
+            : null,
+        }),
+      });
     } catch (err: unknown) {
       if (err instanceof Error) {
         alert(err.message);
@@ -78,14 +87,30 @@ export const FocusTimerProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsSplitModalOpen(true);
   };
 
-  const finishStopFocus = (
+  const finishStopFocus = async (
     outcome: string | null,
     note: string | null,
     segments: FocusSegment[]
   ) => {
     if (activeFocus) {
-      api.stopFocusSession(activeFocus.id, outcome, note, segments);
-      setIsSplitModalOpen(false);
+      try {
+        await mutate(() => api.stopFocusSession(activeFocus.id, outcome, note, segments), {
+          backgroundRefresh: true,
+          update: (snapshot, session) => ({
+            ...snapshot,
+            activeFocus: null,
+            focusSessions: snapshot.focusSessions.map((item) => item.id === session.id ? session : item),
+            dashboard: snapshot.dashboard
+              ? { ...snapshot.dashboard, activeFocus: null }
+              : null,
+          }),
+        });
+        setIsSplitModalOpen(false);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          alert(err.message);
+        }
+      }
     }
   };
 
