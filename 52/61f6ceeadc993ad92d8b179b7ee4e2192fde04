@@ -1,0 +1,83 @@
+playwright.config.ts
+  s_a118e18015d124::t_6136d78506a6b6 3-5,12,19-20
+src/app/api/v1/schedule-blocks/[id]/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 1,15
+tsconfig.json
+  s_a118e18015d124::t_2fd48aa35aa10d 4-8,26-28,39-41
+docs/OPERATIONS.md
+  s_a118e18015d124::t_72422af5f46d15 60-63
+  s_a118e18015d124::t_d51b304dbb2ed1 52-59,64-78
+src/app/api/auth/login/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 6,12-14,16-17
+eslint.config.mjs
+  s_a118e18015d124::t_cf49ab3b9e1c86 12
+docker-compose.yml
+  s_a118e18015d124::t_d51b304dbb2ed1 1-24
+src/lib/api/http.test.ts
+  s_a118e18015d124::t_4f999ef80bbbc6 93-96
+  s_a118e18015d124::t_fa56ae0e29cb3d 5,89-92
+  s_a118e18015d124::t_9a421b242ac02a 6,76-88,97-111
+.gitignore
+  s_a118e18015d124::t_6136d78506a6b6 24
+src/lib/security/rate-limit.ts
+  s_a118e18015d124::t_141f98c60e0fca 1-70
+src/lib/application/error.ts
+  s_a118e18015d124::t_d5f6b3d0f645aa 16-17
+Dockerfile
+  s_a118e18015d124::t_d51b304dbb2ed1 1-38
+.dockerignore
+  s_a118e18015d124::t_d51b304dbb2ed1 1-14
+src/app/api/v1/entries/[id]/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 2,32
+src/lib/api/client.ts
+  s_a118e18015d124::t_fa56ae0e29cb3d 121-124
+src/app/api/auth/register/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 6,12-14,16
+next.config.ts
+  s_a118e18015d124::t_6136d78506a6b6 6
+docs/architecture/TECHNICAL_DESIGN.md
+  s_a118e18015d124::t_d51b304dbb2ed1 329-330
+src/app/api/auth/logout/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 2,4-9
+e2e/persistent-api.spec.ts
+  s_a118e18015d124::t_9ed095388304e9 4
+  s_a118e18015d124::t_6136d78506a6b6 99,236-279,287-296
+  s_a118e18015d124::t_e4b12818372208 280-283
+  s_a118e18015d124::t_30f6518f63cd98 284-286
+src/lib/api/http.ts
+  s_a118e18015d124::t_9a421b242ac02a 33-40
+  s_a118e18015d124::t_fa56ae0e29cb3d 27
+  s_a118e18015d124::t_d51b304dbb2ed1 41-45
+  s_a118e18015d124::t_4f999ef80bbbc6 30
+  s_a118e18015d124::t_d5f6b3d0f645aa 26,28-29,31-32,46-62,148-159,166-169,187
+.env.example
+  s_a118e18015d124::t_d51b304dbb2ed1 6
+docs/SETUP.md
+  s_a118e18015d124::t_d51b304dbb2ed1 24-32,35-37
+  s_a118e18015d124::t_72422af5f46d15 33-34
+scripts/e2e-server.mjs
+  s_a118e18015d124::t_5f325775993047 2,9,12,43
+  s_a118e18015d124::t_9ed095388304e9 8
+  s_a118e18015d124::t_cf49ab3b9e1c86 48-51
+  s_a118e18015d124::t_6136d78506a6b6 1,3-7,10-11,13-42,44-47,52-63
+src/lib/security/rate-limit.test.ts
+  s_a118e18015d124::t_141f98c60e0fca 1-30
+src/app/api/v1/schedule-blocks/imports/[importId]/route.ts
+  s_a118e18015d124::t_1ac6b13f0aa010 1,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5261f6ceeadc993ad92d8b179b7ee4e2192fde04",
+  "prompts": {},
+  "sessions": {
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": null
+    }
+  }
+}
