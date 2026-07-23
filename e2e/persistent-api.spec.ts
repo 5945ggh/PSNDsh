@@ -17,6 +17,7 @@ const shanghaiDateKey = (offsetDays = 0) => {
 
 test("real session persists profile changes and protects dashboard after logout", async ({ page }) => {
   const username = unique("profile");
+  const quickEntryTitle = unique("首页快速条目");
 
   await page.goto("/register");
   await page.getByLabel("账号").fill(username);
@@ -24,6 +25,10 @@ test("real session persists profile changes and protects dashboard after logout"
   await page.getByLabel("确认密码").fill("password123");
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await expect(page).toHaveURL(/\/$/);
+
+  await page.getByLabel("新条目标题").fill(quickEntryTitle);
+  await page.getByRole("button", { name: "创建并加入本周" }).click();
+  await expect(page.getByText(quickEntryTitle, { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "设置" }).click();
   await page.getByLabel(/显示昵称/).fill("持久化昵称");

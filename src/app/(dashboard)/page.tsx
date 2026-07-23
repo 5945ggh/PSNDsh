@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
+  Plus,
 } from "lucide-react";
 
 const currentShanghaiDateLabel = () => {
@@ -29,8 +30,11 @@ const currentShanghaiDateLabel = () => {
 };
 
 export default function DashboardPage() {
-  const { data } = useData();
+  const { api, data, mutate } = useData();
   const { activeFocus, startFocus, formattedTime } = useFocusTimer();
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickAddError, setQuickAddError] = useState<string | null>(null);
+  const [isQuickAdding, setIsQuickAdding] = useState(false);
 
   const payload = data.dashboard;
   if (!payload) {
@@ -42,6 +46,32 @@ export default function DashboardPage() {
   const todayHours = (focusSummary.todaySeconds / 3600).toFixed(1);
   const weekHours = (focusSummary.weekSeconds / 3600).toFixed(1);
   const currentDateLabel = currentShanghaiDateLabel();
+
+  const addQuickEntry = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedTitle = quickTitle.trim();
+    if (!normalizedTitle) return;
+    setIsQuickAdding(true);
+    setQuickAddError(null);
+    try {
+      await mutate(async () => {
+        const entry = await api.addEntry({
+          parentId: null,
+          title: normalizedTitle,
+          description: null,
+          completionMode: "completable",
+          dueAt: null,
+        });
+        await api.addToWeekPlan(entry.id);
+        return entry;
+      });
+      setQuickTitle("");
+    } catch (error) {
+      setQuickAddError(error instanceof Error ? error.message : "创建条目失败");
+    } finally {
+      setIsQuickAdding(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full">
@@ -261,9 +291,42 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-zinc-400 py-6 text-center">
-                暂无本周计划条目，可在“计划”中将条目加入本周
-              </p>
+              <div className="space-y-3 rounded-lg border border-dashed border-zinc-300 bg-zinc-50/60 p-4 dark:border-zinc-700 dark:bg-zinc-800/30">
+                <div>
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    本周还没有可执行条目
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    直接在这里创建一项并加入本周，之后即可开始专注记录。
+                  </p>
+                </div>
+                <form onSubmit={addQuickEntry} className="flex flex-col gap-2 sm:flex-row">
+                  <label className="sr-only" htmlFor="dashboard-quick-entry">新条目标题</label>
+                  <input
+                    id="dashboard-quick-entry"
+                    value={quickTitle}
+                    onChange={(event) => setQuickTitle(event.target.value)}
+                    placeholder="例如：完成算法练习"
+                    className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isQuickAdding || !quickTitle.trim()}
+                    className="flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{isQuickAdding ? "创建中..." : "创建并加入本周"}</span>
+                  </button>
+                </form>
+                {quickAddError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{quickAddError}</p>}
+                <Link
+                  href="/plan"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  <span>{data.entries.length > 0 ? "从已有条目中选择" : "打开计划树查看更多选项"}</span>
+                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                </Link>
+              </div>
             )}
           </div>
         </div>
