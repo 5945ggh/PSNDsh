@@ -96,9 +96,10 @@ export type ScheduleBlock = {
   colorKey: string | null;
   recurrence: ScheduleRecurrence;
   recurrenceLabel: string | null;
-  source?: "manual" | "ics";
+  source?: "manual" | "ics" | "template";
   importId?: string | null;
   sourceUid?: string | null;
+  templateApplicationId?: string | null;
   recurrenceSourceId?: string;
 };
 
@@ -118,6 +119,58 @@ export type ScheduleImport = {
   fileName: string;
   importedAt: string;
   blockCount: number;
+};
+
+export type TemplateWeekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
+
+export type ScheduleTemplateItem = {
+  id: string;
+  weekdays: TemplateWeekday[];
+  title: string;
+  description: string | null;
+  kind: ScheduleBlockKind;
+  location: string | null;
+  colorKey: string | null;
+  startTime: string;
+  endTime: string;
+  sortKey: string;
+};
+
+export type ScheduleTemplateInput = {
+  name: string;
+  description: string | null;
+  items: Array<Omit<ScheduleTemplateItem, "id" | "sortKey">>;
+};
+
+export type ScheduleTemplate = {
+  id: string;
+  name: string;
+  description: string | null;
+  items: ScheduleTemplateItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScheduleTemplateApplication = {
+  id: string;
+  templateId: string;
+  templateName: string;
+  fromDate: string;
+  toDate: string;
+  appliedAt: string;
+  blockCount: number;
+};
+
+export type ScheduleTemplateBlockPreview = Pick<ScheduleBlock, "title" | "description" | "kind" | "location" | "colorKey" | "startedAt" | "endedAt"> & {
+  itemId: string;
+};
+
+export type ScheduleTemplatePreview = {
+  templateId: string;
+  templateName: string;
+  fromDate: string;
+  toDate: string;
+  blocks: ScheduleTemplateBlockPreview[];
 };
 
 export type UpdateScheduleBlockInput = Partial<ScheduleBlockInput>;

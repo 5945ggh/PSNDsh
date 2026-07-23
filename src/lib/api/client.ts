@@ -17,6 +17,10 @@ import {
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleImport,
+  ScheduleTemplate,
+  ScheduleTemplateApplication,
+  ScheduleTemplateInput,
+  ScheduleTemplatePreview,
   UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
@@ -102,6 +106,14 @@ export interface ApiAdapter {
   getScheduleBlocks(): Promise<ScheduleBlock[]>;
   getScheduleImports(): Promise<ScheduleImport[]>;
   deleteScheduleImport(id: string): Promise<void>;
+  getScheduleTemplates(): Promise<ScheduleTemplate[]>;
+  createScheduleTemplate(input: ScheduleTemplateInput): Promise<ScheduleTemplate>;
+  updateScheduleTemplate(id: string, input: ScheduleTemplateInput): Promise<ScheduleTemplate>;
+  deleteScheduleTemplate(id: string): Promise<void>;
+  previewScheduleTemplate(id: string, fromDate: string, toDate: string): Promise<ScheduleTemplatePreview>;
+  applyScheduleTemplate(id: string, fromDate: string, toDate: string): Promise<ScheduleTemplateApplication>;
+  getScheduleTemplateApplications(): Promise<ScheduleTemplateApplication[]>;
+  deleteScheduleTemplateApplication(id: string): Promise<void>;
   addScheduleBlock(input: ScheduleBlockInput): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): Promise<ScheduleBlock>;
   deleteScheduleBlock(id: string): Promise<void>;
@@ -305,6 +317,50 @@ export class PersistentApiAdapter implements ApiAdapter {
 
   deleteScheduleImport(id: string) {
     return this.request<void>(`/api/v1/schedule-blocks/imports/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  getScheduleTemplates() {
+    return this.request<ScheduleTemplate[]>("/api/v1/schedule-templates");
+  }
+
+  createScheduleTemplate(input: ScheduleTemplateInput) {
+    return this.request<ScheduleTemplate>("/api/v1/schedule-templates", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  updateScheduleTemplate(id: string, input: ScheduleTemplateInput) {
+    return this.request<ScheduleTemplate>(`/api/v1/schedule-templates/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  deleteScheduleTemplate(id: string) {
+    return this.request<void>(`/api/v1/schedule-templates/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  previewScheduleTemplate(id: string, fromDate: string, toDate: string) {
+    return this.request<ScheduleTemplatePreview>(`/api/v1/schedule-templates/${encodeURIComponent(id)}/preview`, {
+      method: "POST",
+      body: JSON.stringify({ fromDate, toDate }),
+    });
+  }
+
+  applyScheduleTemplate(id: string, fromDate: string, toDate: string) {
+    return this.request<ScheduleTemplateApplication>(`/api/v1/schedule-templates/${encodeURIComponent(id)}/apply`, {
+      method: "POST",
+      body: JSON.stringify({ fromDate, toDate }),
+    });
+  }
+
+  getScheduleTemplateApplications() {
+    return this.request<ScheduleTemplateApplication[]>("/api/v1/schedule-template-applications");
+  }
+
+  deleteScheduleTemplateApplication(id: string) {
+    return this.request<void>(`/api/v1/schedule-template-applications/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
   addScheduleBlock(input: ScheduleBlockInput) {

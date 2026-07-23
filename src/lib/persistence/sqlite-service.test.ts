@@ -220,6 +220,128 @@ describe("SqliteApplicationService", () => {
     expect(calendar.scheduleBlocks.every((block) => block.recurrenceSourceId === rule.id)).toBe(true);
   });
 
+  it("expands reusable templates across weekdays, weekends, and overnight boundaries", () => {
+    const app = service();
+    const template = app.createScheduleTemplate({
+      name: "假期作息",
+      description: "工作日和周末不同安排",
+      items: [
+        {
+          weekdays: ["MO", "TU", "WE", "TH", "FR"],
+          title: "学习",
+          description: "上午专注学习",
+          kind: "plan",
+          location: "书桌",
+          colorKey: "green",
+          startTime: "09:00",
+          endTime: "10:30",
+        },
+        {
+          weekdays: ["SA", "SU"],
+          title: "娱乐",
+          description: null,
+          kind: "other",
+          location: null,
+          colorKey: "amber",
+          startTime: "14:00",
+          endTime: "16:00",
+        },
+        {
+          weekdays: ["FR"],
+          title: "夜间作息",
+          description: null,
+          kind: "other",
+          location: null,
+          colorKey: "blue",
+          startTime: "23:30",
+          endTime: "00:30",
+        },
+      ],
+    });
+
+    const preview = app.previewScheduleTemplate(template.id, "2026-06-22", "2026-06-28");
+    expect(preview.blocks).toHaveLength(8);
+    expect(preview.blocks.filter((block) => block.title === "学习")).toHaveLength(5);
+    expect(preview.blocks.filter((block) => block.title === "娱乐")).toHaveLength(2);
+    expect(preview.blocks.find((block) => block.title === "夜间作息")).toMatchObject({
+      startedAt: "2026-06-26T15:30:00.000Z",
+      endedAt: "2026-06-26T16:30:00.000Z",
+    });
+
+    const application = app.applyScheduleTemplate(template.id, "2026-06-22", "2026-06-28");
+    expect(application.blockCount).toBe(8);
+    expect(app.getScheduleBlocks().filter((block) => block.templateApplicationId === application.id)).toHaveLength(8);
+    expect(app.getScheduleTemplateApplications()).toEqual([
+      expect.objectContaining({ id: application.id, blockCount: 8 }),
+    ]);
+  });
+
+  it("keeps generated instances stable when a template changes and deletes applications as a batch", () => {
+    const app = service();
+    const template = app.createScheduleTemplate({
+      name: "可编辑作息",
+      description: null,
+      items: [{
+        weekdays: ["MO"],
+        title: "旧标题",
+        description: null,
+        kind: "plan",
+        location: null,
+        colorKey: "blue",
+        startTime: "09:00",
+        endTime: "10:00",
+      }],
+    });
+    const application = app.applyScheduleTemplate(template.id, "2026-06-22", "2026-06-22");
+    app.updateScheduleTemplate(template.id, {
+      name: "新版作息",
+      description: null,
+      items: [{
+        weekdays: ["MO"],
+        title: "新标题",
+        description: null,
+        kind: "plan",
+        location: null,
+        colorKey: "rose",
+        startTime: "11:00",
+        endTime: "12:00",
+      }],
+    });
+
+    expect(app.getScheduleBlocks()).toEqual([
+      expect.objectContaining({ title: "旧标题", startedAt: "2026-06-22T01:00:00.000Z", templateApplicationId: application.id }),
+    ]);
+    expect(app.getScheduleTemplates()[0]).toMatchObject({ name: "新版作息", items: [expect.objectContaining({ title: "新标题" })] });
+    app.deleteScheduleTemplateApplication(application.id);
+    expect(app.getScheduleBlocks()).toEqual([]);
+    expect(app.getScheduleTemplates()).toHaveLength(1);
+  });
+
+  it("isolates template reads, applications, and batch deletes by user", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const template = appA.createScheduleTemplate({
+      name: "A 的模板",
+      description: null,
+      items: [{
+        weekdays: ["MO"],
+        title: "A 的日程",
+        description: null,
+        kind: "other",
+        location: null,
+        colorKey: "blue",
+        startTime: "09:00",
+        endTime: "10:00",
+      }],
+    });
+    expect(appB.getScheduleTemplates()).toEqual([]);
+    expect(() => appB.previewScheduleTemplate(template.id, "2026-06-22", "2026-06-22")).toThrow(/SCHEDULE_TEMPLATE_NOT_FOUND/);
+    const application = appA.applyScheduleTemplate(template.id, "2026-06-22", "2026-06-22");
+    expect(appB.getScheduleTemplateApplications()).toEqual([]);
+    expect(() => appB.deleteScheduleTemplateApplication(application.id)).toThrow(/SCHEDULE_TEMPLATE_APPLICATION_NOT_FOUND/);
+    expect(appA.getScheduleTemplateApplications()).toHaveLength(1);
+  });
+
   it("includes an overnight recurrence that starts before the requested local range", () => {
     const app = service();
     const rule = app.addScheduleBlock({

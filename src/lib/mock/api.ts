@@ -37,6 +37,14 @@ export class MockApiAdapter {
   getScheduleBlocks() { return this.service.getScheduleBlocks(); }
   getScheduleImports() { return this.service.getScheduleImports(); }
   deleteScheduleImport(id: string) { return this.service.deleteScheduleImport(id); }
+  getScheduleTemplates() { return this.service.getScheduleTemplates(); }
+  createScheduleTemplate(input: Parameters<MockApplicationService["createScheduleTemplate"]>[0]) { return this.service.createScheduleTemplate(input); }
+  updateScheduleTemplate(...args: Parameters<MockApplicationService["updateScheduleTemplate"]>) { return this.service.updateScheduleTemplate(...args); }
+  deleteScheduleTemplate(id: string) { return this.service.deleteScheduleTemplate(id); }
+  previewScheduleTemplate(...args: Parameters<MockApplicationService["previewScheduleTemplate"]>) { return this.service.previewScheduleTemplate(...args); }
+  applyScheduleTemplate(...args: Parameters<MockApplicationService["applyScheduleTemplate"]>) { return this.service.applyScheduleTemplate(...args); }
+  getScheduleTemplateApplications() { return this.service.getScheduleTemplateApplications(); }
+  deleteScheduleTemplateApplication(id: string) { return this.service.deleteScheduleTemplateApplication(id); }
   addScheduleBlock(input: Parameters<MockApplicationService["addScheduleBlock"]>[0]) { return this.service.addScheduleBlock(input); }
   updateScheduleBlock(...args: Parameters<MockApplicationService["updateScheduleBlock"]>) { return this.service.updateScheduleBlock(...args); }
   deleteScheduleBlock(id: string) { return this.service.deleteScheduleBlock(id); }

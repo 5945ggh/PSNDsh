@@ -296,6 +296,63 @@ END:VCALENDAR`),
   expect((await schedulesAfterDelete.json()).data).toHaveLength(0);
 });
 
+test("calendar saves, previews, reapplies, and removes a reusable schedule template", async ({ page }) => {
+  const username = unique("template");
+  const templateName = unique("假期作息");
+  const weekdayTitle = unique("工作日学习");
+  const weekendTitle = unique("周末娱乐");
+  const fromDate = shanghaiDateKey();
+  const toDate = shanghaiDateKey(6);
+
+  await page.goto("/register");
+  await page.getByLabel("账号").fill(username);
+  await page.getByLabel("密码", { exact: true }).fill("password123");
+  await page.getByLabel("确认密码").fill("password123");
+  await page.getByRole("button", { name: "完成注册并进入" }).click();
+  await page.getByRole("link", { name: "日历", exact: true }).click();
+  await page.getByRole("button", { name: "作息模板" }).click();
+  const manager = page.getByRole("dialog", { name: "可复用作息模板" });
+  await manager.getByLabel("模板名称").fill(templateName);
+  await manager.getByPlaceholder("日程标题").first().fill(weekdayTitle);
+  await manager.getByRole("button", { name: "添加规则" }).click();
+  const rules = manager.locator(".border-zinc-200.p-3");
+  await rules.nth(1).getByPlaceholder("日程标题").fill(weekendTitle);
+  await rules.nth(1).getByRole("button", { name: "周末" }).click();
+  await rules.nth(1).getByLabel("开始").fill("23:30");
+  await rules.nth(1).getByLabel("结束").fill("00:30");
+  await manager.getByRole("button", { name: "保存模板" }).click();
+  await expect(manager.getByRole("button", { name: templateName })).toBeVisible();
+
+  await manager.getByLabel("开始日期").fill(fromDate);
+  await manager.getByLabel("结束日期").fill(toDate);
+  const previewResponse = page.waitForResponse((response) =>
+    response.request().method() === "POST" && response.url().includes("/schedule-templates/") && response.url().endsWith("/preview")
+  );
+  await manager.getByRole("button", { name: "预览" }).click();
+  expect((await previewResponse).status()).toBe(200);
+  await expect(manager.getByText(/将生成 7 项日程/)).toBeVisible();
+
+  const applyResponse = page.waitForResponse((response) =>
+    response.request().method() === "POST" && response.url().includes("/schedule-templates/") && response.url().endsWith("/apply")
+  );
+  await manager.getByRole("button", { name: "确认应用" }).click();
+  expect((await applyResponse).status()).toBe(201);
+  await expect(manager.getByText(new RegExp(`${templateName}.*7 项`))).toBeVisible();
+  await manager.getByRole("button", { name: "关闭", exact: true }).click();
+  await expect(page.getByText(weekdayTitle, { exact: true }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "作息模板" }).click();
+  const reopened = page.getByRole("dialog", { name: "可复用作息模板" });
+  await expect(reopened.getByRole("button", { name: templateName })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await reopened.getByRole("button", { name: `删除 ${templateName} 应用批次` }).click();
+  await expect(reopened.getByText("还没有模板应用批次。", { exact: true })).toBeVisible();
+  const remainingSchedules = await page.request.get("/api/v1/schedule-blocks");
+  expect((await remainingSchedules.json()).data.filter((item: { title: string }) => [weekdayTitle, weekendTitle].includes(item.title))).toHaveLength(0);
+  expect((await page.request.get("/api/v1/schedule-templates")).status()).toBe(200);
+  expect((await (await page.request.get("/api/v1/schedule-templates")).json()).data).toEqual(expect.arrayContaining([expect.objectContaining({ name: templateName })]));
+});
+
 test("week notes render Markdown and remain stable after save", async ({ page }) => {
   const username = unique("week-note");
   const note = "## 本周重点\n- **完成** 日程回顾\n- 记录 `复盘`";

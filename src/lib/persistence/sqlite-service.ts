@@ -7,6 +7,9 @@ import {
   focusSessions,
   scheduleBlocks,
   scheduleImports,
+  scheduleTemplateApplications,
+  scheduleTemplateItems,
+  scheduleTemplates,
   users,
   weekPlanEntries,
   weekPlans,
@@ -37,6 +40,11 @@ import {
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleImport,
+  ScheduleTemplate,
+  ScheduleTemplateApplication,
+  ScheduleTemplateInput,
+  ScheduleTemplateItem,
+  ScheduleTemplatePreview,
   ScheduleRecurrence,
   UpdateScheduleBlockInput,
   StatisticsPayload,
@@ -59,6 +67,7 @@ type EntryRow = typeof entries.$inferSelect;
 type FocusSessionRow = typeof focusSessions.$inferSelect;
 type FocusSegmentRow = typeof focusSegments.$inferSelect;
 type ScheduleRow = typeof scheduleBlocks.$inferSelect;
+type ScheduleTemplateRow = typeof scheduleTemplates.$inferSelect;
 
 const nowIso = (clock: () => Date) => clock().toISOString();
 
@@ -313,6 +322,7 @@ export class SqliteApplicationService implements ApplicationService {
       source: row.source,
       importId: row.importId,
       sourceUid: row.sourceUid,
+      templateApplicationId: row.templateApplicationId,
     };
   }
 
@@ -742,6 +752,234 @@ export class SqliteApplicationService implements ApplicationService {
     const result = this.db.delete(scheduleImports)
       .where(and(eq(scheduleImports.id, id), eq(scheduleImports.userId, userId))).run();
     if (result.changes === 0) throw new ApplicationError("SCHEDULE_NOT_FOUND", "导入批次不存在");
+  }
+
+  private assertTemplateDateRange(fromDate: string, toDate: string) {
+    const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
+    const toMs = Date.parse(`${toDate}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)
+      || !Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs < fromMs) {
+      throw new ApplicationError("REQUEST_INVALID", "模板应用日期范围无效");
+    }
+    if ((toMs - fromMs) / 86_400_000 > 366) {
+      throw new ApplicationError("REQUEST_INVALID", "一次最多应用 366 天");
+    }
+  }
+
+  private getOwnedTemplateRow(id: string) {
+    const row = this.db.select().from(scheduleTemplates)
+      .where(and(eq(scheduleTemplates.id, id), eq(scheduleTemplates.userId, this.requireUserId())))
+      .get();
+    if (!row) throw new ApplicationError("SCHEDULE_TEMPLATE_NOT_FOUND", "日程模板不存在");
+    return row;
+  }
+
+  private toScheduleTemplate(row: ScheduleTemplateRow): ScheduleTemplate {
+    const items = this.db.select().from(scheduleTemplateItems)
+      .where(eq(scheduleTemplateItems.templateId, row.id))
+      .orderBy(asc(scheduleTemplateItems.sortKey)).all();
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      items: items.map((item): ScheduleTemplateItem => ({
+        id: item.id,
+        weekdays: JSON.parse(item.weekdaysJson) as ScheduleTemplateItem["weekdays"],
+        title: item.title,
+        description: item.description,
+        kind: item.kind,
+        location: item.location,
+        colorKey: item.colorKey,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        sortKey: item.sortKey,
+      })),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  getScheduleTemplates(): ScheduleTemplate[] {
+    return this.db.select().from(scheduleTemplates)
+      .where(eq(scheduleTemplates.userId, this.requireUserId()))
+      .orderBy(desc(scheduleTemplates.updatedAt)).all()
+      .map((row) => this.toScheduleTemplate(row));
+  }
+
+  createScheduleTemplate(input: ScheduleTemplateInput): ScheduleTemplate {
+    const userId = this.requireUserId();
+    const name = input.name.trim();
+    if (!name) throw new ApplicationError("REQUEST_INVALID", "模板名称不能为空");
+    if (input.items.length === 0) throw new ApplicationError("REQUEST_INVALID", "模板至少需要一个日程项");
+    const createdAt = nowIso(this.clock);
+    const templateId = randomUUID();
+    this.db.transaction((tx) => {
+      tx.insert(scheduleTemplates).values({
+        id: templateId,
+        userId,
+        name,
+        description: normalizeOptionalText(input.description),
+        createdAt,
+        updatedAt: createdAt,
+      }).run();
+      tx.insert(scheduleTemplateItems).values(input.items.map((item, index) => ({
+        id: randomUUID(),
+        templateId,
+        weekdaysJson: JSON.stringify(item.weekdays),
+        title: item.title.trim(),
+        description: normalizeOptionalText(item.description),
+        kind: item.kind,
+        location: normalizeOptionalText(item.location),
+        colorKey: item.colorKey ?? "blue",
+        startTime: item.startTime,
+        endTime: item.endTime,
+        sortKey: String(index).padStart(4, "0"),
+      }))).run();
+    });
+    return this.toScheduleTemplate(this.db.select().from(scheduleTemplates).where(eq(scheduleTemplates.id, templateId)).get() as ScheduleTemplateRow);
+  }
+
+  updateScheduleTemplate(id: string, input: ScheduleTemplateInput): ScheduleTemplate {
+    const template = this.getOwnedTemplateRow(id);
+    const name = input.name.trim();
+    if (!name || input.items.length === 0) throw new ApplicationError("REQUEST_INVALID", "模板名称和日程项不能为空");
+    const updatedAt = nowIso(this.clock);
+    this.db.transaction((tx) => {
+      tx.update(scheduleTemplates).set({
+        name,
+        description: normalizeOptionalText(input.description),
+        updatedAt,
+      }).where(eq(scheduleTemplates.id, template.id)).run();
+      tx.delete(scheduleTemplateItems).where(eq(scheduleTemplateItems.templateId, template.id)).run();
+      tx.insert(scheduleTemplateItems).values(input.items.map((item, index) => ({
+        id: randomUUID(),
+        templateId: template.id,
+        weekdaysJson: JSON.stringify(item.weekdays),
+        title: item.title.trim(),
+        description: normalizeOptionalText(item.description),
+        kind: item.kind,
+        location: normalizeOptionalText(item.location),
+        colorKey: item.colorKey ?? "blue",
+        startTime: item.startTime,
+        endTime: item.endTime,
+        sortKey: String(index).padStart(4, "0"),
+      }))).run();
+    });
+    return this.toScheduleTemplate(this.db.select().from(scheduleTemplates).where(eq(scheduleTemplates.id, template.id)).get() as ScheduleTemplateRow);
+  }
+
+  deleteScheduleTemplate(id: string): void {
+    const template = this.getOwnedTemplateRow(id);
+    this.db.delete(scheduleTemplates).where(eq(scheduleTemplates.id, template.id)).run();
+  }
+
+  private templateInstances(template: ScheduleTemplate, fromDate: string, toDate: string): ScheduleTemplatePreview["blocks"] {
+    this.assertTemplateDateRange(fromDate, toDate);
+    const blocks: ScheduleTemplatePreview["blocks"] = [];
+    const weekdayForDate = (dateKey: string) => weekdayFor(dateKey);
+    for (let offset = 0; offset <= daysBetween(fromDate, toDate); offset += 1) {
+      const dateKey = shiftDateKey(fromDate, offset);
+      const weekday = weekdayForDate(dateKey);
+      for (const item of template.items) {
+        if (!item.weekdays.includes(weekday)) continue;
+        const [startHour, startMinute] = item.startTime.split(":").map(Number);
+        const [endHour, endMinute] = item.endTime.split(":").map(Number);
+        const startedAt = zonedDateTime(dateKey, startHour, startMinute, 0, this.timezone);
+        const overnight = endHour * 60 + endMinute <= startHour * 60 + startMinute;
+        const endedAt = zonedDateTime(overnight ? shiftDateKey(dateKey, 1) : dateKey, endHour, endMinute, 0, this.timezone);
+        blocks.push({
+          itemId: item.id,
+          title: item.title,
+          description: item.description,
+          kind: item.kind,
+          location: item.location,
+          colorKey: item.colorKey,
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
+        });
+      }
+    }
+    return blocks.sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.title.localeCompare(b.title));
+  }
+
+  previewScheduleTemplate(id: string, fromDate: string, toDate: string): ScheduleTemplatePreview {
+    const template = this.toScheduleTemplate(this.getOwnedTemplateRow(id));
+    return {
+      templateId: template.id,
+      templateName: template.name,
+      fromDate,
+      toDate,
+      blocks: this.templateInstances(template, fromDate, toDate),
+    };
+  }
+
+  applyScheduleTemplate(id: string, fromDate: string, toDate: string): ScheduleTemplateApplication {
+    const userId = this.requireUserId();
+    const template = this.toScheduleTemplate(this.getOwnedTemplateRow(id));
+    const blocks = this.templateInstances(template, fromDate, toDate);
+    const applicationId = randomUUID();
+    const appliedAt = nowIso(this.clock);
+    this.db.transaction((tx) => {
+      tx.insert(scheduleTemplateApplications).values({
+        id: applicationId,
+        userId,
+        templateId: template.id,
+        templateName: template.name,
+        fromDate,
+        toDate,
+        appliedAt,
+      }).run();
+      tx.insert(scheduleBlocks).values(blocks.map((block) => ({
+        id: randomUUID(),
+        userId,
+        kind: block.kind,
+        title: block.title,
+        description: block.description,
+        startedAt: block.startedAt,
+        endedAt: block.endedAt,
+        location: block.location,
+        colorKey: block.colorKey ?? "blue",
+        recurrenceJson: null,
+        source: "template" as const,
+        importId: null,
+        sourceUid: null,
+        templateApplicationId: applicationId,
+        createdAt: appliedAt,
+        updatedAt: appliedAt,
+      }))).run();
+    });
+    return {
+      id: applicationId,
+      templateId: template.id,
+      templateName: template.name,
+      fromDate,
+      toDate,
+      appliedAt,
+      blockCount: blocks.length,
+    };
+  }
+
+  getScheduleTemplateApplications(): ScheduleTemplateApplication[] {
+    const userId = this.requireUserId();
+    return this.db.select().from(scheduleTemplateApplications)
+      .where(eq(scheduleTemplateApplications.userId, userId))
+      .orderBy(desc(scheduleTemplateApplications.appliedAt)).all()
+      .map((row) => ({
+        id: row.id,
+        templateId: row.templateId,
+        templateName: row.templateName,
+        fromDate: row.fromDate,
+        toDate: row.toDate,
+        appliedAt: row.appliedAt,
+        blockCount: this.db.select({ count: sql<number>`count(*)` }).from(scheduleBlocks)
+          .where(eq(scheduleBlocks.templateApplicationId, row.id)).get()?.count ?? 0,
+      }));
+  }
+
+  deleteScheduleTemplateApplication(id: string): void {
+    const result = this.db.delete(scheduleTemplateApplications)
+      .where(and(eq(scheduleTemplateApplications.id, id), eq(scheduleTemplateApplications.userId, this.requireUserId()))).run();
+    if (result.changes === 0) throw new ApplicationError("SCHEDULE_TEMPLATE_APPLICATION_NOT_FOUND", "模板应用批次不存在");
   }
 
   private rangeForScale(scale: "day" | "week" | "month" = "week") {

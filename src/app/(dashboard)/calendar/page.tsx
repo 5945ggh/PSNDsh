@@ -6,6 +6,7 @@ import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { IcsImportModal } from "@/components/calendar/IcsImportModal";
 import { ScheduleImportManager } from "@/components/calendar/ScheduleImportManager";
+import { ScheduleTemplateManager } from "@/components/calendar/ScheduleTemplateManager";
 import { ScheduleEditorModal } from "@/components/calendar/ScheduleEditorModal";
 import { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/types/mock";
 import {
@@ -23,6 +24,7 @@ import {
   Trash2,
   Pencil,
   FileStack,
+  CalendarClock,
 } from "lucide-react";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
@@ -106,6 +108,7 @@ export default function CalendarPage() {
 
   const [isIcsOpen, setIsIcsOpen] = useState(false);
   const [isImportManagerOpen, setIsImportManagerOpen] = useState(false);
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact" | "day">("grid");
   const [hasChosenViewMode, setHasChosenViewMode] = useState(false);
   const [trackFilter, setTrackFilter] = useState<"both" | "schedule" | "focus">("both");
@@ -378,6 +381,14 @@ export default function CalendarPage() {
           >
             <FileStack className="h-3.5 w-3.5" aria-hidden="true" />
             <span>管理导入批次</span>
+          </button>
+
+          <button
+            onClick={() => setIsTemplateManagerOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+          >
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>作息模板</span>
           </button>
 
           <button
@@ -1022,6 +1033,11 @@ export default function CalendarPage() {
       <ScheduleImportManager
         isOpen={isImportManagerOpen}
         onClose={() => setIsImportManagerOpen(false)}
+        onChanged={refreshCalendar}
+      />
+      <ScheduleTemplateManager
+        isOpen={isTemplateManagerOpen}
+        onClose={() => setIsTemplateManagerOpen(false)}
         onChanged={refreshCalendar}
       />
     </div>

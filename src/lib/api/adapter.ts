@@ -73,6 +73,14 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   getScheduleBlocks() { return asPromise(() => this.mock.getScheduleBlocks()); }
   getScheduleImports() { return asPromise(() => this.mock.getScheduleImports()); }
   deleteScheduleImport(...args: Parameters<MockApiAdapter["deleteScheduleImport"]>) { return asPromise(() => this.mock.deleteScheduleImport(...args)); }
+  getScheduleTemplates() { return asPromise(() => this.mock.getScheduleTemplates()); }
+  createScheduleTemplate(...args: Parameters<MockApiAdapter["createScheduleTemplate"]>) { return asPromise(() => this.mock.createScheduleTemplate(...args)); }
+  updateScheduleTemplate(...args: Parameters<MockApiAdapter["updateScheduleTemplate"]>) { return asPromise(() => this.mock.updateScheduleTemplate(...args)); }
+  deleteScheduleTemplate(...args: Parameters<MockApiAdapter["deleteScheduleTemplate"]>) { return asPromise(() => this.mock.deleteScheduleTemplate(...args)); }
+  previewScheduleTemplate(...args: Parameters<MockApiAdapter["previewScheduleTemplate"]>) { return asPromise(() => this.mock.previewScheduleTemplate(...args)); }
+  applyScheduleTemplate(...args: Parameters<MockApiAdapter["applyScheduleTemplate"]>) { return asPromise(() => this.mock.applyScheduleTemplate(...args)); }
+  getScheduleTemplateApplications() { return asPromise(() => this.mock.getScheduleTemplateApplications()); }
+  deleteScheduleTemplateApplication(...args: Parameters<MockApiAdapter["deleteScheduleTemplateApplication"]>) { return asPromise(() => this.mock.deleteScheduleTemplateApplication(...args)); }
   addScheduleBlock(...args: Parameters<MockApiAdapter["addScheduleBlock"]>) { return asPromise(() => this.mock.addScheduleBlock(...args)); }
   updateScheduleBlock(...args: Parameters<MockApiAdapter["updateScheduleBlock"]>) { return asPromise(() => this.mock.updateScheduleBlock(...args)); }
   deleteScheduleBlock(...args: Parameters<MockApiAdapter["deleteScheduleBlock"]>) { return asPromise(() => this.mock.deleteScheduleBlock(...args)); }

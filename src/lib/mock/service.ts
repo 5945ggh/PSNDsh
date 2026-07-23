@@ -42,6 +42,14 @@ export class MockApplicationService implements ApplicationService {
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
   getScheduleImports() { return []; }
   deleteScheduleImport(id: string) { void id; throw new MockDomainError("SCHEDULE_NOT_FOUND", "导入批次不存在"); }
+  getScheduleTemplates() { return []; }
+  createScheduleTemplate(input: Parameters<ApplicationService["createScheduleTemplate"]>[0]): never { void input; throw new MockDomainError("REQUEST_INVALID", "模拟数据传输不支持日程模板"); }
+  updateScheduleTemplate(id: string, input: Parameters<ApplicationService["updateScheduleTemplate"]>[1]): never { void id; void input; throw new MockDomainError("REQUEST_INVALID", "模拟数据传输不支持日程模板"); }
+  deleteScheduleTemplate(id: string): never { void id; throw new MockDomainError("SCHEDULE_TEMPLATE_NOT_FOUND", "日程模板不存在"); }
+  previewScheduleTemplate(id: string, fromDate: string, toDate: string): never { void id; void fromDate; void toDate; throw new MockDomainError("REQUEST_INVALID", "模拟数据传输不支持日程模板"); }
+  applyScheduleTemplate(id: string, fromDate: string, toDate: string): never { void id; void fromDate; void toDate; throw new MockDomainError("REQUEST_INVALID", "模拟数据传输不支持日程模板"); }
+  getScheduleTemplateApplications() { return []; }
+  deleteScheduleTemplateApplication(id: string): never { void id; throw new MockDomainError("SCHEDULE_TEMPLATE_APPLICATION_NOT_FOUND", "模板应用批次不存在"); }
   getCalendarPayload(from?: string, to?: string) { return this.store.getCalendarPayload(from, to); }
   getIcsPreview() { return this.store.getIcsPreview(); }
   getDashboardPayload() { return this.store.getDashboardPayload(); }

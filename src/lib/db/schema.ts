@@ -143,6 +143,51 @@ export const scheduleImports = sqliteTable(
   (table) => [index("schedule_imports_user_created_idx").on(table.userId, table.createdAt)]
 );
 
+export const scheduleTemplates = sqliteTable(
+  "schedule_templates",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [index("schedule_templates_user_updated_idx").on(table.userId, table.updatedAt)]
+);
+
+export const scheduleTemplateItems = sqliteTable(
+  "schedule_template_items",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id").notNull().references(() => scheduleTemplates.id, { onDelete: "cascade" }),
+    weekdaysJson: text("weekdays_json").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    kind: text("kind", { enum: ["course", "plan", "other"] }).notNull(),
+    location: text("location"),
+    colorKey: text("color_key"),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    sortKey: text("sort_key").notNull(),
+  },
+  (table) => [index("schedule_template_items_template_order_idx").on(table.templateId, table.sortKey)]
+);
+
+export const scheduleTemplateApplications = sqliteTable(
+  "schedule_template_applications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    templateId: text("template_id").notNull().references(() => scheduleTemplates.id, { onDelete: "cascade" }),
+    templateName: text("template_name").notNull(),
+    fromDate: text("from_date").notNull(),
+    toDate: text("to_date").notNull(),
+    appliedAt: timestamp("applied_at"),
+  },
+  (table) => [index("schedule_template_applications_user_applied_idx").on(table.userId, table.appliedAt)]
+);
+
 export const scheduleBlocks = sqliteTable(
   "schedule_blocks",
   {
@@ -158,13 +203,17 @@ export const scheduleBlocks = sqliteTable(
     location: text("location"),
     colorKey: text("color_key"),
     recurrenceJson: text("recurrence_json"),
-    source: text("source", { enum: ["manual", "ics"] }).notNull(),
+    source: text("source", { enum: ["manual", "ics", "template"] }).notNull(),
     importId: text("import_id").references(() => scheduleImports.id, { onDelete: "cascade" }),
     sourceUid: text("source_uid"),
+    templateApplicationId: text("template_application_id").references(() => scheduleTemplateApplications.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
-  (table) => [index("schedule_blocks_user_range_idx").on(table.userId, table.startedAt)]
+  (table) => [
+    index("schedule_blocks_user_range_idx").on(table.userId, table.startedAt),
+    index("schedule_blocks_template_application_idx").on(table.templateApplicationId),
+  ]
 );
 
 export const schema = {
@@ -176,4 +225,7 @@ export const schema = {
   focusSegments,
   scheduleImports,
   scheduleBlocks,
+  scheduleTemplates,
+  scheduleTemplateItems,
+  scheduleTemplateApplications,
 };

@@ -9,6 +9,10 @@ import {
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleImport,
+  ScheduleTemplate,
+  ScheduleTemplateApplication,
+  ScheduleTemplateInput,
+  ScheduleTemplatePreview,
   UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
@@ -95,6 +99,14 @@ export interface ApplicationService {
   getScheduleBlocks(): ScheduleBlock[];
   getScheduleImports(): ScheduleImport[];
   deleteScheduleImport(id: string): void;
+  getScheduleTemplates(): ScheduleTemplate[];
+  createScheduleTemplate(input: ScheduleTemplateInput): ScheduleTemplate;
+  updateScheduleTemplate(id: string, input: ScheduleTemplateInput): ScheduleTemplate;
+  deleteScheduleTemplate(id: string): void;
+  previewScheduleTemplate(id: string, fromDate: string, toDate: string): ScheduleTemplatePreview;
+  applyScheduleTemplate(id: string, fromDate: string, toDate: string): ScheduleTemplateApplication;
+  getScheduleTemplateApplications(): ScheduleTemplateApplication[];
+  deleteScheduleTemplateApplication(id: string): void;
   addScheduleBlock(input: ScheduleBlockInput): ScheduleBlock;
   updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock;
   deleteScheduleBlock(id: string): void;
