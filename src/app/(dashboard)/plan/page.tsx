@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import * as Dialog from "@radix-ui/react-dialog";
 import { type DataSnapshot, useData } from "@/context/MockContext";
 import { SafeMarkdown } from "@/components/common/SafeMarkdown";
 import { Entry, EntryCompletionMode, WeekPlan } from "@/types/mock";
@@ -18,7 +19,36 @@ import {
   Tag,
   Calendar,
   Clock,
+  Search,
+  Trash2,
+  X,
 } from "lucide-react";
+
+type EntryFilter = "all" | "unfinished" | "completed" | "archived";
+
+const ActionButton: React.FC<{
+  label: string;
+  ariaLabel?: string;
+  className: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ label, ariaLabel = label, className, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={ariaLabel}
+    title={label}
+    className={`relative group/action p-1 rounded focus-visible:outline-none focus-visible:ring-2 ${className}`}
+  >
+    {children}
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute right-0 top-full z-40 mt-2 hidden whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1.5 text-[11px] font-normal text-white shadow-lg group-hover/action:block group-focus-visible/action:block dark:bg-zinc-700"
+    >
+      {label}
+    </span>
+  </button>
+);
 
 export default function PlanPage() {
   const { api, data, mutate } = useData();
@@ -29,8 +59,13 @@ export default function PlanPage() {
   );
   const weekPlan = data.currentWeekPlan ?? { weekStart: "", note: "", items: [] };
   const selectedWeek = weekPlan.weekStart || undefined;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [entryFilter, setEntryFilter] = useState<EntryFilter>("all");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [newMode, setNewMode] = useState<EntryCompletionMode>("completable");
+  const [newDueAt, setNewDueAt] = useState("");
   const mergeEntry = (snapshot: DataSnapshot, entry: Entry): DataSnapshot => ({
     ...snapshot,
     entries: snapshot.entries.some((item) => item.id === entry.id)
@@ -56,20 +91,90 @@ export default function PlanPage() {
     await mutate(() => api.addEntry({
       parentId: null,
       title: newTitle.trim(),
-      description: null,
+      description: newDescription.trim() || null,
       completionMode: newMode,
-      dueAt: null,
+      dueAt: newDueAt ? `${newDueAt}T23:59:59+08:00` : null,
     }), {
       backgroundRefresh: true,
       update: mergeEntry,
     });
     setNewTitle("");
+    setNewDescription("");
+    setNewMode("completable");
+    setNewDueAt("");
+    setIsCreateOpen(false);
   };
 
-  const rootEntries = entries.filter((e) => e.parentId === null);
+  const matchingEntries = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+    return entries.filter((entry) => {
+      const matchesFilter =
+        entryFilter === "all" ||
+        (entryFilter === "unfinished" && (entry.status === "active" || entry.status === "paused")) ||
+        (entryFilter === "completed" && entry.status === "completed") ||
+        (entryFilter === "archived" && entry.status === "archived");
+      const searchableText = `${entry.title} ${entry.description ?? ""}`.toLocaleLowerCase();
+      return matchesFilter && (!normalizedQuery || searchableText.includes(normalizedQuery));
+    });
+  }, [entries, entryFilter, searchQuery]);
+
+  const visibleEntryIds = useMemo(() => {
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    const visible = new Set<string>();
+    matchingEntries.forEach((entry) => {
+      let current: Entry | undefined = entry;
+      while (current) {
+        if (visible.has(current.id)) break;
+        visible.add(current.id);
+        current = current.parentId ? byId.get(current.parentId) : undefined;
+      }
+    });
+    return visible;
+  }, [entries, matchingEntries]);
+
+  const rootEntries = entries.filter((e) => e.parentId === null && visibleEntryIds.has(e.id));
+  const filterCounts = {
+    all: entries.length,
+    unfinished: entries.filter((entry) => entry.status === "active" || entry.status === "paused").length,
+    completed: entries.filter((entry) => entry.status === "completed").length,
+    archived: entries.filter((entry) => entry.status === "archived").length,
+  };
+
+  const handleDeleteEntry = async (entry: Entry) => {
+    const confirmed = window.confirm(
+      `确定删除“${entry.title}”及其所有子条目吗？\n\n删除后它们会从计划树和本周计划中隐藏，历史专注记录仍会保留。`
+    );
+    if (!confirmed) return;
+    await mutate(() => api.deleteEntry(entry.id), {
+      backgroundRefresh: true,
+      update: (snapshot) => {
+        const deletedIds = new Set<string>([entry.id]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          snapshot.entries.forEach((candidate) => {
+            if (candidate.parentId && deletedIds.has(candidate.parentId) && !deletedIds.has(candidate.id)) {
+              deletedIds.add(candidate.id);
+              changed = true;
+            }
+          });
+        }
+        return {
+          ...snapshot,
+          entries: snapshot.entries.filter((candidate) => !deletedIds.has(candidate.id)),
+          currentWeekPlan: snapshot.currentWeekPlan
+            ? {
+                ...snapshot.currentWeekPlan,
+                items: snapshot.currentWeekPlan.items.filter((item) => !deletedIds.has(item.entryId)),
+              }
+            : snapshot.currentWeekPlan,
+        };
+      },
+    });
+  };
 
   const renderTreeNode = (entry: Entry, depth: number = 0) => {
-    const children = entries.filter((e) => e.parentId === entry.id);
+    const children = entries.filter((e) => e.parentId === entry.id && visibleEntryIds.has(e.id));
     const hasChildren = children.length > 0;
     const isExpanded = expandedIds.has(entry.id);
     const isInWeekPlan = weekPlan.items.some((i) => i.entryId === entry.id);
@@ -155,6 +260,7 @@ export default function PlanPage() {
               {entry.completionMode === "completable" && <button
                 type="button"
                 aria-label={`查看 ${entry.title} 投入时长明细`}
+                title="查看投入时长明细"
                 className="flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 px-1.5 py-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
               >
                 <Clock className="w-3.5 h-3.5 text-zinc-400 group-hover/time:text-purple-500" aria-hidden="true" />
@@ -188,30 +294,30 @@ export default function PlanPage() {
             {/* Action buttons */}
             <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
               {isInWeekPlan ? (
-                <button
+                <ActionButton
                   onClick={() => void mutate(() => api.removeFromWeekPlan(entry.id, selectedWeek), {
                     backgroundRefresh: true,
                     update: mergeWeekPlan,
                   })}
-                  aria-label="从本周移出"
-                  className="p-1 rounded text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  label="从本周计划移出"
+                  className="text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 focus-visible:ring-amber-500"
                 >
                   <CalendarMinus className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
+                </ActionButton>
               ) : (
-                <button
+                <ActionButton
                   onClick={() => void mutate(() => api.addToWeekPlan(entry.id, selectedWeek), {
                     backgroundRefresh: true,
                     update: mergeWeekPlan,
                   })}
-                  aria-label="加入本周计划"
-                  className="p-1 rounded text-zinc-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                  label="加入本周计划"
+                  className="text-zinc-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 focus-visible:ring-purple-500"
                 >
                   <CalendarPlus className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
+                </ActionButton>
               )}
 
-              <button
+              <ActionButton
                 onClick={() =>
                   void mutate(() => api.updateEntry(entry.id, {
                     status:
@@ -221,17 +327,17 @@ export default function PlanPage() {
                     update: mergeEntry,
                   })
                 }
-                aria-label={entry.status === "completed" ? "标记为未完成" : "标记为已完成"}
-                className={`p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                label={entry.status === "completed" ? "标记为未完成" : "标记为已完成"}
+                className={`focus-visible:ring-emerald-500 ${
                   entry.status === "completed"
                     ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50"
                     : "text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-              </button>
+              </ActionButton>
 
-              <button
+              <ActionButton
                 onClick={() =>
                   void mutate(() => api.addEntry({
                     parentId: entry.id,
@@ -244,11 +350,19 @@ export default function PlanPage() {
                     update: mergeEntry,
                   })
                 }
-                aria-label="添加子条目"
-                className="p-1 rounded text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                label="添加子条目"
+                className="text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 focus-visible:ring-blue-500"
               >
                 <FolderPlus className="w-3.5 h-3.5" aria-hidden="true" />
-              </button>
+              </ActionButton>
+
+              <ActionButton
+                onClick={() => void handleDeleteEntry(entry)}
+                label="删除条目"
+                className="text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 focus-visible:ring-red-500"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -289,7 +403,7 @@ export default function PlanPage() {
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h2 className="font-semibold text-sm flex items-center gap-2 text-pretty">
                 <Tag className="w-4 h-4 text-blue-500" aria-hidden="true" />
-                <span>条目结构 ({entries.length} 个节点)</span>
+                <span>条目结构 ({matchingEntries.length} / {entries.length} 个节点)</span>
               </h2>
 
               <div className="flex items-center gap-2 text-[11px] text-zinc-500">
@@ -302,40 +416,92 @@ export default function PlanPage() {
               </div>
             </div>
 
-            {/* Quick Add Top Entry Form */}
-            <form onSubmit={handleCreateTopEntry} className="flex gap-2 text-xs">
+            {/* Search and creation controls stay separate so the tree remains visible while creating. */}
+            <div className="flex flex-col gap-2 text-xs sm:flex-row">
+              <label className="relative min-w-0 flex-1">
+                <span className="sr-only">搜索条目标题或描述</span>
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400"
+                  aria-hidden="true"
+                />
               <input
                 type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="快速添加顶层条目（例如：算法练习 / 论文阅读）…"
-                className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索条目标题或描述…"
+                aria-label="搜索条目标题或描述"
+                className="w-full rounded-lg border border-zinc-300 bg-transparent py-2 pl-9 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
               />
-              <select
-                value={newMode}
-                onChange={(e) => setNewMode(e.target.value as EntryCompletionMode)}
-                className="px-2.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <option value="completable">可完成型 (待办)</option>
-                <option value="ongoing">持续型 (长期方向)</option>
-              </select>
-              <button
-                type="submit"
-                className="px-3.5 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium hover:opacity-90 flex items-center gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-              >
-                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>创建</span>
-              </button>
-            </form>
+              </label>
+              <div className="flex gap-2">
+                <label className="min-w-0 flex-1 sm:flex-none">
+                  <span className="sr-only">筛选条目</span>
+                  <select
+                    value={entryFilter}
+                    onChange={(e) => setEntryFilter(e.target.value as EntryFilter)}
+                    aria-label="筛选条目"
+                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-2.5 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 sm:w-auto"
+                  >
+                    <option value="all">全部 ({filterCounts.all})</option>
+                    <option value="unfinished">未完成 ({filterCounts.unfinished})</option>
+                    <option value="completed">已完成 ({filterCounts.completed})</option>
+                    <option value="archived">已归档 ({filterCounts.archived})</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(true)}
+                  aria-label="新建顶层条目"
+                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-zinc-900 px-3.5 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>新建条目</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-500">
+              <span>
+                {searchQuery.trim() || entryFilter !== "all"
+                  ? `匹配 ${matchingEntries.length} 个条目，已保留必要的父级路径`
+                  : "按标题或描述搜索，也可以按状态筛选。"}
+              </span>
+              {(searchQuery || entryFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setEntryFilter("all");
+                  }}
+                  className="shrink-0 font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  清除筛选
+                </button>
+              )}
+            </div>
 
             {/* Render Tree */}
             <div className="space-y-1.5 pt-1">
-              {rootEntries.length > 0 ? (
+              {entries.length === 0 ? (
+                <p className="py-8 text-center text-xs text-zinc-400">
+                  尚未创建任何条目，请点击“新建条目”添加首个条目。
+                </p>
+              ) : rootEntries.length > 0 ? (
                 rootEntries.map((root) => renderTreeNode(root, 0))
               ) : (
-                <p className="text-xs text-zinc-400 py-8 text-center">
-                  尚未创建任何条目，请使用上方输入框添加首个条目。
-                </p>
+                <div className="py-8 text-center text-xs text-zinc-400">
+                  <p>没有符合当前搜索或筛选条件的条目。</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setEntryFilter("all");
+                    }}
+                    className="mt-2 font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    显示全部条目
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -376,16 +542,17 @@ export default function PlanPage() {
                       </span>
                     </div>
 
-                    <button
+                    <ActionButton
                       onClick={() => void mutate(() => api.removeFromWeekPlan(ent.id, selectedWeek), {
                         backgroundRefresh: true,
                         update: mergeWeekPlan,
                       })}
-                      aria-label="从该周移出"
-                      className="text-zinc-400 hover:text-red-500 p-1 rounded shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      label="从本周计划移出"
+                      ariaLabel="从该周移出"
+                      className="shrink-0 text-zinc-400 hover:bg-red-50 hover:text-red-500 focus-visible:ring-red-500 dark:hover:bg-red-950/40"
                     >
                       <CalendarMinus className="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
+                    </ActionButton>
                   </div>
                 );
               })}
@@ -404,6 +571,111 @@ export default function PlanPage() {
           />
         </div>
       </div>
+
+      <Dialog.Root open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" />
+          <Dialog.Content
+            aria-describedby={undefined}
+            className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-2xl animate-in fade-in zoom-in-95 duration-150 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+          >
+            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+              <div>
+                <Dialog.Title asChild>
+                  <h2 className="font-semibold text-base">新建顶层条目</h2>
+                </Dialog.Title>
+                <p className="mt-1 text-xs text-zinc-500">创建后仍会留在当前计划树中，方便继续整理。</p>
+              </div>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  aria-label="关闭新建条目对话框"
+                  title="关闭"
+                  className="rounded p-1 text-zinc-400 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-zinc-200"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <form onSubmit={handleCreateTopEntry} className="overflow-y-auto p-5 space-y-4 text-xs">
+              <div>
+                <label htmlFor="plan-new-entry-title" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                  条目标题
+                </label>
+                <input
+                  id="plan-new-entry-title"
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="例如：算法练习 / 论文阅读"
+                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label htmlFor="plan-new-entry-description" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                  描述 / 备注
+                </label>
+                <textarea
+                  id="plan-new-entry-description"
+                  rows={3}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="记录这个条目的背景、下一步或完成标准"
+                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="plan-new-entry-mode" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                    完成模式
+                  </label>
+                  <select
+                    id="plan-new-entry-mode"
+                    value={newMode}
+                    onChange={(e) => setNewMode(e.target.value as EntryCompletionMode)}
+                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
+                  >
+                    <option value="completable">可完成型 (待办)</option>
+                    <option value="ongoing">持续型 (长期方向)</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="plan-new-entry-due" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                    截止日期
+                  </label>
+                  <input
+                    id="plan-new-entry-due"
+                    type="date"
+                    value={newDueAt}
+                    onChange={(e) => setNewDueAt(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                <Dialog.Close asChild>
+                  <button type="button" className="rounded-md border border-zinc-300 px-3.5 py-2 font-medium text-zinc-600 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                    取消
+                  </button>
+                </Dialog.Close>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3.5 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  创建条目
+                </button>
+              </div>
+            </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

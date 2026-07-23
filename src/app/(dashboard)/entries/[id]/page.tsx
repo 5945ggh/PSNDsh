@@ -103,10 +103,10 @@ export default function EntryDetailPage() {
     }
   };
 
-  const handleDeletePermanent = async () => {
+  const handleDeleteEntry = async () => {
     if (
       confirm(
-        `确定要【永久删除】条目 “${entry.title}” 及其所有子节点吗？此操作无法撤销。`
+        `确定删除条目 “${entry.title}” 及其所有子节点吗？删除后它们会从计划树和本周计划中隐藏，历史专注记录仍会保留。`
       )
     ) {
       await mutate(() => api.deleteEntry(entry.id));
@@ -273,11 +273,11 @@ export default function EntryDetailPage() {
 
               <button
                 type="button"
-                onClick={handleDeletePermanent}
+                onClick={handleDeleteEntry}
                 className="flex items-center gap-1 px-3 py-1.5 rounded border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 font-medium"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>永久删除</span>
+                <span>删除条目</span>
               </button>
             </div>
 

@@ -61,7 +61,10 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   await page.getByLabel("确认密码").fill(password);
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await page.getByRole("link", { name: "计划", exact: true }).click();
-  await page.getByPlaceholder(/快速添加顶层条目/).fill(entryTitle);
+  await page.getByRole("button", { name: "新建顶层条目" }).click();
+  const createDialog = page.getByRole("dialog", { name: "新建顶层条目" });
+  await createDialog.getByLabel("条目标题").fill(entryTitle);
+  await createDialog.getByLabel("描述 / 备注").fill("用于搜索和日常计划验证");
   let releaseBackgroundDashboardRequest!: () => void;
   let finishBackgroundDashboardRequest: (() => void) | null = null;
   const backgroundDashboardRequestFinished = new Promise<void>((resolve) => {
@@ -74,8 +77,14 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
     await route.continue();
     finishBackgroundDashboardRequest?.();
   });
-  await page.getByRole("button", { name: "创建" }).click();
+  await createDialog.getByRole("button", { name: "创建条目" }).click();
   await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
+  await page.getByPlaceholder("搜索条目标题或描述…").fill("日常计划");
+  await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
+  await page.getByLabel("筛选条目").selectOption("unfinished");
+  await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
+  await page.getByPlaceholder("搜索条目标题或描述…").fill("");
+  await page.getByLabel("筛选条目").selectOption("all");
   await expect(page.getByText("正在恢复工作台...")).toHaveCount(0);
   releaseBackgroundDashboardRequest();
   await backgroundDashboardRequestFinished;
@@ -100,6 +109,11 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   const ownerEntries = await page.request.get("/api/v1/entries");
   const ownerEntry = (await ownerEntries.json()).data.find((entry: { title: string }) => entry.title === entryTitle);
   expect(ownerEntry).toBeTruthy();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  const entryRow = page.getByText(entryTitle, { exact: true }).locator("..").locator("..");
+  await entryRow.getByLabel("删除条目").click();
+  await expect(page.getByText(entryTitle, { exact: true })).toHaveCount(0);
 
   const contextB = await browser.newContext({ baseURL });
   const pageB = await contextB.newPage();
