@@ -1,0 +1,161 @@
+src/lib/api/client.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 19,103,112,302-308,339-344
+  s_3123a9fd649540::t_27178465625999 16,313-314,320-321
+  s_1175c4d4280d55::t_1378e5295b7433 105-106,315-319,322-326
+  s_3123a9fd649540::t_659fd3098b8f11 9,27-102,104,107-111,113-115,117-301,309-312,327-338,345
+src/app/api/v1/calendar/route.ts
+  s_1d3fc35ed10de6::t_c71be09d160ba3 2,6-11
+src/components/common/SafeMarkdown.test.tsx
+  s_1d3fc35ed10de6::t_777cba693e1f7f 1-33
+src/app/(dashboard)/entries/[id]/page.tsx
+  s_1175c4d4280d55::t_6a1a7db4d8b8ac 78-83,93-99
+  s_3123a9fd649540::t_080cec3c1fe62c 6,25,28-30,60,68,71,91-92,100-103,106,112
+src/lib/persistence/sqlite-service.ts
+  s_3123a9fd649540::t_155d28782acda0 306-308
+  s_1175c4d4280d55::t_20d466198fcf60 42,678-716
+  s_1d3fc35ed10de6::t_c69cbc754ec41f 39,569-583,593-611,717
+  s_1175c4d4280d55::t_1378e5295b7433 300,618-637
+  s_1175c4d4280d55::t_9fdcec7d0a0693 22,720,731,738-741
+  s_1d3fc35ed10de6::t_9ae71ef66e33f7 612
+  s_1d3fc35ed10de6::t_d385014ad84f66 718
+src/app/api/auth/register/route.ts
+  s_3123a9fd649540::t_155d28782acda0 3,14
+src/context/FocusTimerContext.tsx
+  s_3123a9fd649540::t_9684227bdff8f9 4,15,21,29-30,66,90,96,108-113
+  s_1175c4d4280d55::t_a94938f7bd28ea 68-78,97-107
+src/app/(dashboard)/layout.tsx
+  s_3123a9fd649540::t_fc8649e13eaa67 3-4,7,16-36
+src/lib/api/adapter.ts
+  s_3123a9fd649540::t_659fd3098b8f11 1-37,45-49,68-74,76,83-84,87-94,96-100
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 75,85-86
+  s_3123a9fd649540::t_12cf66636d8800 38-44,50-67
+  s_1175c4d4280d55::t_1378e5295b7433 77-82
+  s_3123a9fd649540::t_0f6099cc7f94d8 95
+src/app/(auth)/login/page.tsx
+  s_3123a9fd649540::t_09000d1a674e25 3,6,11-12,18-22,27,54,61,71,78,89,92,97
+src/lib/api/http.ts
+  s_3123a9fd649540::t_155d28782acda0 1,3,8-10,12-29,31,33-101,111-116,118-119,127-135,147
+  s_1175c4d4280d55::t_1378e5295b7433 117
+  s_3123a9fd649540::t_cf56e8e6935680 120-126,138-140
+src/app/api/v1/me/route.ts
+  s_1175c4d4280d55::t_137ab99d723f89 1,10
+src/components/focus/FocusSplitModal.tsx
+  s_3123a9fd649540::t_a589f3882add03 6,23-24
+src/app/api/v1/entries/[id]/route.ts
+  s_3123a9fd649540::t_10b33e84e37f01 3,18-19
+src/app/(dashboard)/page.tsx
+  s_3123a9fd649540::t_9e25dc021b94bf 5,20,23-26
+src/components/focus/FocusManualModal.tsx
+  s_1175c4d4280d55::t_6a1a7db4d8b8ac 37-42
+  s_3123a9fd649540::t_49cead608b6441 6,11-12,14-15,23,27-28,31,87-88,91,93-108,201,204
+src/app/(dashboard)/settings/page.tsx
+  s_1175c4d4280d55::t_de124c7a39d682 5,8,121,132,134-146
+  s_1175c4d4280d55::t_6a1a7db4d8b8ac 17-26
+  s_3123a9fd649540::t_e254d46c38c497 4,9,14,16,27-30,54,58,67,71,81,85,101,105,129-131
+src/app/api/v1/schedule-blocks/route.ts
+  s_1d3fc35ed10de6::t_c71be09d160ba3 2
+.gitignore
+  s_1175c4d4280d55::t_c197a626927e94 5,17-22
+  s_1175c4d4280d55::t_f657f4179df2ea 16
+src/components/common/SafeMarkdown.tsx
+  s_1d3fc35ed10de6::t_2825294809f95e 1-179
+src/components/layout/GlobalFocusBar.tsx
+  s_3123a9fd649540::t_a589f3882add03 5,16,20
+src/lib/mock/api.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 39,45
+src/context/MockContext.tsx
+  s_3123a9fd649540::t_e419999b3047fc 176-179
+  s_3123a9fd649540::t_659fd3098b8f11 3-29,31-44,51,56-66,68-69,71-72,75-89,91-92,94-127,130-135,137-140,143,148-159,161-164,166-170,172-175,180-186,188-190,192-195,207-227,229-261,264-267,269,271-274
+  s_3123a9fd649540::t_12cf66636d8800 160
+  s_1175c4d4280d55::t_a94938f7bd28ea 45-50,52-55,67,70,142,144-147,171,191,196-206
+src/lib/mock/service.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 7,43,184-188
+  s_1175c4d4280d55::t_f7a48321747b94 9,49-61
+  s_1d3fc35ed10de6::t_c8310019657892 62,189-194
+src/app/api/auth/logout/route.ts
+  s_3123a9fd649540::t_155d28782acda0 2,6
+src/lib/api/http.test.ts
+  s_3123a9fd649540::t_232c4180bd48e3 2-14,16-19,21-32,34-47,50-51,53-66,68-74
+  s_3123a9fd649540::t_cf56e8e6935680 67
+  s_3123a9fd649540::t_6839665cddebdf 1,15,20,33,48-49,52
+src/lib/application/error.ts
+  s_3123a9fd649540::t_155d28782acda0 15
+  s_1175c4d4280d55::t_1378e5295b7433 16-18
+src/lib/persistence/sqlite-service.test.ts
+  s_1175c4d4280d55::t_11edfd54913ccf 156-175
+  s_1d3fc35ed10de6::t_c856d269527df1 99-155
+  s_1175c4d4280d55::t_9856d833560c07 237-278
+  s_3123a9fd649540::t_b62bce044c6d3f 219-222
+  s_1175c4d4280d55::t_9fdcec7d0a0693 223-236
+src/app/(dashboard)/statistics/page.tsx
+  s_1d3fc35ed10de6::t_ac1d29626d5e61 20-22,25,29,35
+  s_1d3fc35ed10de6::t_fe3e0f7a033838 3,17,24,26-28,30-34
+  s_3123a9fd649540::t_080cec3c1fe62c 4,36-39
+src/lib/application/contract.test.ts
+  s_1175c4d4280d55::t_137ab99d723f89 1-23
+src/app/(dashboard)/plan/page.tsx
+  s_1d3fc35ed10de6::t_2825294809f95e 6,398,403,413,417-442,452-454,456,461-465,467-471,473-484
+  s_1d3fc35ed10de6::t_445197f7a0315e 396
+  s_1d3fc35ed10de6::t_4f66ea0c43e5ed 466
+  s_1175c4d4280d55::t_a09eeba6071cfe 5,34-43,62-64,192-195,203-206,219-221,242-244,380-383,399-402
+  s_3123a9fd649540::t_7559c453357cb3 24-25,30-31,53,56,216,236,279-280
+src/types/mock.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 110-111
+  s_1175c4d4280d55::t_9fdcec7d0a0693 166-167
+  s_1175c4d4280d55::t_f7a48321747b94 187-197
+src/app/api/v1/schedule-blocks/[id]/route.ts
+  s_1d3fc35ed10de6::t_c71be09d160ba3 1-11
+src/app/(auth)/register/page.tsx
+  s_3123a9fd649540::t_09000d1a674e25 3,6,11-12,19-23,46,51,78,85,96,103,114,121,133,136
+src/lib/mock/store.test.ts
+  s_1d3fc35ed10de6::t_c856d269527df1 96-120
+src/components/layout/AppShell.tsx
+  s_3123a9fd649540::t_fc8649e13eaa67 8,16,21-27,87-88,100-109
+src/components/layout/ScenarioSwitcher.tsx
+  s_3123a9fd649540::t_a1a47ca4dfb796 4,9,20
+  s_3123a9fd649540::t_04973fc3c94544 21
+src/lib/application/contract.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 11,96,98
+  s_1175c4d4280d55::t_137ab99d723f89 17-26
+  s_1d3fc35ed10de6::t_c69cbc754ec41f 3
+  s_1175c4d4280d55::t_f7a48321747b94 14,101
+src/lib/mock/store.ts
+  s_1d3fc35ed10de6::t_e7bb3e24815fb9 14,535-548,568-581
+  s_1175c4d4280d55::t_9fdcec7d0a0693 686-687
+  s_1d3fc35ed10de6::t_48971ecaa41303 26
+  s_1d3fc35ed10de6::t_be85ebba600027 582
+src/app/api/auth/login/route.ts
+  s_3123a9fd649540::t_155d28782acda0 3,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0fe7236a5bfedad8068830e894ee0aaa9071f324",
+  "prompts": {},
+  "sessions": {
+    "s_1175c4d4280d55": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8a0d-33cc-7842-960a-74eb411f3494",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_1d3fc35ed10de6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8811-b272-7e61-81b9-1435970d7d34",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_3123a9fd649540": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f87e1-347e-7d81-a201-80d97fdfb7e0",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
