@@ -56,7 +56,7 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await page.getByRole("link", { name: "计划", exact: true }).click();
   await page.getByPlaceholder(/快速添加顶层条目/).fill(entryTitle);
-  let releaseBackgroundDashboardRequest: (() => void) | null = null;
+  let releaseBackgroundDashboardRequest!: () => void;
   let finishBackgroundDashboardRequest: (() => void) | null = null;
   const backgroundDashboardRequestFinished = new Promise<void>((resolve) => {
     finishBackgroundDashboardRequest = resolve;
@@ -71,7 +71,7 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   await page.getByRole("button", { name: "创建" }).click();
   await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
   await expect(page.getByText("正在恢复工作台...")).toHaveCount(0);
-  releaseBackgroundDashboardRequest?.();
+  releaseBackgroundDashboardRequest();
   await backgroundDashboardRequestFinished;
   await page.unroute("**/api/v1/dashboard");
 

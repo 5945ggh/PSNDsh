@@ -40,6 +40,8 @@ export class MockApplicationService implements ApplicationService {
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
+  getScheduleImports() { return []; }
+  deleteScheduleImport(id: string) { void id; throw new MockDomainError("SCHEDULE_NOT_FOUND", "导入批次不存在"); }
   getCalendarPayload(from?: string, to?: string) { return this.store.getCalendarPayload(from, to); }
   getIcsPreview() { return this.store.getIcsPreview(); }
   getDashboardPayload() { return this.store.getDashboardPayload(); }

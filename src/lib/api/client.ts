@@ -16,6 +16,7 @@ import {
   IcsImportPreview,
   ScheduleBlock,
   ScheduleBlockInput,
+  ScheduleImport,
   UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
@@ -99,6 +100,8 @@ export interface ApiAdapter {
   addManualFocusSession(input: ManualFocusInput): Promise<FocusSession>;
 
   getScheduleBlocks(): Promise<ScheduleBlock[]>;
+  getScheduleImports(): Promise<ScheduleImport[]>;
+  deleteScheduleImport(id: string): Promise<void>;
   addScheduleBlock(input: ScheduleBlockInput): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): Promise<ScheduleBlock>;
   deleteScheduleBlock(id: string): Promise<void>;
@@ -290,6 +293,14 @@ export class PersistentApiAdapter implements ApiAdapter {
 
   getScheduleBlocks() {
     return this.request<ScheduleBlock[]>("/api/v1/schedule-blocks");
+  }
+
+  getScheduleImports() {
+    return this.request<ScheduleImport[]>("/api/v1/schedule-blocks/imports");
+  }
+
+  deleteScheduleImport(id: string) {
+    return this.request<void>(`/api/v1/schedule-blocks/imports/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
   addScheduleBlock(input: ScheduleBlockInput) {

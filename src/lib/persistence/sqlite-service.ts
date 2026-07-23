@@ -6,6 +6,7 @@ import {
   focusSegments,
   focusSessions,
   scheduleBlocks,
+  scheduleImports,
   users,
   weekPlanEntries,
   weekPlans,
@@ -35,6 +36,7 @@ import {
   FocusSession,
   ScheduleBlock,
   ScheduleBlockInput,
+  ScheduleImport,
   ScheduleRecurrence,
   UpdateScheduleBlockInput,
   StatisticsPayload,
@@ -126,6 +128,16 @@ const zonedMidnight = (dateKey: string, timezone: string) => {
   return rough.getTime() - getTimezoneOffsetMs(rough, timezone);
 };
 
+const zonedDateTime = (dateKey: string, hour: number, minute: number, second: number, timezone: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const localMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  let instant = localMs;
+  for (let index = 0; index < 2; index += 1) {
+    instant = localMs - getTimezoneOffsetMs(new Date(instant), timezone);
+  }
+  return new Date(instant);
+};
+
 const mondayOf = (dateKey: string) => {
   const [year, month, day] = dateKey.split("-").map(Number);
   const value = new Date(Date.UTC(year, month - 1, day));
@@ -133,6 +145,18 @@ const mondayOf = (dateKey: string) => {
   const distance = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   value.setUTCDate(value.getUTCDate() - distance);
   return value.toISOString().slice(0, 10);
+};
+
+const daysBetween = (from: string, to: string) => {
+  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+  const [toYear, toMonth, toDay] = to.split("-").map(Number);
+  return Math.round((Date.UTC(toYear, toMonth - 1, toDay) - Date.UTC(fromYear, fromMonth - 1, fromDay)) / 86_400_000);
+};
+
+const weekdayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
+const weekdayFor = (dateKey: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return weekdayCodes[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
 };
 
 const hashPassword = (password: string) => {
@@ -279,12 +303,16 @@ export class SqliteApplicationService implements ApplicationService {
       id: row.id,
       kind: row.kind,
       title: row.title,
+      description: row.description,
       startedAt: row.startedAt,
       endedAt: row.endedAt,
       location: row.location,
       colorKey: row.colorKey,
       recurrence,
       recurrenceLabel: recurrence ? `每周重复 (${recurrence.weekdays.join(", ")})` : null,
+      source: row.source,
+      importId: row.importId,
+      sourceUid: row.sourceUid,
     };
   }
 
@@ -566,6 +594,46 @@ export class SqliteApplicationService implements ApplicationService {
     return this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.userId, this.requireUserId())).orderBy(asc(scheduleBlocks.startedAt)).all().map((row) => this.toSchedule(row));
   }
 
+  private expandScheduleForRange(block: ScheduleBlock, from: string, to: string): ScheduleBlock[] {
+    if (!block.recurrence) {
+      return parseDate(block.startedAt) < parseDate(to) && parseDate(block.endedAt) > parseDate(from) ? [block] : [];
+    }
+
+    const startDate = localDateKey(new Date(block.startedAt), this.timezone);
+    const fromDate = localDateKey(new Date(from), this.timezone);
+    const toDate = localDateKey(new Date(to), this.timezone);
+    const startParts = getParts(new Date(block.startedAt), this.timezone);
+    const durationMs = parseDate(block.endedAt) - parseDate(block.startedAt);
+    // Include the previous local date so an overnight instance can overlap the range start.
+    const firstDate = daysBetween(startDate, fromDate) > 0
+      ? shiftDateKey(fromDate, -1)
+      : startDate;
+    const lastDate = daysBetween(startDate, toDate) > 0 ? toDate : startDate;
+    const instances: ScheduleBlock[] = [];
+
+    for (let offset = 0; offset <= daysBetween(firstDate, lastDate); offset += 1) {
+      const dateKey = shiftDateKey(firstDate, offset);
+      const elapsedDays = daysBetween(startDate, dateKey);
+      if (elapsedDays < 0) continue;
+      const weekIndex = Math.floor(elapsedDays / 7);
+      if (weekIndex % block.recurrence.interval !== 0 || !block.recurrence.weekdays.includes(weekdayFor(dateKey))) continue;
+      if (block.recurrence.until && dateKey > block.recurrence.until.slice(0, 10)) continue;
+
+      const startedAt = zonedDateTime(dateKey, startParts.hour, startParts.minute, startParts.second, this.timezone);
+      const endedAt = new Date(startedAt.getTime() + durationMs);
+      if (startedAt.getTime() < parseDate(to) && endedAt.getTime() > parseDate(from)) {
+        instances.push({
+          ...block,
+          id: `${block.id}::${dateKey}`,
+          recurrenceSourceId: block.id,
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
+        });
+      }
+    }
+    return instances;
+  }
+
   getCalendarPayload(from?: string, to?: string) {
     if (!from || !to) {
       return { scheduleBlocks: this.getScheduleBlocks(), focusSessions: this.getFocusSessions() };
@@ -576,7 +644,7 @@ export class SqliteApplicationService implements ApplicationService {
     const overlaps = (startedAt: string, endedAt: string | null) =>
       parseDate(startedAt) < toMs && parseDate(endedAt ?? nowIso(this.clock)) > fromMs;
     return {
-      scheduleBlocks: this.getScheduleBlocks().filter((block) => overlaps(block.startedAt, block.endedAt)),
+      scheduleBlocks: this.getScheduleBlocks().flatMap((block) => this.expandScheduleForRange(block, from, to)),
       focusSessions: this.getFocusSessions().filter((session) => overlaps(session.startedAt, session.endedAt)),
     };
   }
@@ -585,17 +653,19 @@ export class SqliteApplicationService implements ApplicationService {
     const userId = this.requireUserId();
     assertPositiveRange(input.startedAt, input.endedAt);
     const createdAt = nowIso(this.clock);
-    const row: typeof scheduleBlocks.$inferInsert = { id: randomUUID(), userId, kind: input.kind, title: input.title.trim(), startedAt: input.startedAt, endedAt: input.endedAt, location: input.location ?? null, colorKey: input.colorKey ?? "blue", recurrenceJson: input.recurrence ? JSON.stringify(input.recurrence) : null, source: "manual", createdAt, updatedAt: createdAt };
+    const row: typeof scheduleBlocks.$inferInsert = { id: randomUUID(), userId, kind: input.kind, title: input.title.trim(), description: normalizeOptionalText(input.description), startedAt: input.startedAt, endedAt: input.endedAt, location: input.location ?? null, colorKey: input.colorKey ?? "blue", recurrenceJson: input.recurrence ? JSON.stringify(input.recurrence) : null, source: "manual", importId: null, sourceUid: null, createdAt, updatedAt: createdAt };
     this.db.insert(scheduleBlocks).values(row).run();
     return this.toSchedule(this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, row.id)).get() as ScheduleRow);
   }
 
   updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock {
-    const current = this.db.select().from(scheduleBlocks).where(and(eq(scheduleBlocks.id, id), eq(scheduleBlocks.userId, this.requireUserId()))).get();
+    const baseId = id.split("::", 1)[0]!;
+    const current = this.db.select().from(scheduleBlocks).where(and(eq(scheduleBlocks.id, baseId), eq(scheduleBlocks.userId, this.requireUserId()))).get();
     if (!current) throw new ApplicationError("SCHEDULE_NOT_FOUND", "日程不存在");
     const next = {
       kind: input.kind ?? current.kind,
       title: input.title === undefined ? current.title : input.title.trim(),
+      description: input.description === undefined ? current.description : normalizeOptionalText(input.description),
       startedAt: input.startedAt ?? current.startedAt,
       endedAt: input.endedAt ?? current.endedAt,
       location: input.location === undefined ? current.location : normalizeOptionalText(input.location),
@@ -611,30 +681,67 @@ export class SqliteApplicationService implements ApplicationService {
   }
 
   deleteScheduleBlock(id: string): void {
-    const result = this.db.delete(scheduleBlocks).where(and(eq(scheduleBlocks.id, id), eq(scheduleBlocks.userId, this.requireUserId()))).run();
+    const baseId = id.split("::", 1)[0]!;
+    const result = this.db.delete(scheduleBlocks).where(and(eq(scheduleBlocks.id, baseId), eq(scheduleBlocks.userId, this.requireUserId()))).run();
     if (result.changes === 0) throw new ApplicationError("SCHEDULE_NOT_FOUND", "日程不存在");
   }
 
-  importIcsScheduleBlocks(blocks: ScheduleBlockInput[]): number {
+  importIcsScheduleBlocks(blocks: Array<ScheduleBlockInput & { sourceUid?: string }>, fileName = "导入日程.ics"): number {
     const userId = this.requireUserId();
     const createdAt = nowIso(this.clock);
+    const existingSourceUids = new Set(
+      this.db.select({ sourceUid: scheduleBlocks.sourceUid })
+        .from(scheduleBlocks)
+        .where(eq(scheduleBlocks.userId, userId))
+        .all()
+        .map((row) => row.sourceUid)
+        .filter((sourceUid): sourceUid is string => Boolean(sourceUid))
+    );
+    const newBlocks = blocks.filter((block) => !block.sourceUid || !existingSourceUids.has(block.sourceUid));
+    if (newBlocks.length === 0) return 0;
+    const importId = randomUUID();
     this.db.transaction((tx) => {
-      tx.insert(scheduleBlocks).values(blocks.map((block) => ({
+      tx.insert(scheduleImports).values({ id: importId, userId, fileName: fileName.trim() || "导入日程.ics", createdAt }).run();
+      tx.insert(scheduleBlocks).values(newBlocks.map((block) => ({
         id: randomUUID(),
         userId,
         kind: block.kind,
         title: block.title.trim(),
+        description: normalizeOptionalText(block.description),
         startedAt: block.startedAt,
         endedAt: block.endedAt,
         location: normalizeOptionalText(block.location),
         colorKey: block.colorKey ?? "purple",
         recurrenceJson: null,
         source: "ics" as const,
+        importId,
+        sourceUid: block.sourceUid ?? null,
         createdAt,
         updatedAt: createdAt,
       }))).run();
     });
-    return blocks.length;
+    return newBlocks.length;
+  }
+
+  getScheduleImports(): ScheduleImport[] {
+    const userId = this.requireUserId();
+    return this.db.select().from(scheduleImports)
+      .where(eq(scheduleImports.userId, userId))
+      .orderBy(desc(scheduleImports.createdAt)).all()
+      .map((row) => ({
+        id: row.id,
+        fileName: row.fileName,
+        importedAt: row.createdAt,
+        blockCount: this.db.select({ count: sql<number>`count(*)` }).from(scheduleBlocks)
+          .where(eq(scheduleBlocks.importId, row.id)).get()?.count ?? 0,
+      }));
+  }
+
+  deleteScheduleImport(id: string): void {
+    const userId = this.requireUserId();
+    const result = this.db.delete(scheduleImports)
+      .where(and(eq(scheduleImports.id, id), eq(scheduleImports.userId, userId))).run();
+    if (result.changes === 0) throw new ApplicationError("SCHEDULE_NOT_FOUND", "导入批次不存在");
   }
 
   private rangeForScale(scale: "day" | "week" | "month" = "week") {

@@ -551,6 +551,7 @@ export class MockDataStore {
       id: `sch_${Date.now()}`,
       kind: input.kind,
       title: input.title,
+      description: input.description ?? null,
       startedAt: input.startedAt,
       endedAt: input.endedAt,
       location: input.location,

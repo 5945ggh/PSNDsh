@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { IcsImportModal } from "@/components/calendar/IcsImportModal";
+import { ScheduleImportManager } from "@/components/calendar/ScheduleImportManager";
 import { ScheduleEditorModal } from "@/components/calendar/ScheduleEditorModal";
 import { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/types/mock";
 import {
@@ -21,6 +22,7 @@ import {
   X,
   Trash2,
   Pencil,
+  FileStack,
 } from "lucide-react";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
@@ -103,6 +105,7 @@ export default function CalendarPage() {
   const getEntryById = (id: string) => entries.find((entry) => entry.id === id);
 
   const [isIcsOpen, setIsIcsOpen] = useState(false);
+  const [isImportManagerOpen, setIsImportManagerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact" | "day">("grid");
   const [hasChosenViewMode, setHasChosenViewMode] = useState(false);
   const [trackFilter, setTrackFilter] = useState<"both" | "schedule" | "focus">("both");
@@ -366,6 +369,15 @@ export default function CalendarPage() {
           >
             <Upload className="w-3.5 h-3.5" aria-hidden="true" />
             <span>导入日程表</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportManagerOpen(true)}
+            aria-label="管理导入批次"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <FileStack className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>管理导入批次</span>
           </button>
 
           <button
@@ -945,6 +957,15 @@ export default function CalendarPage() {
                 </div>
               )}
 
+              {activeScheduleModal.description && (
+                <div>
+                  <span className="text-zinc-400">备注</span>
+                  <div className="mt-0.5 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
+                    {activeScheduleModal.description}
+                  </div>
+                </div>
+              )}
+
               {activeScheduleModal.recurrenceLabel && (
                 <div>
                   <span className="text-zinc-400">重复规则</span>
@@ -988,6 +1009,7 @@ export default function CalendarPage() {
 
       {scheduleEditor && (
         <ScheduleEditorModal
+          key={scheduleEditor === "new" ? "new" : scheduleEditor.id}
           schedule={scheduleEditor === "new" ? null : scheduleEditor}
           defaultDate={selectedDay}
           onClose={() => setScheduleEditor(null)}
@@ -997,6 +1019,11 @@ export default function CalendarPage() {
 
       {/* ICS Modal */}
       <IcsImportModal isOpen={isIcsOpen} onClose={() => setIsIcsOpen(false)} />
+      <ScheduleImportManager
+        isOpen={isImportManagerOpen}
+        onClose={() => setIsImportManagerOpen(false)}
+        onChanged={refreshCalendar}
+      />
     </div>
   );
 }

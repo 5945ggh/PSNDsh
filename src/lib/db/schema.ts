@@ -130,6 +130,19 @@ export const focusSegments = sqliteTable(
   ]
 );
 
+export const scheduleImports = sqliteTable(
+  "schedule_imports",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fileName: text("file_name").notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  (table) => [index("schedule_imports_user_created_idx").on(table.userId, table.createdAt)]
+);
+
 export const scheduleBlocks = sqliteTable(
   "schedule_blocks",
   {
@@ -139,12 +152,15 @@ export const scheduleBlocks = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     kind: text("kind", { enum: ["course", "plan", "other"] }).notNull(),
     title: text("title").notNull(),
+    description: text("description"),
     startedAt: timestamp("started_at"),
     endedAt: timestamp("ended_at"),
     location: text("location"),
     colorKey: text("color_key"),
     recurrenceJson: text("recurrence_json"),
     source: text("source", { enum: ["manual", "ics"] }).notNull(),
+    importId: text("import_id").references(() => scheduleImports.id, { onDelete: "cascade" }),
+    sourceUid: text("source_uid"),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
@@ -158,5 +174,6 @@ export const schema = {
   weekPlanEntries,
   focusSessions,
   focusSegments,
+  scheduleImports,
   scheduleBlocks,
 };

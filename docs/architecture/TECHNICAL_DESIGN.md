@@ -258,6 +258,7 @@ REGISTRATION_MODE=first-user
 | `/api/v1/focus/current` | 当前计时读取、开始与结束 |
 | `/api/v1/focus/sessions` | 查询、补录、编辑、拆分与删除策略 |
 | `/api/v1/schedule-blocks` | 日程 CRUD 和手工重复规则 |
+| `/api/v1/schedule-blocks/imports` | 当前账号的 ICS 导入批次查询与整批删除 |
 | `/api/v1/schedule-blocks/imports/ics/preview` | 解析不超过 1 MiB 的 ICS 文本，返回当前账号的短期预览 |
 | `/api/v1/schedule-blocks/imports/ics/:importId/confirm` | 一次性消费当前账号预览并写入所选具体日程 |
 | `/api/v1/calendar` | 给定范围内的日程与专注联合只读数据 |

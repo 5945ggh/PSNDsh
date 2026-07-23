@@ -8,6 +8,7 @@ import {
   FocusSession,
   ScheduleBlock,
   ScheduleBlockInput,
+  ScheduleImport,
   UpdateScheduleBlockInput,
   StatisticsPayload,
   UserProfile,
@@ -92,6 +93,8 @@ export interface ApplicationService {
   addManualFocusSession(input: ManualFocusInput): FocusSession;
 
   getScheduleBlocks(): ScheduleBlock[];
+  getScheduleImports(): ScheduleImport[];
+  deleteScheduleImport(id: string): void;
   addScheduleBlock(input: ScheduleBlockInput): ScheduleBlock;
   updateScheduleBlock(id: string, input: UpdateScheduleBlockInput): ScheduleBlock;
   deleteScheduleBlock(id: string): void;

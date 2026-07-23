@@ -29,6 +29,12 @@ const toDateTimeLocal = (value: string) => {
 
 const defaultDateTime = (date: string, hour: string) => `${date}T${hour}`;
 const toShanghaiIso = (value: string) => `${value}:00+08:00`;
+const weekdayCodes = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
+const weekdayLabels = ["一", "二", "三", "四", "五", "六", "日"];
+const defaultWeekday = (date: string) => {
+  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return weekdayCodes[day === 0 ? 6 : day - 1];
+};
 
 export function ScheduleEditorModal({
   schedule,
@@ -39,6 +45,7 @@ export function ScheduleEditorModal({
   const isEditing = schedule !== null;
   const [title, setTitle] = useState(schedule?.title ?? "");
   const [kind, setKind] = useState<ScheduleBlockInput["kind"]>(schedule?.kind ?? "course");
+  const [description, setDescription] = useState(schedule?.description ?? "");
   const [startedAt, setStartedAt] = useState(
     schedule ? toDateTimeLocal(schedule.startedAt) : defaultDateTime(defaultDate, "09:00")
   );
@@ -47,6 +54,11 @@ export function ScheduleEditorModal({
   );
   const [location, setLocation] = useState(schedule?.location ?? "");
   const [colorKey, setColorKey] = useState(schedule?.colorKey ?? "blue");
+  const [repeatWeekly, setRepeatWeekly] = useState(Boolean(schedule?.recurrence));
+  const [weekdays, setWeekdays] = useState<Array<(typeof weekdayCodes)[number]>>(
+    schedule?.recurrence?.weekdays ?? [defaultWeekday(schedule?.startedAt ? toDateTimeLocal(schedule.startedAt).slice(0, 10) : defaultDate)]
+  );
+  const [until, setUntil] = useState(schedule?.recurrence?.until?.slice(0, 10) ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -60,17 +72,27 @@ export function ScheduleEditorModal({
       setError("结束时间必须晚于开始时间");
       return;
     }
+    if (repeatWeekly && weekdays.length === 0) {
+      setError("请至少选择一个重复日");
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
       await onSave({
         title: title.trim(),
+        description: description.trim() || null,
         kind,
         startedAt: toShanghaiIso(startedAt),
         endedAt: toShanghaiIso(endedAt),
         location: location.trim() || null,
         colorKey,
-        recurrence: schedule?.recurrence ?? null,
+        recurrence: repeatWeekly ? {
+          frequency: "weekly",
+          interval: 1,
+          weekdays,
+          until: until ? `${until}T23:59:59+08:00` : null,
+        } : null,
       });
       onClose();
     } catch (saveError) {
@@ -128,6 +150,40 @@ export function ScheduleEditorModal({
             <span className="font-medium">地点</span>
             <input id="schedule-location" aria-label="地点" value={location} onChange={(event) => setLocation(event.target.value)} className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-950" />
           </label>
+
+          <label className="block space-y-1" htmlFor="schedule-description">
+            <span className="font-medium">备注</span>
+            <textarea id="schedule-description" aria-label="日程备注" value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="例如课程要求、线上会议链接或准备事项" className="w-full resize-y rounded-md border border-zinc-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-950" />
+          </label>
+
+          <fieldset className="space-y-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+            <legend className="px-1 text-sm font-medium">重复规则</legend>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={repeatWeekly} onChange={(event) => setRepeatWeekly(event.target.checked)} className="rounded text-blue-600 focus:ring-blue-500" />
+              <span>每周重复</span>
+            </label>
+            {repeatWeekly && (
+              <div className="space-y-2 pl-6">
+                <div className="flex flex-wrap gap-2" aria-label="重复星期">
+                  {weekdayCodes.map((code, index) => (
+                    <label key={code} className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={weekdays.includes(code)}
+                        onChange={(event) => setWeekdays((current) => event.target.checked ? [...new Set([...current, code])] : current.filter((item) => item !== code))}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>周{weekdayLabels[index]}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className="block space-y-1" htmlFor="schedule-repeat-until">
+                  <span className="text-xs text-zinc-500">重复截止日期（可选）</span>
+                  <input id="schedule-repeat-until" aria-label="重复截止日期" type="date" value={until} onChange={(event) => setUntil(event.target.value)} className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-950" />
+                </label>
+              </div>
+            )}
+          </fieldset>
 
           <label className="block space-y-1" htmlFor="schedule-color">
             <span className="font-medium">颜色</span>

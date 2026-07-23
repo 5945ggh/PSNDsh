@@ -13,11 +13,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ imp
     if (!userId) throw new ApplicationError("UNAUTHORIZED", "当前没有登录用户");
     const input = confirmRequest.parse(await readJson(request));
     const { importId } = await params;
-    const candidates = consumeIcsPreview(userId, importId);
-    if (!candidates) throw new ApplicationError("ICS_PREVIEW_EXPIRED", "导入预览已失效，请重新解析文件");
+    const stored = consumeIcsPreview(userId, importId);
+    if (!stored) throw new ApplicationError("ICS_PREVIEW_EXPIRED", "导入预览已失效，请重新解析文件");
     const selected = new Set(input.selectedSourceUids);
-    const blocks = candidates.filter((candidate) => selected.has(candidate.sourceUid)).flatMap((candidate) => candidate.blocks);
-    return jsonData(serviceForRequest(request).importIcsScheduleBlocks(blocks), { status: 201 });
+    const blocks = stored.candidates
+      .filter((candidate) => selected.has(candidate.sourceUid))
+      .flatMap((candidate) => candidate.blocks.map((block) => ({ ...block, sourceUid: candidate.sourceUid })));
+    return jsonData(serviceForRequest(request).importIcsScheduleBlocks(blocks, stored.fileName), { status: 201 });
   } catch (error) {
     return jsonError(error);
   }

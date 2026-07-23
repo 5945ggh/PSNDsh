@@ -164,14 +164,105 @@ describe("SqliteApplicationService", () => {
         startedAt: "2026-06-29T01:00:00.000Z",
         endedAt: "2026-06-29T02:00:00.000Z",
         location: "线上",
+        description: "带会议链接的课程",
+        sourceUid: "ics-course-a",
         colorKey: "purple",
         recurrence: null,
       },
     ]);
 
     expect(count).toBe(1);
-    expect(appA.getScheduleBlocks()).toEqual([expect.objectContaining({ title: "已导入课程", recurrence: null })]);
+    expect(appA.getScheduleBlocks()).toEqual([expect.objectContaining({ title: "已导入课程", description: "带会议链接的课程", sourceUid: "ics-course-a", recurrence: null })]);
     expect(appB.getScheduleBlocks()).toEqual([]);
+  });
+
+  it("tracks ICS batches, skips a repeated source UID, and deletes a whole batch", () => {
+    const app = service();
+    const block = {
+      kind: "course" as const,
+      title: "课表课程",
+      startedAt: "2026-06-29T01:00:00.000Z",
+      endedAt: "2026-06-29T02:00:00.000Z",
+      location: "教室 A",
+      colorKey: "purple",
+      recurrence: null,
+      sourceUid: "same-course",
+    };
+
+    expect(app.importIcsScheduleBlocks([block], "spring.ics")).toBe(1);
+    expect(app.importIcsScheduleBlocks([block], "spring-again.ics")).toBe(0);
+    expect(app.getScheduleImports()).toEqual([expect.objectContaining({ fileName: "spring.ics", blockCount: 1 })]);
+    const importId = app.getScheduleImports()[0]!.id;
+    app.deleteScheduleImport(importId);
+    expect(app.getScheduleBlocks()).toEqual([]);
+    expect(app.getScheduleImports()).toEqual([]);
+  });
+
+  it("projects weekly schedule rules into a requested calendar range", () => {
+    const app = service();
+    const rule = app.addScheduleBlock({
+      kind: "plan",
+      title: "工作日学习",
+      startedAt: "2026-06-22T09:00:00+08:00",
+      endedAt: "2026-06-22T10:00:00+08:00",
+      location: null,
+      colorKey: "green",
+      recurrence: { frequency: "weekly", interval: 1, weekdays: ["MO", "WE", "FR"], until: null },
+    });
+
+    const calendar = app.getCalendarPayload("2026-06-22T00:00:00+08:00", "2026-06-29T00:00:00+08:00");
+    expect(calendar.scheduleBlocks).toHaveLength(3);
+    expect(calendar.scheduleBlocks.map((block) => block.id)).toEqual([
+      `${rule.id}::2026-06-22`,
+      `${rule.id}::2026-06-24`,
+      `${rule.id}::2026-06-26`,
+    ]);
+    expect(calendar.scheduleBlocks.every((block) => block.recurrenceSourceId === rule.id)).toBe(true);
+  });
+
+  it("includes an overnight recurrence that starts before the requested local range", () => {
+    const app = service();
+    const rule = app.addScheduleBlock({
+      kind: "plan",
+      title: "夜间作息",
+      startedAt: "2026-06-28T23:30:00+08:00",
+      endedAt: "2026-06-29T00:30:00+08:00",
+      location: null,
+      colorKey: "blue",
+      recurrence: { frequency: "weekly", interval: 1, weekdays: ["SU"], until: null },
+    });
+
+    const calendar = app.getCalendarPayload("2026-06-29T00:00:00+08:00", "2026-06-29T01:00:00+08:00");
+    expect(calendar.scheduleBlocks).toEqual([
+      expect.objectContaining({
+        id: `${rule.id}::2026-06-28`,
+        startedAt: "2026-06-28T15:30:00.000Z",
+        endedAt: "2026-06-28T16:30:00.000Z",
+      }),
+    ]);
+  });
+
+  it("keeps weekly recurrence local time across a New York DST transition", () => {
+    const app = new SqliteApplicationService(handle.db, {
+      userId: USER_A,
+      clock: () => currentTime,
+      effectiveTimezone: "America/New_York",
+    });
+    const rule = app.addScheduleBlock({
+      kind: "plan",
+      title: "纽约学习",
+      startedAt: "2026-03-02T09:00:00-05:00",
+      endedAt: "2026-03-02T10:00:00-05:00",
+      location: null,
+      colorKey: "green",
+      recurrence: { frequency: "weekly", interval: 1, weekdays: ["MO"], until: null },
+    });
+
+    const calendar = app.getCalendarPayload("2026-03-08T00:00:00-05:00", "2026-03-17T00:00:00-04:00");
+    expect(calendar.scheduleBlocks.map((block) => [block.id, block.startedAt, block.endedAt])).toEqual([
+      [`${rule.id}::2026-03-09`, "2026-03-09T13:00:00.000Z", "2026-03-09T14:00:00.000Z"],
+      [`${rule.id}::2026-03-16`, "2026-03-16T13:00:00.000Z", "2026-03-16T14:00:00.000Z"],
+    ]);
   });
 
   it("requires gap-free focus partitions and preserves total duration after reassignment", () => {

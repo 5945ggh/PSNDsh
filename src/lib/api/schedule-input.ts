@@ -15,6 +15,7 @@ const recurrence = z.object({
 const scheduleFields = z.object({
   kind: z.enum(["course", "plan", "other"]),
   title: z.string().trim().min(1, "标题不能为空"),
+  description: z.string().trim().max(4_000).nullable().optional(),
   startedAt: isoTimestamp,
   endedAt: isoTimestamp,
   location: z.string().nullable(),

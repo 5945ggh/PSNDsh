@@ -22,7 +22,7 @@ describe("parseIcsImport", () => {
     })]);
     expect(parsed.candidates).toHaveLength(1);
     expect(parsed.candidates[0]?.blocks).toEqual([
-      expect.objectContaining({ startedAt: "2026-03-02T14:00:00.000Z", endedAt: "2026-03-02T15:00:00.000Z", location: "Room 101" }),
+      expect.objectContaining({ startedAt: "2026-03-02T14:00:00.000Z", endedAt: "2026-03-02T15:00:00.000Z", location: "Room 101", description: "带教室和课程备注" }),
       expect.objectContaining({ startedAt: "2026-03-16T14:00:00.000Z", endedAt: "2026-03-16T15:00:00.000Z", title: "时区课程（调课）", location: "Room 102" }),
       expect.objectContaining({ startedAt: "2026-03-23T13:00:00.000Z", endedAt: "2026-03-23T14:00:00.000Z", location: "Room 101" }),
     ]);
@@ -38,7 +38,7 @@ DTSTART:20260723T090000
 DTEND:20260723T100000
 SUMMARY:本地单次日程
 END:VEVENT
-END:VCALENDAR`, { effectiveTimezone: "Asia/Shanghai" });
+END:VCALENDAR`, { now: at("2026-07-22T00:00:00.000Z"), effectiveTimezone: "Asia/Shanghai" });
 
     expect(parsed.candidates[0]?.blocks[0]).toMatchObject({
       startedAt: "2026-07-23T01:00:00.000Z",
@@ -46,7 +46,7 @@ END:VCALENDAR`, { effectiveTimezone: "Asia/Shanghai" });
     });
   });
 
-  it("filters all-day and floating recurring events instead of silently changing their semantics", async () => {
+  it("filters all-day events and maps floating recurring events to effectiveTimezone", async () => {
     const parsed = await parseIcsImport("unsupported.ics", `BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -64,17 +64,21 @@ DTEND:20260723T100000
 RRULE:FREQ=WEEKLY;COUNT=2
 SUMMARY:浮动重复
 END:VEVENT
-END:VCALENDAR`, { effectiveTimezone: "Asia/Shanghai" });
+END:VCALENDAR`, { now: at("2026-07-22T00:00:00.000Z"), effectiveTimezone: "Asia/Shanghai" });
 
-    expect(parsed.preview.rows).toHaveLength(0);
+    expect(parsed.preview.rows).toHaveLength(1);
+    expect(parsed.candidates[0]?.blocks).toEqual([
+      expect.objectContaining({ startedAt: "2026-07-23T01:00:00.000Z", endedAt: "2026-07-23T02:00:00.000Z" }),
+      expect.objectContaining({ startedAt: "2026-07-30T01:00:00.000Z", endedAt: "2026-07-30T02:00:00.000Z" }),
+    ]);
     expect(parsed.preview.errors.map((error) => error.message)).toEqual(expect.arrayContaining([
       expect.stringContaining("全天事件"),
-      expect.stringContaining("必须使用 UTC 或 TZID"),
     ]));
+    expect(parsed.preview.rows[0]?.warnings).toEqual(expect.arrayContaining([expect.stringContaining("按 Asia/Shanghai 解释")]));
   });
 
   it("rejects malformed input with a stable domain error", async () => {
     await expect(parseIcsImport("bad.ics", "not a calendar", { effectiveTimezone: "Asia/Shanghai" }))
-      .rejects.toMatchObject<ApplicationError>({ code: "ICS_PARSE_FAILED" });
+      .rejects.toMatchObject({ code: "ICS_PARSE_FAILED" } satisfies Partial<ApplicationError>);
   });
 });

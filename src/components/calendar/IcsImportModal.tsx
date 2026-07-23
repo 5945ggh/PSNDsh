@@ -207,7 +207,8 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                             type="checkbox"
                             checked={isChecked}
                             aria-label={`选择 ${row.title}`}
-                            onChange={() => {}}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={() => toggleRow(row.sourceUid)}
                             className="mt-0.5 rounded text-purple-600 focus-visible:ring-2 focus-visible:ring-purple-500"
                           />
                           <div>
@@ -217,6 +218,16 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                             <div className="text-[11px] text-zinc-500 font-mono mt-0.5 tabular-nums">
                               {row.startedAt.slice(0, 10)} {row.startedAt.slice(11, 16)}–{row.endedAt.slice(11, 16)} {row.recurrenceLabel ? `(${row.recurrenceLabel})` : ""}
                             </div>
+                            {(row.location || row.description) && (
+                              <div className="mt-1 max-w-[26rem] truncate text-[10px] text-zinc-500">
+                                {row.location ? `地点：${row.location}` : ""}{row.location && row.description ? " · " : ""}{row.description ? `备注：${row.description}` : ""}
+                              </div>
+                            )}
+                            {(row.duplicateCount ?? 0) > 0 && (
+                              <div className="mt-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                已存在 {row.duplicateCount} 个同源实例，默认跳过
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

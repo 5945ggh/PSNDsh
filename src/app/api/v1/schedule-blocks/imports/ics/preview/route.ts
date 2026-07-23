@@ -18,7 +18,22 @@ export async function POST(request: Request) {
     const parsed = await parseIcsImport(input.fileName, input.content, {
       effectiveTimezone: service.getCapabilities().effectiveTimezone,
     });
-    return jsonData({ ...parsed.preview, importId: createIcsPreview(userId, parsed.candidates) });
+    const existingCounts = new Map<string, number>();
+    for (const block of service.getScheduleBlocks()) {
+      if (block.sourceUid) existingCounts.set(block.sourceUid, (existingCounts.get(block.sourceUid) ?? 0) + 1);
+    }
+    const rows = parsed.preview.rows.map((row) => {
+      const duplicateCount = existingCounts.get(row.sourceUid) ?? 0;
+      return {
+        ...row,
+        duplicateCount,
+        selected: duplicateCount === 0 && row.selected,
+        warnings: duplicateCount > 0
+          ? [...row.warnings, `该源 UID 已导入 ${duplicateCount} 个实例，默认不重复写入。`]
+          : row.warnings,
+      };
+    });
+    return jsonData({ ...parsed.preview, rows, importId: createIcsPreview(userId, input.fileName, parsed.candidates) });
   } catch (error) {
     return jsonError(error);
   }

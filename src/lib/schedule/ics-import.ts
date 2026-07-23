@@ -55,6 +55,16 @@ const parseFloatingDate = (raw: string, timezone: string) => {
   return new Date(instant);
 };
 
+const floatingDateToken = (value: Date, timezone: string) => {
+  const parts = ianaParts(value, timezone);
+  return `${String(parts.year).padStart(4, "0")}${String(parts.month).padStart(2, "0")}${String(parts.day).padStart(2, "0")}T${String(parts.hour).padStart(2, "0")}${String(parts.minute).padStart(2, "0")}${String(parts.second).padStart(2, "0")}`;
+};
+
+const mapFloatingDateToTimezone = (value: Date, timezone: string) => {
+  const runtimeTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return parseFloatingDate(floatingDateToken(value, runtimeTimezone), timezone) ?? value;
+};
+
 const unfoldedEventProperties = (content: string) => {
   const unfolded = content.replace(/\r?\n[ \t]/g, "");
   const blocks = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/gi) ?? [];
@@ -78,6 +88,7 @@ const recurrenceLabel = (event: VEvent, instanceCount: number) =>
 const toBlock = (event: VEvent, startedAt: Date, endedAt: Date): ScheduleBlockInput => ({
   kind: "course",
   title: textValue(event.summary).trim() || "未命名日程",
+  description: textValue(event.description).trim() || null,
   startedAt: startedAt.toISOString(),
   endedAt: endedAt.toISOString(),
   location: textValue(event.location).trim() || null,
@@ -133,11 +144,6 @@ export const parseIcsImport = async (
       errors.push(eventError(event, "无法读取事件时间字段，未导入。"));
       continue;
     }
-    if (event.rrule && !raw.explicitTimezone) {
-      errors.push(eventError(event, "重复事件必须使用 UTC 或 TZID 时区，未导入。"));
-      continue;
-    }
-
     let blocks: ScheduleBlockInput[];
     if (event.rrule) {
       const instances = ical.expandRecurringEvent(event, { from: now, to: horizonEnd, includeOverrides: true, excludeExdates: true });
@@ -145,7 +151,15 @@ export const parseIcsImport = async (
         errors.push(eventError(event, "重复规则包含全天实例，未导入。"));
         continue;
       }
-      blocks = instances.map((instance) => toBlock(instance.event, new Date(instance.start), new Date(instance.end)));
+      blocks = instances.map((instance) => {
+        const startedAt = new Date(instance.start);
+        const endedAt = new Date(instance.end);
+        return toBlock(
+          instance.event,
+          raw.explicitTimezone ? startedAt : mapFloatingDateToTimezone(startedAt, effectiveTimezone),
+          raw.explicitTimezone ? endedAt : mapFloatingDateToTimezone(endedAt, effectiveTimezone),
+        );
+      });
       if (blocks.length === 0) {
         errors.push(eventError(event, `重复事件在未来 ${ICS_PREVIEW_WINDOW_DAYS} 天内没有实例，未导入。`));
         continue;
@@ -174,9 +188,16 @@ export const parseIcsImport = async (
       title: first.title,
       startedAt: first.startedAt,
       endedAt: first.endedAt,
+      location: first.location,
+      description: first.description ?? null,
       recurrenceLabel: recurrenceLabel(event, blocks.length),
       selected: true,
-      warnings: event.rrule ? [`将写入 ${blocks.length} 个未来实例；窗口外的重复不会自动延续。`] : [],
+      warnings: event.rrule
+        ? [
+            `将写入 ${blocks.length} 个未来实例；窗口外的重复不会自动延续。`,
+            ...(!raw.explicitTimezone ? [`未声明时区，已按 ${effectiveTimezone} 解释。`] : []),
+          ]
+        : [],
     });
     candidates.push({ sourceUid: event.uid, blocks });
   }

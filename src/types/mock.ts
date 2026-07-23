@@ -89,22 +89,35 @@ export type ScheduleBlock = {
   id: string;
   kind: ScheduleBlockKind;
   title: string;
+  description?: string | null;
   startedAt: string;
   endedAt: string;
   location: string | null;
   colorKey: string | null;
   recurrence: ScheduleRecurrence;
   recurrenceLabel: string | null;
+  source?: "manual" | "ics";
+  importId?: string | null;
+  sourceUid?: string | null;
+  recurrenceSourceId?: string;
 };
 
 export type ScheduleBlockInput = {
   kind: ScheduleBlockKind;
   title: string;
+  description?: string | null;
   startedAt: string;
   endedAt: string;
   location: string | null;
   colorKey: string | null;
   recurrence: ScheduleRecurrence;
+};
+
+export type ScheduleImport = {
+  id: string;
+  fileName: string;
+  importedAt: string;
+  blockCount: number;
 };
 
 export type UpdateScheduleBlockInput = Partial<ScheduleBlockInput>;
@@ -119,9 +132,12 @@ export type IcsImportRow = {
   title: string;
   startedAt: string;
   endedAt: string;
+  location?: string | null;
+  description?: string | null;
   recurrenceLabel: string | null;
   selected: boolean;
   warnings: string[];
+  duplicateCount?: number;
 };
 
 export type IcsImportPreview = {

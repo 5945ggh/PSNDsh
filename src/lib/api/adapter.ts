@@ -71,6 +71,8 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   stopFocusSession(...args: Parameters<MockApiAdapter["stopFocusSession"]>) { return asPromise(() => this.mock.stopFocusSession(...args)); }
   addManualFocusSession(...args: Parameters<MockApiAdapter["addManualFocusSession"]>) { return asPromise(() => this.mock.addManualFocusSession(...args)); }
   getScheduleBlocks() { return asPromise(() => this.mock.getScheduleBlocks()); }
+  getScheduleImports() { return asPromise(() => this.mock.getScheduleImports()); }
+  deleteScheduleImport(...args: Parameters<MockApiAdapter["deleteScheduleImport"]>) { return asPromise(() => this.mock.deleteScheduleImport(...args)); }
   addScheduleBlock(...args: Parameters<MockApiAdapter["addScheduleBlock"]>) { return asPromise(() => this.mock.addScheduleBlock(...args)); }
   updateScheduleBlock(...args: Parameters<MockApiAdapter["updateScheduleBlock"]>) { return asPromise(() => this.mock.updateScheduleBlock(...args)); }
   deleteScheduleBlock(...args: Parameters<MockApiAdapter["deleteScheduleBlock"]>) { return asPromise(() => this.mock.deleteScheduleBlock(...args)); }
