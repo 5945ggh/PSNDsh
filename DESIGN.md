@@ -2,11 +2,11 @@
 
 ## Source of truth
 
-- Status: Draft，等待前端样例校准后转为 Active
-- Last refreshed: 2026-07-20
+- Status: Active，当前 UI 已由产品所有者完成手测确认；后续视觉修改需保持本文件约束
+- Last refreshed: 2026-07-22
 - Primary product surfaces: 登录与注册、首页、计划、日历、统计、设置、全局专注状态
 - Evidence reviewed: `docs/product/PRD.md`、`docs/architecture/TECHNICAL_DESIGN.md`、`.omx/interviews/personal-dashboard-20260720T083155Z.md`
-- Visual evidence: 当前没有现有 UI、截图、品牌资产或组件库；后续前端样例是探索性参考，不自动覆盖本文件
+- Visual evidence: 已有可操作前端样例并经产品所有者手测确认；后续截图与视觉烟测应以当前实现为起点，前端样例不自动覆盖本文件
 
 ## Brand
 
@@ -54,7 +54,7 @@
 
 ## Components
 
-- Existing components to reuse: 当前没有现有组件
+- Existing components to reuse: 当前 AppShell、日历轨道、日程编辑弹窗与 ICS 导入弹窗；导入接入真实 API 时保持既有弹窗布局、预览选择和就地错误表达
 - New/changed components: AppShell、PrimaryNav、GlobalFocusBar、EntryTree、EntryRow、WeekPlanList、ScheduleGrid、FocusBlock、ScheduleBlock、StatBreakdown、TimeTrend、DeadlineList、ProfileForm、FocusEditor、SegmentEditor
 - Variants and states: 活跃、暂停、完成、归档、逾期、临期、未关联、加载、空、错误、禁用；日程与专注必须有稳定独立变体
 - Token/component ownership: 前端样例应输出颜色、排版、间距和状态 token；正式实现吸收其思想后由根 `DESIGN.md` 维护最终 token 语义
@@ -76,12 +76,13 @@
 
 ## Interaction states
 
-- Loading: 使用保持布局稳定的局部骨架或占位，不让全页因天气等次要数据阻塞
+- Loading: 首次恢复会话时可使用全页状态；后续写入后的重校验必须在后台完成，保持当前页面与已输入内容稳定，只在相关控件显示提交中状态
 - Empty: 提供与当前页面直接相关的首个动作，例如创建条目、加入本周、开始无归属专注或新增日程
 - Error: 说明发生了什么并提供可执行恢复；表单保留输入；领域冲突定位到具体时段或对象
 - Success: 就地更新并使用简短反馈，不以庆祝动画打断工作流
 - Disabled: 说明禁用原因，例如已有活动计时器或注册已关闭
-- Offline/slow network: 外部天气或名句降级；核心写入失败不得假装成功；活动计时 UI 明确同步状态
+- ICS import: 文件选择后保持两阶段“预览 -> 确认”；过滤项和窗口限制在预览内说明，确认过期后保留文件选择并提示重新解析
+- Offline/slow network: 天气异步降级；季节名句由本地内容包直接展示，不应因网络进入错误状态；核心写入失败不得假装成功；活动计时 UI 明确同步状态
 
 ## Content voice
 
@@ -93,7 +94,7 @@
 
 - Framework/styling system: Next.js、React、TypeScript、Tailwind CSS、Radix primitives、Lucide
 - Design-token constraints: 颜色和尺寸使用语义 token；日程、专注、完成和危险状态不能散落硬编码色值
-- Performance constraints: 活动计时数字不触发全页刷新；深树和周历更新避免明显重排；天气与名句异步加载
+- Performance constraints: 活动计时数字不触发全页刷新；确认写入后的数据重校验不卸载当前工作台，深树和周历更新避免明显重排；天气异步加载，名句从本地内容包读取
 - Compatibility constraints: 响应式 Web；桌面和手机现代浏览器；鼠标、键盘和触摸可用
 - Test/screenshot expectations: 前端样例交付桌面和手机关键页面截图；正式实现后再建立稳定视觉基线
 - Source priority: PRD 决定产品语义，本文决定设计原则，前端样例提供视觉与交互参考但不是像素级强约束

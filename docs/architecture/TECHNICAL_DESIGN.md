@@ -1,7 +1,7 @@
 # 个人面板技术设计
 
-> 状态：Draft，可供前端样例与实施规划使用  
-> 日期：2026-07-20  
+> 状态：Active，持久化 API 与首批真实导入链路已经实施
+> 日期：2026-07-22
 > 产品基线：[PRD](../product/PRD.md)
 
 ## 1. 设计目标
@@ -11,7 +11,7 @@
 - 单机内网部署简单，升级与备份可理解；
 - 计划、专注和统计的数据语义可靠；
 - 活动计时、跨周结转和片段拆分在异常或重试下不产生重复事实；
-- 外部天气、名句与 ICS 解析被隔离，不拖垮核心功能；
+- 外部天气、名句内容预处理与 ICS 解析被隔离，不拖垮核心功能；
 - 首版保持模块化单体，不为未来 Agent 或多服务架构提前付出复杂度；
 - 未来可以在明确授权后增加只读 API 或 MCP，而不必重写核心数据模型。
 
@@ -31,7 +31,8 @@
 | 周历 | FullCalendar `timeGrid` 优先验证 | 利用成熟事件布局；视觉分轨可能增加自定义渲染 |
 | 图表 | Apache ECharts | 支持趋势、分布、下钻和响应式 |
 | 天气 | Open-Meteo 适配器 | 免费、通常无需密钥，服务端缓存 |
-| ICS | 成熟 ICS 解析库 | 解析时区、重复规则和异常日期，不手写格式解析 |
+| 名句内容 | 发布前预抓取脚本 + 版本化本地数据 | 运行时只读取本地内容包，不请求外部来源 |
+| ICS | `node-ical@0.26.1` | Node 服务端异步解析；在受限窗口内展开时区、重复规则和异常日期，见 ADR 0001 |
 | 单元与集成测试 | Vitest | 重点覆盖领域不变量和服务边界 |
 | 浏览器测试 | Playwright | 只覆盖少量关键闭环和响应式烟测 |
 | 部署 | Docker 单容器 + 持久化卷 | 应用、数据库和缓存数据有明确边界 |
@@ -61,8 +62,8 @@ Browser
               -> Drizzle repositories -> SQLite
           -> external adapters
               -> weather
-              -> quotation source
               -> ICS parser
+      -> bundled quotation catalog
 ```
 
 边界原则：
@@ -72,7 +73,7 @@ Browser
 - Application service 组织事务和用例。
 - Domain policy 负责纯计算，例如时间切分、树聚合和结转判断。
 - Repository 负责持久化，不把 ORM 记录直接暴露给前端。
-- 外部适配器通过明确接口返回内部 DTO，失败必须可降级。
+- 外部适配器通过明确接口返回内部 DTO，失败必须可降级。季节名句由本地内容目录读取，不属于运行时外部适配器。
 
 ## 4. 模块划分
 
@@ -87,7 +88,7 @@ Browser
 | `calendar` | 按范围合并日程与专注的只读查询 |
 | `statistics` | 时间边界切分、直接投入与递归聚合 |
 | `dashboard` | 首页聚合查询，不拥有核心数据 |
-| `ambient` | 天气、季节名句、缓存与降级 |
+| `ambient` | 天气缓存与降级、从本地内容包选择季节名句 |
 | `data-management` | JSON 导出、数据库备份辅助与完整性检查 |
 
 模块之间通过 service 或查询接口协作，不直接跨模块写表。
@@ -108,7 +109,7 @@ Browser
 | `focus_sessions` | `user_id`, `started_at`, `ended_at`, `capture_mode`, `note`, `outcome` | `ended_at IS NULL` 表示活动计时 |
 | `focus_segments` | `session_id`, `started_at`, `ended_at`, `entry_id`, `note` | `entry_id` 为空表示未关联 |
 | `schedule_blocks` | `user_id`, `kind`, `title`, time fields, recurrence fields, source | 课程、计划和其他日程 |
-| `external_cache` | `namespace`, `cache_key`, payload, fetched/expiry timestamps | 天气和名句缓存，不存业务私密数据 |
+| `external_cache` | `namespace`, `cache_key`, payload, fetched/expiry timestamps | 天气缓存，不存业务私密数据 |
 
 ### 5.2 关系概览
 
@@ -256,7 +257,9 @@ REGISTRATION_MODE=first-user
 | `/api/v1/week-plans/:week` | 周计划读取、纳入、移除、排序、备注 |
 | `/api/v1/focus/current` | 当前计时读取、开始与结束 |
 | `/api/v1/focus/sessions` | 查询、补录、编辑、拆分与删除策略 |
-| `/api/v1/schedule-blocks` | 日程 CRUD、重复规则和 ICS 导入预览 |
+| `/api/v1/schedule-blocks` | 日程 CRUD 和手工重复规则 |
+| `/api/v1/schedule-blocks/imports/ics/preview` | 解析不超过 1 MiB 的 ICS 文本，返回当前账号的短期预览 |
+| `/api/v1/schedule-blocks/imports/ics/:importId/confirm` | 一次性消费当前账号预览并写入所选具体日程 |
 | `/api/v1/calendar` | 给定范围内的日程与专注联合只读数据 |
 | `/api/v1/statistics` | 日、周、月和条目子树统计 |
 | `/api/v1/dashboard` | 首页聚合 DTO |
@@ -274,16 +277,17 @@ REGISTRATION_MODE=first-user
 
 ### 9.2 名句
 
-- 应用内置四季最小数据集。
-- `QuotationProvider` 最多每日抓取一次，超时 5 秒。
-- 抓取、解析和本地选择分离，来源变化不影响首页合同。
-- 抓取失败时回退缓存或内置数据。
+- 季节名句以版本化本地内容包随应用发布；内容包至少包含覆盖四季的最小数据集。当前先使用人工审核内容，作为不依赖爬取流程的离线基础。
+- 发布前预抓取工具从批准的公开来源取得候选内容，优先评估古诗文网；每条保留作者、作品、来源地址和内容包版本，并执行格式、去重和季节覆盖校验。
+- 人工内容包中的来源地址在预抓取流程上线前可记录为来源站点地址；上线时必须补齐作品级来源地址并完成复核。
+- 预抓取工具不在应用容器的请求路径或后台刷新任务中运行。来源不可用或预抓取失败时，继续发布或保留上一版已校验内容包。
+- 首页的 `QuotationCatalog` 只按日期和季节选择本地内容，网络不可用不影响该功能。
 
 ### 9.3 周结转与刷新
 
 - 首版不依赖常驻 cron 才能保证正确性。
 - 周结转采用访问时幂等执行；后台任务可作为优化，不能成为唯一正确性来源。
-- 天气和名句可在读取时触发受控刷新；同一缓存键使用互斥或 single-flight 防止请求风暴。
+- 天气可在读取时触发受控刷新；同一缓存键使用互斥或 single-flight 防止请求风暴。名句内容只在发布或显式运维更新时变更。
 
 ## 10. JSON 导出、备份与恢复
 
@@ -293,6 +297,7 @@ REGISTRATION_MODE=first-user
 - 包含 schema version、导出时间、`effectiveTimezone` 和稳定 ID。
 - 不包含密码哈希、会话、服务端密钥和外部缓存。
 - 首版只承诺可读快照，不承诺直接导入。
+- 当前实现通过 `GET /api/v1/export` 以下载响应提供此快照；导出内容以 `{ "data": ... }` 包装，便于与其余同源 API 保持一致。
 
 ### 10.2 数据库灾备
 
@@ -306,7 +311,7 @@ REGISTRATION_MODE=first-user
 
 - 一个应用容器，一个持久化数据卷。
 - 容器以非 root 用户运行。
-- 健康检查只验证应用和数据库基本可用，不依赖天气或名句上游。
+- 健康检查只验证应用和数据库基本可用，不依赖天气上游或名句来源。
 - 数据库、备份目录和可选导入临时文件使用明确路径。
 
 ### 11.2 首版环境变量
@@ -327,7 +332,7 @@ REGISTRATION_MODE=first-user
 
 - 使用结构化日志记录请求 ID、错误码和必要上下文，不记录密码、Cookie、完整导出或用户自由文本。
 - 领域错误使用稳定错误码，前端负责友好中文文案。
-- 外部适配器失败记录来源、耗时和缓存命中状态，不升级为核心服务不可用。
+- 天气适配器失败记录来源、耗时和缓存命中状态，不升级为核心服务不可用；名句预抓取工具单独记录来源、内容包版本和校验结果。
 - 数据迁移、备份和恢复命令输出明确阶段与最终校验结果。
 
 ## 13. 薄测边界
@@ -347,11 +352,10 @@ REGISTRATION_MODE=first-user
 - 访问时幂等周结转；
 - 片段完整分区；
 - JSON 导出与数据库灾备分离。
+- `node-ical@0.26.1` 作为 Node 服务端 ICS 解析器；重复事件采用 180 天具体实例展开，异常日期与覆盖只在窗口内保留，详见 [ADR 0001](adr/0001-ics-import-parser.md)。
 
 由实施者负责验证，不阻塞前端样例：
 
 - [ ] Better Auth 对用户名和可选资料邮箱的真实兼容性；
 - [ ] FullCalendar 对计划与专注双视觉语义的表现能力；
-- [ ] 最终 ICS 解析库及 recurrence 行为；
-- [ ] 古诗文来源的可接受抓取策略与内置数据来源。
-
+- [ ] 古诗文来源的可接受预抓取策略、许可风险与版本化内容包格式。
