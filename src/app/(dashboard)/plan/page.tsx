@@ -2,10 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import * as Dialog from "@radix-ui/react-dialog";
 import { type DataSnapshot, useData } from "@/context/MockContext";
 import { SafeMarkdown } from "@/components/common/SafeMarkdown";
-import { Entry, EntryCompletionMode, WeekPlan } from "@/types/mock";
+import { EntryCreateDialog } from "@/components/entries/EntryCreateDialog";
+import { Entry, WeekPlan } from "@/types/mock";
 import {
   ChevronRight,
   ChevronDown,
@@ -21,7 +21,6 @@ import {
   Clock,
   Search,
   Trash2,
-  X,
 } from "lucide-react";
 
 type EntryFilter = "all" | "unfinished" | "completed" | "archived";
@@ -62,10 +61,6 @@ export default function PlanPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [entryFilter, setEntryFilter] = useState<EntryFilter>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newMode, setNewMode] = useState<EntryCompletionMode>("completable");
-  const [newDueAt, setNewDueAt] = useState("");
   const mergeEntry = (snapshot: DataSnapshot, entry: Entry): DataSnapshot => ({
     ...snapshot,
     entries: snapshot.entries.some((item) => item.id === entry.id)
@@ -83,26 +78,6 @@ export default function PlanPage() {
       else next.add(id);
       return next;
     });
-  };
-
-  const handleCreateTopEntry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    await mutate(() => api.addEntry({
-      parentId: null,
-      title: newTitle.trim(),
-      description: newDescription.trim() || null,
-      completionMode: newMode,
-      dueAt: newDueAt ? `${newDueAt}T23:59:59+08:00` : null,
-    }), {
-      backgroundRefresh: true,
-      update: mergeEntry,
-    });
-    setNewTitle("");
-    setNewDescription("");
-    setNewMode("completable");
-    setNewDueAt("");
-    setIsCreateOpen(false);
   };
 
   const matchingEntries = useMemo(() => {
@@ -572,110 +547,12 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <Dialog.Root open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" />
-          <Dialog.Content
-            aria-describedby={undefined}
-            className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-2xl animate-in fade-in zoom-in-95 duration-150 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-          >
-            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-              <div>
-                <Dialog.Title asChild>
-                  <h2 className="font-semibold text-base">新建顶层条目</h2>
-                </Dialog.Title>
-                <p className="mt-1 text-xs text-zinc-500">创建后仍会留在当前计划树中，方便继续整理。</p>
-              </div>
-              <Dialog.Close asChild>
-                <button
-                  type="button"
-                  aria-label="关闭新建条目对话框"
-                  title="关闭"
-                  className="rounded p-1 text-zinc-400 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-zinc-200"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </Dialog.Close>
-            </div>
-
-            <form onSubmit={handleCreateTopEntry} className="overflow-y-auto p-5 space-y-4 text-xs">
-              <div>
-                <label htmlFor="plan-new-entry-title" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
-                  条目标题
-                </label>
-                <input
-                  id="plan-new-entry-title"
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="例如：算法练习 / 论文阅读"
-                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label htmlFor="plan-new-entry-description" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
-                  描述 / 备注
-                </label>
-                <textarea
-                  id="plan-new-entry-description"
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="记录这个条目的背景、下一步或完成标准"
-                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="plan-new-entry-mode" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
-                    完成模式
-                  </label>
-                  <select
-                    id="plan-new-entry-mode"
-                    value={newMode}
-                    onChange={(e) => setNewMode(e.target.value as EntryCompletionMode)}
-                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
-                  >
-                    <option value="completable">可完成型 (待办)</option>
-                    <option value="ongoing">持续型 (长期方向)</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="plan-new-entry-due" className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
-                    截止日期
-                  </label>
-                  <input
-                    id="plan-new-entry-due"
-                    type="date"
-                    value={newDueAt}
-                    onChange={(e) => setNewDueAt(e.target.value)}
-                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                <Dialog.Close asChild>
-                  <button type="button" className="rounded-md border border-zinc-300 px-3.5 py-2 font-medium text-zinc-600 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                    取消
-                  </button>
-                </Dialog.Close>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3.5 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  创建条目
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <EntryCreateDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        title="新建顶层条目"
+        description="创建后仍会留在当前计划树中，方便继续整理。"
+      />
     </div>
   );
 }

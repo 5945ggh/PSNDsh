@@ -4,6 +4,14 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
+import { EntryCreateDialog } from "@/components/entries/EntryCreateDialog";
+import {
+  DEFAULT_TIMEZONE,
+  formatDateLabelInTimezone,
+  formatTimeInTimezone,
+  getHourInTimezone,
+  greetingForHour,
+} from "@/lib/time/timezone";
 import {
   Sun,
   CloudOff,
@@ -14,27 +22,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  Plus,
 } from "lucide-react";
 
-const currentShanghaiDateLabel = () => {
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    weekday: "long",
-  }).formatToParts(new Date());
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${value("year")}年${value("month")}月${value("day")}日 ${value("weekday")}`;
-};
-
 export default function DashboardPage() {
-  const { api, data, mutate } = useData();
+  const { data } = useData();
   const { activeFocus, startFocus, formattedTime } = useFocusTimer();
-  const [quickTitle, setQuickTitle] = useState("");
-  const [quickAddError, setQuickAddError] = useState<string | null>(null);
-  const [isQuickAdding, setIsQuickAdding] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const payload = data.dashboard;
   if (!payload) {
@@ -42,36 +35,13 @@ export default function DashboardPage() {
   }
   const { profile, weather, quotation, nextSchedule, todayEntries, deadlineEntries, focusSummary } =
     payload;
+  const timezone = data.capabilities?.effectiveTimezone ?? DEFAULT_TIMEZONE;
+  const now = new Date();
 
   const todayHours = (focusSummary.todaySeconds / 3600).toFixed(1);
   const weekHours = (focusSummary.weekSeconds / 3600).toFixed(1);
-  const currentDateLabel = currentShanghaiDateLabel();
-
-  const addQuickEntry = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const normalizedTitle = quickTitle.trim();
-    if (!normalizedTitle) return;
-    setIsQuickAdding(true);
-    setQuickAddError(null);
-    try {
-      await mutate(async () => {
-        const entry = await api.addEntry({
-          parentId: null,
-          title: normalizedTitle,
-          description: null,
-          completionMode: "completable",
-          dueAt: null,
-        });
-        await api.addToWeekPlan(entry.id);
-        return entry;
-      });
-      setQuickTitle("");
-    } catch (error) {
-      setQuickAddError(error instanceof Error ? error.message : "创建条目失败");
-    } finally {
-      setIsQuickAdding(false);
-    }
-  };
+  const currentDateLabel = formatDateLabelInTimezone(now, timezone);
+  const greeting = greetingForHour(getHourInTimezone(now, timezone));
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full">
@@ -83,7 +53,7 @@ export default function DashboardPage() {
               <span>{currentDateLabel}</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-pretty mt-1">
-              早安，{profile.nickname || profile.username}
+              {greeting}，{profile.nickname || profile.username}
             </h1>
           </div>
 
@@ -158,7 +128,7 @@ export default function DashboardPage() {
                 {formattedTime}
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                开始于 {activeFocus.startedAt.slice(11, 16)} •{" "}
+                开始于 {formatTimeInTimezone(activeFocus.startedAt, timezone)} •{" "}
                 <span className="text-zinc-800 dark:text-zinc-200 font-medium">
                   无归属专注
                 </span>
@@ -211,7 +181,7 @@ export default function DashboardPage() {
                 <h3 className="font-semibold text-sm">{nextSchedule.title}</h3>
               </div>
               <p className="text-xs text-zinc-500 font-mono">
-                时间：{nextSchedule.startedAt.slice(11, 16)} – {nextSchedule.endedAt.slice(11, 16)}
+                时间：{formatTimeInTimezone(nextSchedule.startedAt, timezone)} – {formatTimeInTimezone(nextSchedule.endedAt, timezone)}
               </p>
               {nextSchedule.location && (
                 <p className="text-xs text-zinc-500">地点：{nextSchedule.location}</p>
@@ -300,25 +270,13 @@ export default function DashboardPage() {
                     直接在这里创建一项并加入本周，之后即可开始专注记录。
                   </p>
                 </div>
-                <form onSubmit={addQuickEntry} className="flex flex-col gap-2 sm:flex-row">
-                  <label className="sr-only" htmlFor="dashboard-quick-entry">新条目标题</label>
-                  <input
-                    id="dashboard-quick-entry"
-                    value={quickTitle}
-                    onChange={(event) => setQuickTitle(event.target.value)}
-                    placeholder="例如：完成算法练习"
-                    className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isQuickAdding || !quickTitle.trim()}
-                    className="flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{isQuickAdding ? "创建中..." : "创建并加入本周"}</span>
-                  </button>
-                </form>
-                {quickAddError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{quickAddError}</p>}
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                >
+                  新建本周条目
+                </button>
                 <Link
                   href="/plan"
                   className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
@@ -373,6 +331,13 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <EntryCreateDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        addToWeekPlan
+        title="新建本周条目"
+        description="创建后会自动加入本周计划，也可以继续在计划树中补充细节。"
+      />
     </div>
   );
 }

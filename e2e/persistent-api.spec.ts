@@ -26,8 +26,10 @@ test("real session persists profile changes and protects dashboard after logout"
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await expect(page).toHaveURL(/\/$/);
 
-  await page.getByLabel("新条目标题").fill(quickEntryTitle);
-  await page.getByRole("button", { name: "创建并加入本周" }).click();
+  await page.getByRole("button", { name: "新建本周条目" }).click();
+  const dashboardCreateDialog = page.getByRole("dialog", { name: "新建本周条目" });
+  await dashboardCreateDialog.getByLabel("条目标题").fill(quickEntryTitle);
+  await dashboardCreateDialog.getByRole("button", { name: "创建并加入本周" }).click();
   await expect(page.getByText(quickEntryTitle, { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "设置" }).click();
