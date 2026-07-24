@@ -1,0 +1,64 @@
+src/lib/api/client.ts
+  s_310551a413f2d8::t_c3165445e460cc 28
+src/components/layout/ScenarioSwitcher.tsx
+  s_310551a413f2d8::t_e4eff885ce22d8 5
+src/context/FocusTimerContext.tsx
+  s_310551a413f2d8::t_c3165445e460cc 5
+src/lib/mock/domain.ts
+  s_310551a413f2d8::t_c3165445e460cc 1
+src/lib/mock/domain.test.ts
+  s_310551a413f2d8::t_c3165445e460cc 9
+src/types/mock.ts
+  s_310551a413f2d8::t_e4eff885ce22d8 2
+  s_310551a413f2d8::t_cf2d3e0738098c 1
+src/components/calendar/ScheduleEditorModal.tsx
+  s_310551a413f2d8::t_c3165445e460cc 5
+src/components/focus/FocusSplitModal.tsx
+  s_310551a413f2d8::t_c3165445e460cc 7
+src/lib/mock/store.ts
+  s_310551a413f2d8::t_e4eff885ce22d8 15
+  s_310551a413f2d8::t_c3165445e460cc 14
+src/app/(dashboard)/statistics/page.tsx
+  s_310551a413f2d8::t_c3165445e460cc 5
+src/lib/mock/fixtures.ts
+  s_310551a413f2d8::t_c3165445e460cc 9
+src/components/calendar/ScheduleImportManager.tsx
+  s_310551a413f2d8::t_c3165445e460cc 6
+src/lib/mock/service.ts
+  s_310551a413f2d8::t_c3165445e460cc 10
+  s_310551a413f2d8::t_e4eff885ce22d8 11
+src/app/(dashboard)/plan/page.tsx
+  s_310551a413f2d8::t_c3165445e460cc 8
+src/lib/application/contract.ts
+  s_310551a413f2d8::t_c3165445e460cc 21
+src/components/entries/EntryCreateDialog.tsx
+  s_310551a413f2d8::t_c3165445e460cc 7
+src/components/calendar/ScheduleTemplateManager.tsx
+  s_310551a413f2d8::t_c3165445e460cc 12
+src/app/(dashboard)/entries/[id]/page.tsx
+  s_310551a413f2d8::t_c3165445e460cc 8
+src/lib/domain/types.ts
+  s_310551a413f2d8::t_88c2c3a1a67c30 1-265
+src/lib/mock/types.ts
+  s_310551a413f2d8::t_e4eff885ce22d8 1-6
+src/lib/persistence/sqlite-service.ts
+  s_310551a413f2d8::t_c3165445e460cc 55
+src/lib/schedule/ics-import.ts
+  s_310551a413f2d8::t_c3165445e460cc 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "421992cf7f3328dce6c9b4b5979ae3bc763c6397",
+  "prompts": {},
+  "sessions": {
+    "s_310551a413f2d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8f69-89be-7122-8960-73c36bfbbb6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
