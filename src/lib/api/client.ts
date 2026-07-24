@@ -25,7 +25,7 @@ import {
   StatisticsPayload,
   UserProfile,
   WeekPlan,
-} from "@/types/mock";
+} from "@/lib/domain/types";
 
 type ApiEnvelope<T> = { data: T };
 

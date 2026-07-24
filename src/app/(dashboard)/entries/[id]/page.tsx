@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
-import { EntryCompletionMode, EntryStatus } from "@/types/mock";
+import { EntryCompletionMode, EntryStatus } from "@/lib/domain/types";
 import {
   ArrowLeft,
   Play,

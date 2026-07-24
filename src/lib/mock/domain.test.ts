@@ -6,7 +6,7 @@ import {
   assertSegmentsPartitionSession,
   MockDomainError,
 } from "./domain";
-import { Entry, FocusSegment, FocusSession } from "@/types/mock";
+import { Entry, FocusSegment, FocusSession } from "@/lib/domain/types";
 
 const entries: Entry[] = [
   {

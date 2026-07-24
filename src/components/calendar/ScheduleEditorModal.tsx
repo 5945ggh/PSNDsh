@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { ScheduleBlock, ScheduleBlockInput } from "@/types/mock";
+import type { ScheduleBlock, ScheduleBlockInput } from "@/lib/domain/types";
 
 type ScheduleEditorModalProps = {
   schedule: ScheduleBlock | null;

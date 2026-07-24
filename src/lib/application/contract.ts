@@ -18,7 +18,7 @@ import {
   UserProfile,
   UserDataExport,
   WeekPlan,
-} from "@/types/mock";
+} from "@/lib/domain/types";
 import { z } from "zod";
 
 const optionalProfileText = z.string().trim().max(80).nullable().optional();

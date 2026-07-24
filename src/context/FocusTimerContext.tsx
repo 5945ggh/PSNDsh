@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useData } from "./MockContext";
-import { FocusSession, FocusSegment } from "@/types/mock";
+import { FocusSession, FocusSegment } from "@/lib/domain/types";
 
 interface FocusTimerContextType {
   activeFocus: FocusSession | null;

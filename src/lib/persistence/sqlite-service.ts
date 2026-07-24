@@ -52,7 +52,7 @@ import {
   UserDataExport,
   WeekPlan,
   WeekPlanItem,
-} from "@/types/mock";
+} from "@/lib/domain/types";
 
 const DEFAULT_TIMEZONE = "Asia/Shanghai";
 const DEFAULT_USER_ID = "usr_demo";

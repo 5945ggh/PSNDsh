@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useData } from "@/context/MockContext";
-import { ScenarioPreset } from "@/types/mock";
+import type { ScenarioPreset } from "@/lib/mock/types";
 import { Sliders, Check, X } from "lucide-react";
 
 export const ScenarioSwitcher: React.FC = () => {

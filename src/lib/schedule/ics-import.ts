@@ -1,6 +1,6 @@
 import ical, { type ParameterValue, type VEvent } from "node-ical";
 import { ApplicationError } from "@/lib/application/error";
-import type { IcsImportPreview, IcsImportRow, ScheduleBlockInput } from "@/types/mock";
+import type { IcsImportPreview, IcsImportRow, ScheduleBlockInput } from "@/lib/domain/types";
 
 export const ICS_MAX_BYTES = 1_024 * 1_024;
 export const ICS_MAX_EVENTS = 200;

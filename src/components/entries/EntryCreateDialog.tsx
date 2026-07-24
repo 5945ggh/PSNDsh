@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Plus, X } from "lucide-react";
 import { type DataSnapshot, useData } from "@/context/MockContext";
-import type { Entry, EntryCompletionMode, WeekPlan } from "@/types/mock";
+import type { Entry, EntryCompletionMode, WeekPlan } from "@/lib/domain/types";
 
 type CreatedEntryResult = {
   entry: Entry;

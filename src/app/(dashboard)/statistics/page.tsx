@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useData } from "@/context/MockContext";
-import type { StatisticsPayload } from "@/types/mock";
+import type { StatisticsPayload } from "@/lib/domain/types";
 import {
   BarChart3,
   PieChart,

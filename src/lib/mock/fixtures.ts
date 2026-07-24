@@ -6,7 +6,7 @@ import {
   ScheduleBlock,
   IcsImportPreview,
   Capabilities,
-} from "@/types/mock";
+} from "@/lib/domain/types";
 
 export const MOCK_USER: UserProfile = {
   id: "usr_01",

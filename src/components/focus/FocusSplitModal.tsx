@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { useData } from "@/context/MockContext";
-import { FocusSegment, FocusSession } from "@/types/mock";
+import { FocusSegment, FocusSession } from "@/lib/domain/types";
 import { X, Split, Save, AlertCircle, Plus, Trash2 } from "lucide-react";
 
 export const FocusSplitModal: React.FC = () => {

@@ -1,4 +1,4 @@
-import { Entry, EntryStatus, FocusSegment, FocusSession } from "@/types/mock";
+import { Entry, EntryStatus, FocusSegment, FocusSession } from "@/lib/domain/types";
 import { ApplicationError } from "@/lib/application/error";
 
 export const MockDomainError = ApplicationError;

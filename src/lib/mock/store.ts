@@ -3,7 +3,6 @@ import {
   WeekPlan,
   FocusSession,
   ScheduleBlock,
-  ScenarioPreset,
   UserProfile,
   Capabilities,
   DashboardPayload,
@@ -12,7 +11,8 @@ import {
   FocusSegment,
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
-} from "@/types/mock";
+} from "@/lib/domain/types";
+import type { ScenarioPreset } from "@/lib/mock/types";
 import {
   MOCK_USER,
   MOCK_CAPABILITIES_NORMAL,

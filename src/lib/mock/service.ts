@@ -5,10 +5,10 @@ import {
   FocusSession,
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
-  ScenarioPreset,
   UserDataExport,
   UserProfile,
-} from "@/types/mock";
+} from "@/lib/domain/types";
+import type { ScenarioPreset } from "@/lib/mock/types";
 import { ApplicationService, LoginInput, RegisterInput } from "@/lib/application/contract";
 import { MockDataStore } from "./store";
 import {

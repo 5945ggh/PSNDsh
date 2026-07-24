@@ -9,7 +9,7 @@ import type {
   ScheduleTemplateInput,
   ScheduleTemplatePreview,
   TemplateWeekday,
-} from "@/types/mock";
+} from "@/lib/domain/types";
 
 type Props = {
   isOpen: boolean;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { type DataSnapshot, useData } from "@/context/MockContext";
 import { SafeMarkdown } from "@/components/common/SafeMarkdown";
 import { EntryCreateDialog } from "@/components/entries/EntryCreateDialog";
-import { Entry, WeekPlan } from "@/types/mock";
+import { Entry, WeekPlan } from "@/lib/domain/types";
 import {
   ChevronRight,
   ChevronDown,

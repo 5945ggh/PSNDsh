@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { FileStack, LoaderCircle, Trash2, X } from "lucide-react";
 import { useData } from "@/context/MockContext";
-import type { ScheduleImport } from "@/types/mock";
+import type { ScheduleImport } from "@/lib/domain/types";
 
 type ScheduleImportManagerProps = {
   isOpen: boolean;
