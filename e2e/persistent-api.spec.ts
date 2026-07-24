@@ -67,17 +67,10 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   const createDialog = page.getByRole("dialog", { name: "新建顶层条目" });
   await createDialog.getByLabel("条目标题").fill(entryTitle);
   await createDialog.getByLabel("描述 / 备注").fill("用于搜索和日常计划验证");
-  let releaseBackgroundDashboardRequest!: () => void;
-  let finishBackgroundDashboardRequest: (() => void) | null = null;
-  const backgroundDashboardRequestFinished = new Promise<void>((resolve) => {
-    finishBackgroundDashboardRequest = resolve;
-  });
+  let dashboardRequestCount = 0;
   await page.route("**/api/v1/dashboard", async (route) => {
-    await new Promise<void>((resolve) => {
-      releaseBackgroundDashboardRequest = resolve;
-    });
+    dashboardRequestCount += 1;
     await route.continue();
-    finishBackgroundDashboardRequest?.();
   });
   await createDialog.getByRole("button", { name: "创建条目" }).click();
   await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
@@ -88,8 +81,7 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   await page.getByPlaceholder("搜索条目标题或描述…").fill("");
   await page.getByLabel("筛选条目").selectOption("all");
   await expect(page.getByText("正在恢复工作台...")).toHaveCount(0);
-  releaseBackgroundDashboardRequest();
-  await backgroundDashboardRequestFinished;
+  expect(dashboardRequestCount).toBe(0);
   await page.unroute("**/api/v1/dashboard");
 
   const row = page.getByText(entryTitle, { exact: true }).locator("..").locator("..");
@@ -247,6 +239,7 @@ END:VCALENDAR`),
   await importDialog.getByRole("button", { name: "解析日程表预览" }).click();
   expect((await previewResponse).status()).toBe(200);
   await expect(importDialog.getByText(title, { exact: true })).toBeVisible();
+  await expect(importDialog.getByText(`${today} 09:00–10:00`, { exact: false })).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   const confirmResponse = page.waitForResponse((response) =>
     response.request().method() === "POST" && response.url().includes("/schedule-blocks/imports/ics/") && response.url().endsWith("/confirm")

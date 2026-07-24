@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { ApiAdapter, isUnauthorizedError } from "@/lib/api/client";
 import {
   createApiAdapter,
@@ -23,10 +24,15 @@ import {
   Entry,
   FocusSession,
   ScheduleBlock,
-  ScenarioPreset,
   StatisticsPayload,
   WeekPlan,
-} from "@/types/mock";
+} from "@/lib/domain/types";
+import type { ScenarioPreset } from "@/lib/mock/types";
+import {
+  type DataResource,
+  hasLoadedResources,
+  resourcesForPathname,
+} from "@/context/data-load-plan";
 
 export type DataLoadStatus = "loading" | "ready" | "error";
 
@@ -74,6 +80,11 @@ export type DataContextType = {
   setScenario: (preset: ScenarioPreset) => void;
 };
 
+type LoadedResources = {
+  userId: string | null;
+  resources: Set<DataResource>;
+};
+
 const emptyData = (): DataSnapshot => ({
   capabilities: null,
   session: { user: null },
@@ -88,9 +99,17 @@ const emptyData = (): DataSnapshot => ({
 
 const DataContext = createContext<DataContextType | null>(null);
 
-const readAuthenticatedData = async (api: ApiAdapter, session: AuthSession) => {
+const readAuthenticatedData = async (
+  api: ApiAdapter,
+  session: AuthSession,
+  pathname: string,
+  current: DataSnapshot
+) => {
   if (!session.user) return emptyData();
 
+  const resources = new Set(resourcesForPathname(pathname));
+  const sameUser = current.session.user?.id === session.user.id;
+  const previous = sameUser ? current : emptyData();
   const [
     capabilities,
     entries,
@@ -101,14 +120,16 @@ const readAuthenticatedData = async (api: ApiAdapter, session: AuthSession) => {
     dashboard,
     weekStatistics,
   ] = await Promise.all([
-    api.getCapabilities(),
-    api.getEntries(),
-    api.getWeekPlan(),
-    api.getActiveFocus(),
-    api.getFocusSessions(),
-    api.getScheduleBlocks(),
-    api.getDashboardPayload(),
-    api.getStatisticsPayload("week"),
+    resources.has("capabilities") ? api.getCapabilities() : previous.capabilities,
+    resources.has("entries") ? api.getEntries() : previous.entries,
+    resources.has("currentWeekPlan") ? api.getWeekPlan() : previous.currentWeekPlan,
+    resources.has("activeFocus") ? api.getActiveFocus() : previous.activeFocus,
+    resources.has("focusSessions") ? api.getFocusSessions() : previous.focusSessions,
+    resources.has("scheduleBlocks") ? api.getScheduleBlocks() : previous.scheduleBlocks,
+    resources.has("dashboard") ? api.getDashboardPayload() : previous.dashboard,
+    resources.has("weekStatistics")
+      ? api.getStatisticsPayload("week")
+      : previous.statistics.week,
   ]);
 
   return {
@@ -120,13 +141,16 @@ const readAuthenticatedData = async (api: ApiAdapter, session: AuthSession) => {
     focusSessions,
     scheduleBlocks,
     dashboard,
-    statistics: { week: weekStatistics },
+    statistics: weekStatistics
+      ? { ...previous.statistics, week: weekStatistics }
+      : previous.statistics,
   } satisfies DataSnapshot;
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const pathname = usePathname();
   const transport = getDataTransport();
   const api = useMemo(() => createApiAdapter(transport), [transport]);
   const [data, setData] = useState<DataSnapshot>(emptyData);
@@ -134,10 +158,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<Error | null>(null);
   const [pendingMutations, setPendingMutations] = useState(0);
   const [version, setVersion] = useState(0);
+  const [loadedResources, setLoadedResources] = useState<LoadedResources>({
+    userId: null,
+    resources: new Set(),
+  });
   const [scenario, setScenarioState] = useState<ScenarioPreset>(() =>
     isMockApiFeatures(api) ? api.getScenario() : "normal"
   );
   const requestVersion = useRef(0);
+  const snapshotRef = useRef<DataSnapshot>(emptyData());
+  const loadedResourcesRef = useRef<LoadedResources>({
+    userId: null,
+    resources: new Set(),
+  });
 
   const refresh = useCallback(async ({ background = false }: RefreshOptions = {}) => {
     const requestId = ++requestVersion.current;
@@ -156,10 +189,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const next = session.user
-        ? await readAuthenticatedData(api, session)
+        ? await readAuthenticatedData(api, session, pathname, snapshotRef.current)
         : { ...emptyData(), capabilities: await api.getCapabilities() };
 
       if (requestId !== requestVersion.current) return;
+      const userId = session.user?.id ?? null;
+      const loadedResources =
+        loadedResourcesRef.current.userId === userId
+          ? new Set(loadedResourcesRef.current.resources)
+          : new Set<DataResource>();
+      const fetchedResources = session.user
+        ? resourcesForPathname(pathname)
+        : (["capabilities"] satisfies DataResource[]);
+      fetchedResources.forEach((resource) => loadedResources.add(resource));
+      const nextLoadedResources = { userId, resources: loadedResources };
+      loadedResourcesRef.current = nextLoadedResources;
+      setLoadedResources(nextLoadedResources);
+      snapshotRef.current = next;
       setData(next);
       setStatus("ready");
       setVersion((current) => current + 1);
@@ -170,14 +216,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(nextError);
       if (!background) setStatus("error");
     }
-  }, [api]);
+  }, [api, pathname]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
-      void refresh();
+      const currentUserId = snapshotRef.current.session.user?.id ?? null;
+      const routeDataReady =
+        loadedResourcesRef.current.userId === currentUserId &&
+        hasLoadedResources(pathname, loadedResourcesRef.current.resources);
+      void refresh({
+        background: requestVersion.current > 0 && routeDataReady,
+      });
     }, 0);
     return () => window.clearTimeout(initialLoad);
-  }, [refresh]);
+  }, [pathname, refresh]);
 
   useEffect(() => {
     if (!isMockApiFeatures(api)) return;
@@ -194,7 +246,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const result = await operation();
         if (options.update) {
-          setData((current) => options.update?.(current, result) ?? current);
+          setData((current) => {
+            const next = options.update?.(current, result) ?? current;
+            snapshotRef.current = next;
+            return next;
+          });
         }
         if (options.refresh !== false) {
           const revalidation = refresh({ background: true });
@@ -227,13 +283,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     [api]
   );
 
+  const currentUserId = data.session.user?.id ?? null;
+  const routeDataReady =
+    loadedResources.userId === currentUserId &&
+    hasLoadedResources(pathname, loadedResources.resources);
+  const visibleStatus = status === "ready" && !routeDataReady ? "loading" : status;
+
   const value = useMemo<DataContextType>(
     () => ({
       transport,
       isMockTransport: transport === "mock",
       api,
       data,
-      status,
+      status: visibleStatus,
       error,
       pendingMutations,
       version,
@@ -252,9 +314,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       refresh,
       scenario,
       setScenario,
-      status,
       transport,
       version,
+      visibleStatus,
     ]
   );
 
