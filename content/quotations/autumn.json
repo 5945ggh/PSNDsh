@@ -5,6 +5,10 @@
   "months": [9, 10, 11],
   "quotations": [
     { "id": "autumn-mountain", "text": "空山新雨后，天气晚来秋。", "author": "王维", "work": "《山居秋暝》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "autumn-clear", "text": "自古逢秋悲寂寥，我言秋日胜春朝。", "author": "刘禹锡", "work": "《秋词》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "autumn-clear", "text": "自古逢秋悲寂寥，我言秋日胜春朝。", "author": "刘禹锡", "work": "《秋词》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-water", "text": "落霞与孤鹜齐飞，秋水共长天一色。", "author": "王勃", "work": "《滕王阁序》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-maple", "text": "停车坐爱枫林晚，霜叶红于二月花。", "author": "杜牧", "work": "《山行》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-gui", "text": "桂子月中落，天香云外飘。", "author": "宋之问", "work": "《灵隐寺》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-wildgeese", "text": "长风万里送秋雁，对此可以酣高楼。", "author": "李白", "work": "《宣州谢朓楼饯别校书叔云》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }

@@ -5,6 +5,10 @@
   "months": [3, 4, 5],
   "quotations": [
     { "id": "spring-rain", "text": "好雨知时节，当春乃发生。", "author": "杜甫", "work": "《春夜喜雨》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "spring-breeze", "text": "等闲识得东风面，万紫千红总是春。", "author": "朱熹", "work": "《春日》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "spring-breeze", "text": "等闲识得东风面，万紫千红总是春。", "author": "朱熹", "work": "《春日》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-early", "text": "天街小雨润如酥，草色遥看近却无。", "author": "韩愈", "work": "《早春呈水部张十八员外》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-willow", "text": "不知细叶谁裁出，二月春风似剪刀。", "author": "贺知章", "work": "《咏柳》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-flower", "text": "竹外桃花三两枝，春江水暖鸭先知。", "author": "苏轼", "work": "《惠崇春江晚景》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-jiangnan", "text": "日出江花红胜火，春来江水绿如蓝。", "author": "白居易", "work": "《忆江南·江南好》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }

@@ -5,6 +5,10 @@
   "months": [6, 7, 8],
   "quotations": [
     { "id": "summer-lotus", "text": "接天莲叶无穷碧，映日荷花别样红。", "author": "杨万里", "work": "《晓出净慈寺送林子方》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "summer-pond", "text": "小荷才露尖尖角，早有蜻蜓立上头。", "author": "杨万里", "work": "《小池》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "summer-pond", "text": "小荷才露尖尖角，早有蜻蜓立上头。", "author": "杨万里", "work": "《小池》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-shade", "text": "绿树阴浓夏日长，楼台倒影入池塘。", "author": "高骈", "work": "《山亭夏日》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-rose", "text": "水晶帘动微风起，满架蔷薇一院香。", "author": "高骈", "work": "《山亭夏日》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-night", "text": "稻花香里说丰年，听取蛙声一片。", "author": "辛弃疾", "work": "《西江月·夜行黄沙道中》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-cool", "text": "清风明月无人管，并作南楼一缕凉。", "author": "黄庭坚", "work": "《鄂州南楼书事》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }
