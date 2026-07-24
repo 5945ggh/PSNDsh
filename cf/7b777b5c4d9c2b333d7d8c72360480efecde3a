@@ -1,0 +1,38 @@
+src/lib/persistence/sqlite-service.test.ts
+  s_abbf2e844e347b::t_e4ec29b9178e41 53-69,71,73,75,78-83,85,88-94,96-100
+  s_abbf2e844e347b::t_6b1b2c043572ad 70,72,74,76-77,84,86-87,95
+src/components/calendar/CompactCalendar.tsx
+  s_abbf2e844e347b::t_4307eb6c1fa9fd 1-53
+src/components/calendar/DayOverview.tsx
+  s_abbf2e844e347b::t_f6ba7c8ab0a160 1-53
+src/components/calendar/CalendarToolbar.tsx
+  s_abbf2e844e347b::t_9541b758397d74 1-123
+src/lib/persistence/sqlite-service.ts
+  s_abbf2e844e347b::t_5ad76cc20888b8 228,230-234,237,239-245,248-266,268-276,286,292-311,438,1080,1086
+src/components/calendar/calendar-utils.ts
+  s_abbf2e844e347b::t_5b15ad85d61461 1-91
+src/components/calendar/CalendarEventDetails.tsx
+  s_abbf2e844e347b::t_05f31cafd94bae 1-30
+src/components/calendar/CalendarController.tsx
+  s_abbf2e844e347b::t_989b628488a567 1-150
+src/components/calendar/WeekTimeline.tsx
+  s_abbf2e844e347b::t_8138008773bbe3 1-136
+src/app/(dashboard)/calendar/page.tsx
+  s_abbf2e844e347b::t_14a5065cb409f5 1,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cf7b777b5c4d9c2b333d7d8c72360480efecde3a",
+  "prompts": {},
+  "sessions": {
+    "s_abbf2e844e347b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f91cc-2a39-7e20-bc11-01356822f7b8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
