@@ -225,33 +225,55 @@ export class SqliteApplicationService implements ApplicationService {
     return row;
   }
 
-  private entrySeconds(entryId: string) {
+  private getDirectFocusSecondsByEntry(userId: string) {
     const rows = this.db
-      .select({ startedAt: focusSegments.startedAt, endedAt: focusSegments.endedAt })
+      .select({
+        entryId: focusSegments.entryId,
+        startedAt: focusSegments.startedAt,
+        endedAt: focusSegments.endedAt,
+      })
       .from(focusSegments)
       .innerJoin(focusSessions, eq(focusSegments.sessionId, focusSessions.id))
-      .where(
-        and(
-          eq(focusSegments.entryId, entryId),
-          eq(focusSessions.userId, this.requireUserId()),
-          sql`${focusSessions.endedAt} is not null`
-        )
-      )
+      .where(and(eq(focusSessions.userId, userId), sql`${focusSessions.endedAt} is not null`))
       .all();
-    return rows.reduce((sum, row) => sum + Math.max(0, (parseDate(row.endedAt) - parseDate(row.startedAt)) / 1000), 0);
+    const direct = new Map<string, number>();
+    for (const segment of rows) {
+      if (!segment.entryId) continue;
+      const seconds = Math.max(0, (parseDate(segment.endedAt) - parseDate(segment.startedAt)) / 1000);
+      direct.set(segment.entryId, (direct.get(segment.entryId) ?? 0) + seconds);
+    }
+    return direct;
   }
 
-  private toEntry(row: EntryRow, allRows?: EntryRow[]): Entry {
-    const rows = allRows ?? this.db.select().from(entries).where(eq(entries.userId, this.requireUserId())).all();
-    const directFocusSeconds = this.entrySeconds(row.id);
-    const aggregate = (entryId: string): number => {
-      const current = rows.find((candidate) => candidate.id === entryId);
-      if (!current) return 0;
-      return directFor(current.id) + rows
-        .filter((candidate) => candidate.parentId === entryId)
-        .reduce((sum, child) => sum + aggregate(child.id), 0);
+  private getEntryAggregates(rows: EntryRow[], direct: Map<string, number>) {
+    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    const childrenByParentId = new Map<string, EntryRow[]>();
+    for (const child of rows) {
+      if (!child.parentId) continue;
+      const children = childrenByParentId.get(child.parentId) ?? [];
+      children.push(child);
+      childrenByParentId.set(child.parentId, children);
+    }
+
+    const aggregate = new Map<string, number>();
+    const calculate = (entryId: string): number => {
+      const cached = aggregate.get(entryId);
+      if (cached !== undefined) return cached;
+      if (!rowsById.has(entryId)) return 0;
+      const total = (direct.get(entryId) ?? 0) + (childrenByParentId.get(entryId) ?? [])
+        .reduce((sum, child) => sum + calculate(child.id), 0);
+      aggregate.set(entryId, total);
+      return total;
     };
-    const directFor = (entryId: string) => entryId === row.id ? directFocusSeconds : this.entrySeconds(entryId);
+    rows.forEach((row) => calculate(row.id));
+    return aggregate;
+  }
+
+  private toEntry(row: EntryRow, allRows?: EntryRow[], direct?: Map<string, number>): Entry {
+    const rows = allRows ?? this.db.select().from(entries).where(eq(entries.userId, this.requireUserId())).all();
+    const directByEntry = direct ?? this.getDirectFocusSecondsByEntry(this.requireUserId());
+    const aggregates = this.getEntryAggregates(rows, directByEntry);
+    const directFocusSeconds = directByEntry.get(row.id) ?? 0;
     return {
       id: row.id,
       parentId: row.parentId,
@@ -261,10 +283,30 @@ export class SqliteApplicationService implements ApplicationService {
       status: row.status,
       dueAt: row.dueAt,
       directFocusSeconds,
-      aggregateFocusSeconds: aggregate(row.id),
+      aggregateFocusSeconds: aggregates.get(row.id) ?? directFocusSeconds,
       sortKey: row.sortKey,
       deletedAt: row.deletedAt,
     };
+  }
+
+  private toEntries(rows: EntryRow[], direct: Map<string, number>): Entry[] {
+    const aggregates = this.getEntryAggregates(rows, direct);
+    return rows.map((row) => {
+      const directFocusSeconds = direct.get(row.id) ?? 0;
+      return {
+        id: row.id,
+        parentId: row.parentId,
+        title: row.title,
+        description: row.description,
+        completionMode: row.completionMode,
+        status: row.status,
+        dueAt: row.dueAt,
+        directFocusSeconds,
+        aggregateFocusSeconds: aggregates.get(row.id) ?? directFocusSeconds,
+        sortKey: row.sortKey,
+        deletedAt: row.deletedAt,
+      };
+    });
   }
 
   private toUser(row: typeof users.$inferSelect): UserProfile {
@@ -393,7 +435,7 @@ export class SqliteApplicationService implements ApplicationService {
   getEntries(): Entry[] {
     const userId = this.requireUserId();
     const rows = this.db.select().from(entries).where(and(eq(entries.userId, userId), isNull(entries.deletedAt))).orderBy(asc(entries.sortKey)).all();
-    return rows.map((row) => this.toEntry(row, rows));
+    return this.toEntries(rows, this.getDirectFocusSecondsByEntry(userId));
   }
 
   getEntryById(id: string): Entry | undefined {
@@ -1035,12 +1077,13 @@ export class SqliteApplicationService implements ApplicationService {
       .orderBy(asc(weekPlans.weekStart))
       .all();
 
+    const entriesForExport = this.toEntries(allEntryRows, this.getDirectFocusSecondsByEntry(userId));
     return {
       schemaVersion: "1.0",
       exportedAt: nowIso(this.clock),
       effectiveTimezone: this.timezone,
       profile: this.toUser(this.getUserRow()!),
-      entries: allEntryRows.map((entry) => this.toEntry(entry, allEntryRows)),
+      entries: entriesForExport,
       weekPlans: plans.map((plan) => ({
         weekStart: plan.weekStart,
         note: plan.note,

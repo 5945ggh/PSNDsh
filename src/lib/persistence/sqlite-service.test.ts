@@ -50,6 +50,54 @@ describe("SqliteApplicationService", () => {
     expect(app.getEntryById(root.id)?.parentId).toBeNull();
   });
 
+  it("preserves direct and aggregate focus totals across a deep and wide entry tree", () => {
+    const app = service();
+    const root = app.addEntry({ parentId: null, title: "总项目", description: null, completionMode: "ongoing", dueAt: null });
+    const groups = Array.from({ length: 4 }, (_, groupIndex) => app.addEntry({
+      parentId: root.id,
+      title: `分组 ${groupIndex + 1}`,
+      description: null,
+      completionMode: "ongoing",
+      dueAt: null,
+    }));
+    const leaves = groups.flatMap((group, groupIndex) => Array.from({ length: 5 }, (_, leafIndex) => app.addEntry({
+      parentId: group.id,
+      title: `叶项 ${groupIndex + 1}-${leafIndex + 1}`,
+      description: null,
+      completionMode: "completable",
+      dueAt: null,
+    })));
+    const focusTime = (offsetSeconds: number) => new Date(Date.parse("2026-06-26T01:00:00.000Z") + offsetSeconds * 1000).toISOString();
+
+    app.addManualFocusSession({ startedAt: focusTime(0), endedAt: focusTime(120), note: null, outcome: null, entryId: root.id });
+    groups.forEach((group, index) => {
+      const startSeconds = 600 + index * 180;
+      app.addManualFocusSession({
+        startedAt: focusTime(startSeconds),
+        endedAt: focusTime(startSeconds + 60),
+        note: null,
+        outcome: null,
+        entryId: group.id,
+      });
+    });
+    leaves.forEach((leaf, index) => {
+      const startSeconds = 1800 + index * 120;
+      app.addManualFocusSession({
+        startedAt: focusTime(startSeconds),
+        endedAt: focusTime(startSeconds + 30),
+        note: null,
+        outcome: null,
+        entryId: leaf.id,
+      });
+    });
+
+    const result = new Map(app.getEntries().map((entry) => [entry.id, entry]));
+    expect(result.get(root.id)).toMatchObject({ directFocusSeconds: 120, aggregateFocusSeconds: 960 });
+    expect(result.get(groups[0]!.id)).toMatchObject({ directFocusSeconds: 60, aggregateFocusSeconds: 210 });
+    expect(result.get(leaves[0]!.id)).toMatchObject({ directFocusSeconds: 30, aggregateFocusSeconds: 30 });
+    expect(result.get(leaves.at(-1)!.id)).toMatchObject({ directFocusSeconds: 30, aggregateFocusSeconds: 30 });
+  });
+
   it("rolls active entries into the next week once without copying the entry", () => {
     const app = service();
     const rollover = app.addEntry({ parentId: null, title: "继续事项", description: null, completionMode: "completable", dueAt: null });
