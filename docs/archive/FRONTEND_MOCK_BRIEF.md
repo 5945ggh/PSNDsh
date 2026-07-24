@@ -1,7 +1,9 @@
-# 前端样例设计任务书
+# 前端样例设计任务书（归档）
 
-> 用途：交给独立前端 Agent，产出使用 mock 数据和 mock 接口的可操作样例。  
-> 状态：Ready for mock design  
+> 用途：交给独立前端 Agent，产出使用 mock 数据和 mock 接口的可操作样例。
+>
+> 状态：Completed，前端样例已完成校准并验收；本文归档为历史设计任务基线，不作为默认阅读材料
+>
 > 产品语义以 [PRD](../product/PRD.md) 为准，设计约束以 [DESIGN.md](../../DESIGN.md) 为准。
 
 ## 1. 任务目标

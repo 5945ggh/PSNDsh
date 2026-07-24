@@ -45,12 +45,12 @@ docs/          产品、架构、设计、测试与初始化文档
 .env.example   服务端配置占位模板
 ```
 
-当前实现已包含登录/注册、首页、计划、日历、统计和设置页面，以及可在持久化模式下运行的同源 JSON API、SQLite schema、迁移与应用服务。`NEXT_PUBLIC_DATA_TRANSPORT` 未设置时使用持久化 API；显式设为 `mock` 时保留前端样例场景切换能力。
+当前实现已包含登录/注册、首页、计划、日历、统计和设置页面，以及可在持久化模式下运行的同源 JSON API、SQLite schema、迁移与应用服务。`NEXT_PUBLIC_DATA_TRANSPORT` 未设置时使用持久化 API；显式设为 `mock` 时保留样例场景切换能力。
 
-当前持久化模式已覆盖账号资料、条目、周计划、专注、手工日程、日历、统计、人工审核的本地季节名句、当前账号的结构化 JSON 导出，以及 ICS 文件的预览确认导入。ICS 重复事件会在未来 180 天展开为具体日程；未声明时区的重复事件按 `effectiveTimezone` 解释，导入批次可查看并整体删除。全天事件、天气、作品级名句预抓取和部署容器仍是后续批次。
+当前持久化模式已覆盖账号资料、条目、周计划、专注、手工日程、日历、统计、人工审核的本地季节名句、当前账号的结构化 JSON 导出，以及 ICS 文件的预览确认导入。ICS 重复事件会在未来 180 天展开为具体日程；未声明时区的重复事件按 `effectiveTimezone` 解释，导入批次可查看并整体删除。全天事件、天气、作品级名句预抓取为后续批次。
 
 数据库级备份、校验和恢复使用 `db:backup`、`db:verify`、`db:restore` 命令；恢复只能在停止应用后进行。完整步骤、敏感数据边界与恢复演练见 [SQLite 备份与恢复](OPERATIONS.md)。季节名句由 `content/quotations/` 下的 JSON 数据包提供，格式见 [季节名句数据包](content/QUOTATION_DATA_PACK.md)。
 
 ## 初始化范围
 
-项目锁定了 Next.js、React、TypeScript、Tailwind CSS、ESLint、Radix primitives、Lucide、Zod、Drizzle ORM、SQLite 驱动和 `node-ical@0.26.1`，并生成 `pnpm-lock.yaml`。ICS 解析器只在 Node 服务端路由中使用；实现边界与受限重复展开策略见 [ADR 0001](architecture/adr/0001-ics-import-parser.md)。Better Auth、FullCalendar、天气与名句预抓取适配器仍按技术设计中的待验证项处理，尚未接入。
+项目锁定了 Next.js、React、TypeScript、Tailwind CSS、ESLint、Radix primitives、Lucide、Zod、Drizzle ORM、SQLite 驱动和 `node-ical@0.26.1`，并生成 `pnpm-lock.yaml`。ICS 解析器只在 Node 服务端路由中使用；实现边界与受限重复展开策略见 [ADR 0001](architecture/adr/0001-ics-import-parser.md)。Better Auth、FullCalendar、天气与名句预抓取适配器是延期或替换性评估项，尚未接入。

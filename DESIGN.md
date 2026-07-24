@@ -2,8 +2,8 @@
 
 ## Source of truth
 
-- Status: Active，当前 UI 已由产品所有者完成手测确认；后续视觉修改需保持本文件约束
-- Last refreshed: 2026-07-22
+- Status: Active，当前 UI 已由产品所有者完成手测确认，前端样例对齐与验收闭环；后续视觉修改需保持本文件约束
+- Last refreshed: 2026-07-24
 - Primary product surfaces: 登录与注册、首页、计划、日历、统计、设置、全局专注状态
 - Evidence reviewed: `docs/product/PRD.md`、`docs/architecture/TECHNICAL_DESIGN.md`、`.omx/interviews/personal-dashboard-20260720T083155Z.md`
 - Visual evidence: 已有可操作前端样例并经产品所有者手测确认；后续截图与视觉烟测应以当前实现为起点，前端样例不自动覆盖本文件
@@ -99,9 +99,8 @@
 - Test/screenshot expectations: 前端样例交付桌面和手机关键页面截图；正式实现后再建立稳定视觉基线
 - Source priority: PRD 决定产品语义，本文决定设计原则，前端样例提供视觉与交互参考但不是像素级强约束
 
-## Open questions
+## Deferred design decisions
 
-- [ ] 前端样例确定最终导航形态、视觉 token 与信息密度 / 前端样例 Agent / 影响整体 UI
-- [ ] 周历中计划与专注重叠的最终视觉策略 / 前端样例 Agent / 影响日历组件选择
-- [ ] 专注结束与片段拆分采用模态框、抽屉还是独立页面 / 前端样例 Agent / 影响移动端流程
-- [ ] 深层条目在手机端采用逐级导航还是可折叠树 / 前端样例 Agent / 影响计划页面结构
+- 真实天气配置进入范围后，需要补充天气状态、位置设置和失败文案。
+- Agent/MCP 进入范围前，需要补充授权、审计和可撤销操作的界面约束。
+- 如未来引入稳定视觉回归，应以当前已验收实现为基线，而不是归档的前端样例任务书。

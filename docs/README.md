@@ -1,30 +1,47 @@
 # 文档索引
 
-## 当前基线
+> 文档同步状态：2026-07-24。首版实现、前端样例校准和验收审计已闭环。
 
-- [产品需求](product/PRD.md)：产品目标、范围、领域语义和验收基线。
-- [技术设计](architecture/TECHNICAL_DESIGN.md)：系统架构、数据模型、接口、部署与安全设计。
-- [设计契约](../DESIGN.md)：UI/UX 与前端实现共同遵循的长期设计原则。
-- [前端样例任务书](design/FRONTEND_MOCK_BRIEF.md)：交给前端样例 Agent 的页面、流程、mock 接口和交付要求。
-- [薄测策略](testing/TEST_STRATEGY.md)：当前阶段只锁定高风险不变量和关键流程的测试范围。
-- [PRD 首版验收审计](testing/PRD_ACCEPTANCE_AUDIT.md)：已实现能力、测试证据与明确延期边界。
-- [项目初始化与本地运行](SETUP.md)：Node/Corepack/pnpm 约定、目录职责和当前初始化范围。
-- [SQLite 备份与恢复](OPERATIONS.md)：一致性快照、恢复演练与敏感数据处理要求。
-- [季节名句数据包](content/QUOTATION_DATA_PACK.md)：供人工审核或后续预抓取流程提交的本地内容格式。
+## 默认阅读
+
+新 Agent 默认只读以下文件：
+
+1. [当前状态](CURRENT_STATE.md)：已完成能力、延期项、重要代码入口和维护风险。
+2. [仓库根 README](../README.md)：项目简介、本地命令和文档入口。
+3. [Agent 工作约定](../AGENTS.md)：阅读顺序、边界和验证要求。
+
+## 按任务阅读
+
+| 任务 | 文档 |
+|---|---|
+| 产品语义、范围、不变量 | [产品需求](product/PRD.md) |
+| UI/UX、视觉、交互契约 | [设计契约](../DESIGN.md) |
+| 架构、API、数据库、部署约束 | [技术设计](architecture/TECHNICAL_DESIGN.md) |
+| 测试范围和验收证据 | [薄测策略](testing/TEST_STRATEGY.md)、[PRD 首版验收审计](testing/PRD_ACCEPTANCE_AUDIT.md) |
+| 本地运行和部署 | [项目初始化与本地运行](SETUP.md) |
+| SQLite 备份、校验、恢复 | [SQLite 备份与恢复](OPERATIONS.md) |
+| ICS 导入决策 | [ADR 0001：ICS 导入解析器](architecture/adr/0001-ics-import-parser.md) |
+| 季节名句数据 | [季节名句数据包](content/QUOTATION_DATA_PACK.md) |
+
+## 归档材料
+
+- [前端样例任务书](archive/FRONTEND_MOCK_BRIEF.md)：已完成的历史校准基线。默认不读；只有追溯样例设计来源时阅读。
 
 ## 需求来源
 
 - [访谈执行规格](../.omx/specs/deep-interview-personal-dashboard.md)
 - [访谈摘要](../.omx/interviews/personal-dashboard-20260720T083155Z.md)
 
-## 文档优先级
+## 冲突处理
 
 发生冲突时按以下顺序处理：
 
 1. 用户最新明确决定；
-2. `docs/product/PRD.md` 中的产品语义；
-3. `DESIGN.md` 中的交互与视觉约束；
-4. `docs/architecture/TECHNICAL_DESIGN.md` 中的实现设计；
-5. 前端样例与其他探索性产物。
+2. 代码与最新测试证明的真实行为；
+3. [当前状态](CURRENT_STATE.md)；
+4. [PRD](product/PRD.md) 中的产品语义；
+5. [DESIGN.md](../DESIGN.md) 中的交互与视觉约束；
+6. [技术设计](architecture/TECHNICAL_DESIGN.md) 中的实现约束；
+7. 归档材料和探索性产物。
 
-前端样例是重要参考，但不是产品语义或 API 的最终权威。样例暴露出更好的交互方案时，应先更新相应文档，再进入正式实现。
+文档与代码不一致时，不要直接相信旧文档；先核实实现，再更新对应文档。
