@@ -270,20 +270,22 @@ export default function DashboardPage() {
                     直接在这里创建一项并加入本周，之后即可开始专注记录。
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-                >
-                  新建本周条目
-                </button>
-                <Link
-                  href="/plan"
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  <span>{data.entries.length > 0 ? "从已有条目中选择" : "打开计划树查看更多选项"}</span>
-                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                </Link>
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  >
+                    新建本周条目
+                  </button>
+                  <Link
+                    href="/plan"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    <span>{data.entries.length > 0 ? "从已有条目中选择" : "打开计划树查看更多选项"}</span>
+                    <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
             )}
           </div>

@@ -11,6 +11,14 @@ export const formatTimeInTimezone = (value: Date | string | number, timezone: st
     timeZone: timezone,
   }).format(dateFor(value));
 
+export const formatDateKeyInTimezone = (value: Date | string | number, timezone: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timezone,
+  }).format(dateFor(value));
+
 export const getHourInTimezone = (value: Date | string | number, timezone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",

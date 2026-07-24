@@ -2,7 +2,12 @@
 
 import React, { useState } from "react";
 import { useData } from "@/context/MockContext";
-import type { IcsImportPreview } from "@/types/mock";
+import {
+  DEFAULT_TIMEZONE,
+  formatDateKeyInTimezone,
+  formatTimeInTimezone,
+} from "@/lib/time/timezone";
+import type { IcsImportPreview } from "@/lib/domain/types";
 import { X, FileCode, CheckCircle, AlertTriangle, ArrowRight } from "lucide-react";
 
 interface IcsImportModalProps {
@@ -17,7 +22,8 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { api, mutate } = useData();
+  const { api, data, mutate } = useData();
+  const timezone = data.capabilities?.effectiveTimezone ?? DEFAULT_TIMEZONE;
   const [previewData, setPreviewData] = useState<IcsImportPreview | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -216,7 +222,7 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                               {row.title}
                             </div>
                             <div className="text-[11px] text-zinc-500 font-mono mt-0.5 tabular-nums">
-                              {row.startedAt.slice(0, 10)} {row.startedAt.slice(11, 16)}–{row.endedAt.slice(11, 16)} {row.recurrenceLabel ? `(${row.recurrenceLabel})` : ""}
+                              {formatDateKeyInTimezone(row.startedAt, timezone)} {formatTimeInTimezone(row.startedAt, timezone)}–{formatTimeInTimezone(row.endedAt, timezone)} {row.recurrenceLabel ? `(${row.recurrenceLabel})` : ""}
                             </div>
                             {(row.location || row.description) && (
                               <div className="mt-1 max-w-[26rem] truncate text-[10px] text-zinc-500">

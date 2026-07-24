@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatDateKeyInTimezone,
   formatDateLabelInTimezone,
   formatTimeInTimezone,
   getHourInTimezone,
@@ -12,6 +13,7 @@ describe("timezone formatting", () => {
 
     expect(formatTimeInTimezone(timestamp, "Asia/Shanghai")).toBe("08:50");
     expect(getHourInTimezone(timestamp, "Asia/Shanghai")).toBe(8);
+    expect(formatDateKeyInTimezone(timestamp, "Asia/Shanghai")).toBe("2026-07-23");
     expect(formatDateLabelInTimezone(timestamp, "Asia/Shanghai")).toContain("2026年7月23日");
   });
 

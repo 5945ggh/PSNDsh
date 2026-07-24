@@ -8,7 +8,8 @@ import { IcsImportModal } from "@/components/calendar/IcsImportModal";
 import { ScheduleImportManager } from "@/components/calendar/ScheduleImportManager";
 import { ScheduleTemplateManager } from "@/components/calendar/ScheduleTemplateManager";
 import { ScheduleEditorModal } from "@/components/calendar/ScheduleEditorModal";
-import { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/types/mock";
+import { formatDateKeyInTimezone, formatTimeInTimezone } from "@/lib/time/timezone";
+import { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/lib/domain/types";
 import {
   ChevronLeft,
   ChevronRight,
@@ -948,13 +949,13 @@ export default function CalendarPage() {
                 <div>
                   <span className="text-zinc-400">开始时间</span>
                   <div className="font-medium text-zinc-800 dark:text-zinc-200 mt-0.5">
-                    {activeScheduleModal.startedAt.slice(0, 10)} {activeScheduleModal.startedAt.slice(11, 16)}
+                    {formatDateKeyInTimezone(activeScheduleModal.startedAt, SHANGHAI_TIME_ZONE)} {formatTimeInTimezone(activeScheduleModal.startedAt, SHANGHAI_TIME_ZONE)}
                   </div>
                 </div>
                 <div>
                   <span className="text-zinc-400">结束时间</span>
                   <div className="font-medium text-zinc-800 dark:text-zinc-200 mt-0.5">
-                    {activeScheduleModal.endedAt.slice(11, 16)}
+                    {formatTimeInTimezone(activeScheduleModal.endedAt, SHANGHAI_TIME_ZONE)}
                   </div>
                 </div>
               </div>
