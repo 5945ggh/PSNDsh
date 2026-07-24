@@ -1,0 +1,37 @@
+src/components/calendar/IcsImportModal.tsx
+  s_a118e18015d124::t_4508986ed460ab 5-9,25-26,225
+  s_310551a413f2d8::t_c3165445e460cc 10
+src/app/(dashboard)/calendar/page.tsx
+  s_a118e18015d124::t_4508986ed460ab 11,952,958
+  s_310551a413f2d8::t_c3165445e460cc 12
+src/app/(dashboard)/page.tsx
+  s_a118e18015d124::t_843cc838302ae9 273-288
+src/lib/time/timezone.test.ts
+  s_a118e18015d124::t_4508986ed460ab 3,16
+src/lib/time/timezone.ts
+  s_a118e18015d124::t_4508986ed460ab 14-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9cdef86d530e2193ebaa40fd281eecf338b04e73",
+  "prompts": {},
+  "sessions": {
+    "s_310551a413f2d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8f69-89be-7122-8960-73c36bfbbb6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_a118e18015d124": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d08-412e-7653-908a-8a7e5c12a966",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
