@@ -1,0 +1,25 @@
+content/quotations/autumn.json
+  s_310551a413f2d8::t_607b95d5a2211f 8-12
+content/quotations/spring.json
+  s_310551a413f2d8::t_587e4138e9e369 8-12
+content/quotations/summer.json
+  s_310551a413f2d8::t_3453a9400d5b57 8-12
+content/quotations/winter.json
+  s_310551a413f2d8::t_f3f2919ae67349 8-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "534741ecc3b3f9a331579c591c485097ccb0b42d",
+  "prompts": {},
+  "sessions": {
+    "s_310551a413f2d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8f69-89be-7122-8960-73c36bfbbb6f",
+        "model": "unknown"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
