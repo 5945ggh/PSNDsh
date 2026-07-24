@@ -1,0 +1,55 @@
+docs/SETUP.md
+  s_310551a413f2d8::t_02475268463de1 48,50,56
+docs/testing/PRD_ACCEPTANCE_AUDIT.md
+  s_310551a413f2d8::t_02475268463de1 3
+  s_310551a413f2d8::t_94e3cb2b93fa5d 4
+README.md
+  s_310551a413f2d8::t_03110d578594fb 12-52
+  s_310551a413f2d8::t_53a90e4d53749e 9-11
+  s_310551a413f2d8::t_d563cf323f1849 53-54
+  s_66f7c0f801e911::t_a9cca0b68071d3 1-8
+docs/archive/FRONTEND_MOCK_BRIEF.md
+  s_310551a413f2d8::t_198a3e1dc391b1 1,3-6
+docs/product/PRD.md
+  s_310551a413f2d8::t_4f7ae6317975ec 4,6
+  s_310551a413f2d8::t_3f18a49a8da36c 5,7,9,15,24,49,54,66,86-87,113
+  s_310551a413f2d8::t_198a3e1dc391b1 3,11,13,17-22,26-32,34,36,38-40,42,44,46-47,50,52,56-59,61,63,67-70,72,74,76-79,81,83,91-94,96,98-107,109,114,116,121-134
+DESIGN.md
+  s_310551a413f2d8::t_02475268463de1 6,102,104-106
+  s_310551a413f2d8::t_84ee461a57358a 5
+AGENTS.md
+  s_310551a413f2d8::t_03110d578594fb 7
+  s_310551a413f2d8::t_8d4651a3106c01 57-72
+  s_310551a413f2d8::t_661f287efc3de3 1-6,8-56
+docs/CURRENT_STATE.md
+  s_310551a413f2d8::t_661f287efc3de3 1-75
+docs/architecture/TECHNICAL_DESIGN.md
+  s_310551a413f2d8::t_3f18a49a8da36c 4-6,19-20,23-25,47,59,83,95,105,110,115,157
+  s_310551a413f2d8::t_198a3e1dc391b1 3,9,11-15,21-22,26-29,31,33,37,40-41,43,51,53,62,66-67,71,73,85-87,91,93,96,98-99,101,103,109,117,123,125,127-133,135,137,139,141-147,149,151,153-155,159-163,165,167,172,175,180,182,184-191,193,195,197-200
+docs/README.md
+  s_310551a413f2d8::t_3f18a49a8da36c 3-28,35,40-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d7d31a3c2c24e1ae27a9360e6ee7715c1588f0a1",
+  "prompts": {},
+  "sessions": {
+    "s_310551a413f2d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8f69-89be-7122-8960-73c36bfbbb6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_66f7c0f801e911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f91ae-ceb4-7ec2-9ba8-0299c8288e80",
+        "model": "unknown"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
