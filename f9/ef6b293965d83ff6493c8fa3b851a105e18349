@@ -1,0 +1,189 @@
+src/app/globals.css
+  s_2b863b16ba4062::t_ef5aba620737e3 30,74,207
+  s_2b863b16ba4062::t_a2bb60d04bed91 9-21,23,25-28,31-32,35-38,40,53-65,67,69-72,86-87,96-199,210-229,241
+  s_2b863b16ba4062::t_4569341f639ffe 200-202,204-206,208-209
+  s_2b863b16ba4062::t_c62181b45e4cdb 29,73,203
+src/lib/persistence/sqlite-service.ts
+  s_e32cfb9cfc5a21::t_5949717733211f 873
+  s_e32cfb9cfc5a21::t_49a1581ce9be13 750,866,872
+  s_e32cfb9cfc5a21::t_96093fba8af348 367
+  s_e32cfb9cfc5a21::t_941ccaa5dd19b6 795-797
+  s_e32cfb9cfc5a21::t_1feef82c251218 742-749,751-752,755-794,798-807,809-865,867-871,874-879,881,883-884,886,897,900-902
+  s_e32cfb9cfc5a21::t_0194e0a7fbe14b 880
+src/app/layout.tsx
+  s_2b863b16ba4062::t_363602fe2b4902 20
+src/lib/time/timezone.test.ts
+  s_e32cfb9cfc5a21::t_046425a0f0578b 3-4,10,32-46
+src/components/layout/AppShell.tsx
+  s_e32cfb9cfc5a21::t_33f7e316cdaa5e 17,120
+  s_e32cfb9cfc5a21::t_7e8678aeb71464 35
+  s_2b863b16ba4062::t_09679d356708ce 83,86-96
+  s_2b863b16ba4062::t_3344b7868c15c4 40,46,50,57,72-73,103,111,118,121-139
+src/components/layout/GlobalFocusBar.tsx
+  s_2b863b16ba4062::t_cd80078f013723 33
+  s_2b863b16ba4062::t_e53efe7b2c7f46 54
+  s_2b863b16ba4062::t_faf621ff0bc2f1 24-27,31,36,38,43,51,62,65,71,74
+src/components/calendar/ScheduleEditorModal.tsx
+  s_e32cfb9cfc5a21::t_046425a0f0578b 72-78,93-94
+  s_e32cfb9cfc5a21::t_6823739cd6d582 6,15,32,101
+src/context/data-load-plan.ts
+  s_e32cfb9cfc5a21::t_79a1bc144edcb0 28
+src/app/(dashboard)/entries/[id]/page.tsx
+  s_e32cfb9cfc5a21::t_6823739cd6d582 9,77
+src/app/(auth)/register/page.tsx
+  s_2b863b16ba4062::t_54cb461aaa8ea5 9-35,52-81,99-105,107-108,111-117,119-180,183-190
+src/app/(dashboard)/settings/page.tsx
+  s_2b863b16ba4062::t_4d03771133dfca 5,14-15,22,32-41,43-48,51-65,67-98,101-112,114-120,122-125,127-131,135-136,138-149,151
+src/lib/db/schema.ts
+  s_e32cfb9cfc5a21::t_833d085fe71746 143-146,148-151,217,224
+  s_e32cfb9cfc5a21::t_f6572c780555ff 4
+DESIGN.md
+  s_8498b2a461dd2a::t_8ada216018b4a1 51,58,100
+src/components/calendar/CompactCalendar.tsx
+  s_2b863b16ba4062::t_4e8e625388f872 23-24,29-40,42,44-58,60-62,66-82
+src/app/(dashboard)/page.tsx
+  s_8498b2a461dd2a::t_a6821173e38e94 55-65,68-73,76-78,81-89,91-92,94-103,105-106,108-116,120-123,126-128,130,132-137,140,147-148,151-154,157-163,165,167-175,179-184,187,190,195-197,200,202-208,211,214-221,225-238,241,246,248-249,251,258,264,268-270,275,283-285,288-289,292,296,302,305,313-317,320-321,326,328-329,332,335,339,344,352,358-364
+  s_2b863b16ba4062::t_2ee0e807245d19 39-48,54,74-75,117,124-125,139,141,143,146,149-150,155-156,164,176,185-186,188-189,191,194,198-199,201,209-210,212,223-224,239,242-245,247,250,252-257,259-263,265-267,271-274,277-278,281-282,286-287,290-291,294-295,298,300-301,303-304,306,309-310,319,323-325,327,330-331,333-334,336-338,340-343,346-347,349-351,353-354,356-357
+  s_e32cfb9cfc5a21::t_6823739cd6d582 10,49,322
+  s_e32cfb9cfc5a21::t_046425a0f0578b 11,345
+drizzle/0003_ics_sources.sql
+  s_e32cfb9cfc5a21::t_8b53fff3b7f9c5 1-10
+src/lib/persistence/sqlite-service.test.ts
+  s_e32cfb9cfc5a21::t_aad093b2facdf6 249-280,292-300,302-304
+  s_e32cfb9cfc5a21::t_67d52e2abd207d 281-291
+  s_e32cfb9cfc5a21::t_b22e9042271d9c 301
+  s_db10ca09ea6e13::t_ab6b12cbc8768a 305-334
+src/app/(dashboard)/review/page.tsx
+  s_e32cfb9cfc5a21::t_b38fc512a9d29b 27-28
+  s_e32cfb9cfc5a21::t_a21568bb3cb2a4 1-26,29-84
+src/lib/schedule/ics-import.ts
+  s_e32cfb9cfc5a21::t_1a6bae5705faee 13,19-21,92-97
+  s_e32cfb9cfc5a21::t_dd2e2ae2237636 129-134,157,175,180-184,197-201,232-245
+  s_e32cfb9cfc5a21::t_af552cbf8d79ac 98
+docs/CURRENT_STATE.md
+  s_e32cfb9cfc5a21::t_5c0d62046fec77 14-15
+src/lib/time/timezone.ts
+  s_e32cfb9cfc5a21::t_6823739cd6d582 3-11,15-87
+  s_bbf7b42fba32a3::t_4897406319d71e 88
+src/components/calendar/IcsImportModal.tsx
+  s_e32cfb9cfc5a21::t_5834589cad1412 318
+  s_e32cfb9cfc5a21::t_2e58ec32ffbcc6 152-162,197-198,208-216
+  s_e32cfb9cfc5a21::t_2bd1b51538d1d0 217
+src/app/(dashboard)/statistics/page.tsx
+  s_8498b2a461dd2a::t_3618190d71fee8 272-273,346,348,351-353,358-370,373-404,432-435,437,442-445,450,452-463,465,468,470-480,483,490,520
+  s_2b863b16ba4062::t_a2ca61dabf6d02 19-207,210,212-215,231,237,240-241,248,259-263,405-419,422,428,430-431,486-489,491,519
+  s_2b863b16ba4062::t_29c76863409ece 234-236
+  s_2b863b16ba4062::t_21dcc64e4fa8c8 238
+  s_2b863b16ba4062::t_cfa0afde1b82a3 264
+  s_8498b2a461dd2a::t_036089b94b389d 271
+  s_8498b2a461dd2a::t_6d0476925d937a 274
+  s_8498b2a461dd2a::t_581b804c40ed52 345
+  s_8498b2a461dd2a::t_a7fab5ad2e4d06 347
+  s_8498b2a461dd2a::t_ab0a661d53be97 349-350
+  s_8498b2a461dd2a::t_0235294e7f391b 355-357
+  s_8498b2a461dd2a::t_8c2f1792b89f9f 436
+  s_8498b2a461dd2a::t_36d4705a5d9bc1 438-441
+  s_8498b2a461dd2a::t_04e57d417c6bb9 464
+  s_8498b2a461dd2a::t_9742bfdbef49ac 466-467
+src/lib/schedule/ics-preview-store.ts
+  s_e32cfb9cfc5a21::t_ac60deef30dbda 20-21,37-43,45-48,61-63,76,80,88-89
+  s_e32cfb9cfc5a21::t_99361e6499af10 27-34
+  s_e32cfb9cfc5a21::t_6130f684b72b1e 12,35,44,52-53,64,81-87
+  s_e32cfb9cfc5a21::t_bea94c7b013614 6-11,13-15,22-26,36,58-60,65-67,77-79
+  s_e32cfb9cfc5a21::t_176db754c384b6 49-51,54-56
+docs/architecture/adr/0001-ics-import-parser.md
+  s_e32cfb9cfc5a21::t_776dffb49130f1 22,30
+src/app/api/v1/schedule-blocks/imports/ics/[importId]/confirm/route.ts
+  s_e32cfb9cfc5a21::t_924df9168fac57 18
+  s_db10ca09ea6e13::t_ab6b12cbc8768a 20-22,24,27,33-36
+  s_e32cfb9cfc5a21::t_c71ab4bab60963 23,25,37
+  s_e32cfb9cfc5a21::t_93d94606301fa7 29-32,38
+src/lib/schedule/ics-import.test.ts
+  s_e32cfb9cfc5a21::t_71d791d427bf65 24-26,28-29
+  s_e32cfb9cfc5a21::t_62672722f9099f 27
+e2e/persistent-api.spec.ts
+  s_db10ca09ea6e13::t_4c424b10f7aff5 225
+  s_db10ca09ea6e13::t_529923993a3e3c 18-30,100-102,146-147,366-367
+  s_db10ca09ea6e13::t_e68bcb78582702 123-125
+  s_db10ca09ea6e13::t_ab6b12cbc8768a 292,294-300
+  s_db10ca09ea6e13::t_ccee4df87a2759 332
+  s_db10ca09ea6e13::t_1defc3727ba6b4 302-326
+  s_db10ca09ea6e13::t_80faabd9a5c182 301
+src/components/calendar/DayOverview.tsx
+  s_2b863b16ba4062::t_a981e10d044f02 31-53,57-86,88-137
+src/components/calendar/CalendarToolbar.tsx
+  s_2b863b16ba4062::t_4939acebd01be3 57-68,71-100,102-133,135-172,175-177,179-188
+src/components/entries/EntryCreateDialog.tsx
+  s_e32cfb9cfc5a21::t_6823739cd6d582 8,59
+src/lib/domain/types.ts
+  s_e32cfb9cfc5a21::t_bfbe77d2579a82 102,125-127,200,206-215
+  s_e32cfb9cfc5a21::t_f0a3c791c3e2a3 116-117
+src/app/(auth)/login/page.tsx
+  s_2b863b16ba4062::t_63279676252c80 9-31,58-64,66-67,70-76,78-95,97-119,121-135
+src/components/calendar/WeekTimeline.tsx
+  s_2b863b16ba4062::t_f10408a4bf4f18 63-70,83,85,90-93,97-115,117-126,128,141-157,159-169,171
+src/app/api/v1/schedule-blocks/imports/ics/preview/route.ts
+  s_e32cfb9cfc5a21::t_acc68a9f8b7005 65
+  s_e32cfb9cfc5a21::t_0057ab46884e93 2,73,128
+  s_e32cfb9cfc5a21::t_436843135171c2 69-71,80
+  s_db10ca09ea6e13::t_4f5b5ec7e5c4c7 92,95
+  s_e32cfb9cfc5a21::t_f2fd7c060c5b5a 22,26-49,51-64,66-68,72,74-79,84,86,91,115-127,129-146
+  s_db10ca09ea6e13::t_ab6b12cbc8768a 85,93-94,96-114
+  s_e32cfb9cfc5a21::t_e8e83d68bdfe22 23-25
+  s_e32cfb9cfc5a21::t_f26b6883a781a2 147
+src/app/(dashboard)/plan/page.tsx
+  s_2b863b16ba4062::t_68a893a3caed77 355-356,358,363-368,372-384,388,391,396-411,413-437,440-446,453,455,457-482,485,487-491,499,506,508,511,515,529,535,547
+  s_2b863b16ba4062::t_43f0f21da97834 40,45
+  s_2b863b16ba4062::t_2355086129e75f 163,165,167,169-170,172,174-202,204-224,226-229,232-244,246-247,249,251,256,262,269,279,290,311,330,338,345
+  s_2b863b16ba4062::t_b40e95f9ebe55e 594-595,597,612,616,626
+src/components/layout/ScenarioSwitcher.tsx
+  s_2b863b16ba4062::t_90821579e60930 25-28,32,35,44,49,51-52,57,60,68,71,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f9ef6b293965d83ff6493c8fa3b851a105e18349",
+  "prompts": {},
+  "sessions": {
+    "s_2b863b16ba4062": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f99e7-4da8-7183-bfc4-6e2da2414789",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_8498b2a461dd2a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9c4f-82b2-71b2-972a-1e7e3200c547",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_bbf7b42fba32a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9c6e-5de2-7ed3-8c8d-dd6a2c4a49c6",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_db10ca09ea6e13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9e05-103b-74b1-9385-40f6b48928ff",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_e32cfb9cfc5a21": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9498-c5dd-75d3-8ea9-78d3d2416b35",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
