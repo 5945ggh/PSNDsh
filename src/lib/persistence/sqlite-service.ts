@@ -364,6 +364,7 @@ export class SqliteApplicationService implements ApplicationService {
       source: row.source,
       importId: row.importId,
       sourceUid: row.sourceUid,
+      sourceInstanceKey: row.sourceInstanceKey,
       templateApplicationId: row.templateApplicationId,
     };
   }
@@ -738,41 +739,151 @@ export class SqliteApplicationService implements ApplicationService {
     if (result.changes === 0) throw new ApplicationError("SCHEDULE_NOT_FOUND", "日程不存在");
   }
 
-  importIcsScheduleBlocks(blocks: Array<ScheduleBlockInput & { sourceUid?: string }>, fileName = "导入日程.ics"): number {
+  importIcsScheduleBlocks(
+    blocks: ScheduleBlockInput[],
+    fileName = "导入日程.ics",
+    options?: {
+      sourceKey?: string;
+      sourceName?: string;
+      syncWindow?: { from: string; to: string };
+      removedSourceUids?: string[];
+      preserveSourceUids?: string[];
+    },
+  ): number {
     const userId = this.requireUserId();
     const createdAt = nowIso(this.clock);
-    const existingSourceUids = new Set(
-      this.db.select({ sourceUid: scheduleBlocks.sourceUid })
-        .from(scheduleBlocks)
-        .where(eq(scheduleBlocks.userId, userId))
-        .all()
-        .map((row) => row.sourceUid)
-        .filter((sourceUid): sourceUid is string => Boolean(sourceUid))
-    );
-    const newBlocks = blocks.filter((block) => !block.sourceUid || !existingSourceUids.has(block.sourceUid));
-    if (newBlocks.length === 0) return 0;
-    const importId = randomUUID();
-    this.db.transaction((tx) => {
-      tx.insert(scheduleImports).values({ id: importId, userId, fileName: fileName.trim() || "导入日程.ics", createdAt }).run();
-      tx.insert(scheduleBlocks).values(newBlocks.map((block) => ({
-        id: randomUUID(),
-        userId,
-        kind: block.kind,
-        title: block.title.trim(),
-        description: normalizeOptionalText(block.description),
-        startedAt: block.startedAt,
-        endedAt: block.endedAt,
-        location: normalizeOptionalText(block.location),
-        colorKey: block.colorKey ?? "purple",
-        recurrenceJson: null,
-        source: "ics" as const,
-        importId,
-        sourceUid: block.sourceUid ?? null,
-        createdAt,
-        updatedAt: createdAt,
-      }))).run();
+    const sourceKey = options?.sourceKey?.trim();
+
+    // Preserve the original one-shot import behavior for old callers and legacy rows.
+    if (!sourceKey) {
+      const existingSourceUids = new Set(
+        this.db.select({ sourceUid: scheduleBlocks.sourceUid })
+          .from(scheduleBlocks)
+          .where(eq(scheduleBlocks.userId, userId))
+          .all()
+          .map((row) => row.sourceUid)
+          .filter((sourceUid): sourceUid is string => Boolean(sourceUid))
+      );
+      const newBlocks = blocks.filter((block) => !block.sourceUid || !existingSourceUids.has(block.sourceUid));
+      if (newBlocks.length === 0) return 0;
+      const importId = randomUUID();
+      this.db.transaction((tx) => {
+        tx.insert(scheduleImports).values({ id: importId, userId, fileName: fileName.trim() || "导入日程.ics", createdAt, updatedAt: createdAt, changeCount: newBlocks.length }).run();
+        tx.insert(scheduleBlocks).values(newBlocks.map((block) => ({
+          id: randomUUID(),
+          userId,
+          kind: block.kind,
+          title: block.title.trim(),
+          description: normalizeOptionalText(block.description),
+          startedAt: block.startedAt,
+          endedAt: block.endedAt,
+          location: normalizeOptionalText(block.location),
+          colorKey: block.colorKey ?? "purple",
+          recurrenceJson: null,
+          source: "ics" as const,
+          importId,
+          sourceUid: block.sourceUid ?? null,
+          sourceInstanceKey: block.sourceInstanceKey ?? null,
+          createdAt,
+          updatedAt: createdAt,
+        }))).run();
+      });
+      return newBlocks.length;
+    }
+
+    const currentImport = this.db.select().from(scheduleImports)
+      .where(and(eq(scheduleImports.userId, userId), eq(scheduleImports.sourceKey, sourceKey))).get()
+      ?? this.db.select().from(scheduleImports)
+        .where(and(eq(scheduleImports.userId, userId), isNull(scheduleImports.sourceKey), eq(scheduleImports.fileName, fileName))).get();
+    const importId = currentImport?.id ?? randomUUID();
+    const desired = new Map<string, ScheduleBlockInput>();
+    blocks.forEach((block) => {
+      const key = block.sourceInstanceKey ?? `${block.sourceUid ?? "event"}:${block.startedAt}`;
+      desired.set(key, block);
     });
-    return newBlocks.length;
+    const existing = currentImport
+      ? this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.importId, currentImport.id)).all()
+      : [];
+    let changed = 0;
+    this.db.transaction((tx) => {
+      if (!currentImport) {
+        tx.insert(scheduleImports).values({
+          id: importId,
+          userId,
+          fileName: fileName.trim() || "导入日程.ics",
+          sourceKey,
+          sourceName: options?.sourceName?.trim() || fileName.trim() || "导入日程",
+          createdAt,
+          updatedAt: createdAt,
+          changeCount: 0,
+        }).run();
+      }
+      const existingByKey = new Map(existing.map((row) => [
+        row.sourceInstanceKey ?? `${row.sourceUid ?? "event"}:${row.startedAt}`,
+        row,
+      ]));
+      for (const [key, block] of desired) {
+        const row = existingByKey.get(key);
+        const normalized = {
+          kind: block.kind,
+          title: block.title.trim(),
+          description: normalizeOptionalText(block.description),
+          startedAt: block.startedAt,
+          endedAt: block.endedAt,
+          location: normalizeOptionalText(block.location),
+          colorKey: block.colorKey ?? "purple",
+          sourceUid: block.sourceUid ?? null,
+          sourceInstanceKey: block.sourceInstanceKey ?? key,
+          updatedAt: createdAt,
+        };
+        if (!row) {
+          tx.insert(scheduleBlocks).values({
+            id: randomUUID(),
+            userId,
+            ...normalized,
+            recurrenceJson: null,
+            source: "ics" as const,
+            importId,
+            createdAt,
+          }).run();
+          changed += 1;
+          continue;
+        }
+        const same = row.kind === normalized.kind
+          && row.title === normalized.title
+          && row.description === normalized.description
+          && row.startedAt === normalized.startedAt
+          && row.endedAt === normalized.endedAt
+          && row.location === normalized.location
+          && row.colorKey === normalized.colorKey
+          && row.sourceUid === normalized.sourceUid;
+        if (!same) {
+          tx.update(scheduleBlocks).set(normalized).where(eq(scheduleBlocks.id, row.id)).run();
+          changed += 1;
+        }
+      }
+      const window = options?.syncWindow;
+      const preservedUids = new Set(options?.preserveSourceUids ?? []);
+      for (const row of existing) {
+        const key = row.sourceInstanceKey ?? `${row.sourceUid ?? "event"}:${row.startedAt}`;
+        const inWindow = Boolean(window)
+          && parseDate(row.startedAt) >= parseDate(window!.from)
+          && parseDate(row.startedAt) < parseDate(window!.to);
+        const removed = !desired.has(key) && inWindow && !preservedUids.has(row.sourceUid ?? "");
+        if (removed) {
+          tx.delete(scheduleBlocks).where(eq(scheduleBlocks.id, row.id)).run();
+          changed += 1;
+        }
+      }
+      tx.update(scheduleImports).set({
+        fileName: fileName.trim() || currentImport?.fileName || "导入日程.ics",
+        sourceKey,
+        sourceName: options?.sourceName?.trim() || currentImport?.sourceName || fileName.trim() || "导入日程",
+        updatedAt: createdAt,
+        changeCount: changed,
+      }).where(and(eq(scheduleImports.id, importId), eq(scheduleImports.userId, userId))).run();
+    });
+    return changed;
   }
 
   getScheduleImports(): ScheduleImport[] {
@@ -783,9 +894,12 @@ export class SqliteApplicationService implements ApplicationService {
       .map((row) => ({
         id: row.id,
         fileName: row.fileName,
-        importedAt: row.createdAt,
+        importedAt: row.updatedAt ?? row.createdAt,
         blockCount: this.db.select({ count: sql<number>`count(*)` }).from(scheduleBlocks)
           .where(eq(scheduleBlocks.importId, row.id)).get()?.count ?? 0,
+        sourceKey: row.sourceKey,
+        sourceName: row.sourceName,
+        changeCount: row.changeCount,
       }));
   }
 

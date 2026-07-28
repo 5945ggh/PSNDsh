@@ -21,6 +21,12 @@ describe("parseIcsImport", () => {
       recurrenceLabel: expect.stringContaining("已展开 3 次"),
     })]);
     expect(parsed.candidates).toHaveLength(1);
+    expect(parsed.sourceName).toBe("course.ics");
+    expect(parsed.candidates[0]?.blocks.map((block) => block.sourceInstanceKey)).toEqual([
+      "start:2026-03-02T14:00:00.000Z",
+      "recurrence:2026-03-16T13:00:00.000Z",
+      "start:2026-03-23T13:00:00.000Z",
+    ]);
     expect(parsed.candidates[0]?.blocks).toEqual([
       expect.objectContaining({ startedAt: "2026-03-02T14:00:00.000Z", endedAt: "2026-03-02T15:00:00.000Z", location: "Room 101", description: "带教室和课程备注" }),
       expect.objectContaining({ startedAt: "2026-03-16T14:00:00.000Z", endedAt: "2026-03-16T15:00:00.000Z", title: "时区课程（调课）", location: "Room 102" }),

@@ -22,16 +22,17 @@ export const ScenarioSwitcher: React.FC = () => {
   return (
     <aside aria-label="Mock 场景切换控制台" className="fixed bottom-20 right-4 z-50 md:bottom-4">
       {isOpen ? (
-        <div className="bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-lg shadow-xl p-3 w-64 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <div className="flex items-center justify-between font-semibold border-b border-zinc-800 pb-2 mb-2">
-            <span className="flex items-center gap-1.5 text-zinc-300">
-              <Sliders className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" />
+        <div className="app-scenario-panel w-64 rounded-lg p-3 text-xs text-[var(--text-primary)]">
+          <div className="mb-2 flex items-center justify-between border-b border-[var(--border-subtle)] pb-2 font-semibold">
+            <span className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+              <Sliders className="w-3.5 h-3.5 text-[var(--accent)]" aria-hidden="true" />
               场景演示控制台
             </span>
             <button
+              type="button"
               onClick={() => setIsOpen(false)}
               aria-label="关闭场景控制台"
-              className="text-zinc-400 hover:text-white p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="app-shell-icon-button rounded-md p-1"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
@@ -40,22 +41,23 @@ export const ScenarioSwitcher: React.FC = () => {
             {presets.map((p) => (
               <button
                 key={p.id}
+                type="button"
                 onClick={() => {
                   setScenario(p.id);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left p-2 rounded transition-colors flex items-start justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                className={`w-full rounded-md border p-2 text-left transition-colors flex items-start justify-between ${
                   scenario === p.id
-                    ? "bg-blue-600/20 border border-blue-500/40 text-blue-300"
-                    : "hover:bg-zinc-800 text-zinc-300"
+                    ? "border-[var(--border-strong)] bg-[var(--surface-rail-active)] text-[var(--text-primary)]"
+                    : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-subtle)] hover:bg-[var(--surface-rail-hover)]"
                 }`}
               >
                 <div>
                   <div className="font-medium">{p.label}</div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">{p.desc}</div>
+                  <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">{p.desc}</div>
                 </div>
                 {scenario === p.id && (
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 ml-1 mt-0.5" aria-hidden="true" />
+                  <Check className="ml-1 mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden="true" />
                 )}
               </button>
             ))}
@@ -63,11 +65,12 @@ export const ScenarioSwitcher: React.FC = () => {
         </div>
       ) : (
         <button
+          type="button"
           onClick={() => setIsOpen(true)}
           aria-label="打开场景演示控制台"
-          className="flex items-center gap-1.5 bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white text-xs px-3 py-2 rounded-full shadow-lg backdrop-blur transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="app-scenario-toggle flex items-center gap-1.5 rounded-md px-3 py-2 text-xs transition-colors"
         >
-          <Sliders className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" />
+          <Sliders className="w-3.5 h-3.5 text-[var(--accent)]" aria-hidden="true" />
           <span>演示场景: {presets.find((p) => p.id === scenario)?.label}</span>
         </button>
       )}

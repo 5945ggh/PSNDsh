@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   AnySQLiteColumn,
+  integer,
   index,
   sqliteTable,
   text,
@@ -139,8 +140,15 @@ export const scheduleImports = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     fileName: text("file_name").notNull(),
     createdAt: timestamp("created_at"),
+    sourceKey: text("source_key"),
+    sourceName: text("source_name"),
+    updatedAt: timestamp("updated_at"),
+    changeCount: integer("change_count").notNull().default(0),
   },
-  (table) => [index("schedule_imports_user_created_idx").on(table.userId, table.createdAt)]
+  (table) => [
+    index("schedule_imports_user_created_idx").on(table.userId, table.createdAt),
+    index("schedule_imports_user_source_idx").on(table.userId, table.sourceKey),
+  ]
 );
 
 export const scheduleTemplates = sqliteTable(
@@ -206,12 +214,14 @@ export const scheduleBlocks = sqliteTable(
     source: text("source", { enum: ["manual", "ics", "template"] }).notNull(),
     importId: text("import_id").references(() => scheduleImports.id, { onDelete: "cascade" }),
     sourceUid: text("source_uid"),
+    sourceInstanceKey: text("source_instance_key"),
     templateApplicationId: text("template_application_id").references(() => scheduleTemplateApplications.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
   (table) => [
     index("schedule_blocks_user_range_idx").on(table.userId, table.startedAt),
+    index("schedule_blocks_import_instance_idx").on(table.importId, table.sourceInstanceKey),
     index("schedule_blocks_template_application_idx").on(table.templateApplicationId),
   ]
 );

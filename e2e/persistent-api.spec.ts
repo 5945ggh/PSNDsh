@@ -15,6 +15,19 @@ const shanghaiDateKey = (offsetDays = 0) => {
   return value.toISOString().slice(0, 10);
 };
 
+const shiftDateKey = (dateKey: string, offsetDays: number) => {
+  const value = new Date(`${dateKey}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + offsetDays);
+  return value.toISOString().slice(0, 10);
+};
+
+const shanghaiWeekStart = () => {
+  const today = new Date(`${shanghaiDateKey()}T00:00:00Z`);
+  const weekday = today.getUTCDay() || 7;
+  today.setUTCDate(today.getUTCDate() - weekday + 1);
+  return today.toISOString().slice(0, 10);
+};
+
 test("real session persists profile changes and protects dashboard after logout", async ({ page }) => {
   const username = unique("profile");
   const quickEntryTitle = unique("首页快速条目");
@@ -84,7 +97,9 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   expect(dashboardRequestCount).toBe(0);
   await page.unroute("**/api/v1/dashboard");
 
-  const row = page.getByText(entryTitle, { exact: true }).locator("..").locator("..");
+  const row = page
+    .getByText(entryTitle, { exact: true })
+    .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
   await row.getByLabel("加入本周计划").click();
   await expect(page.getByText("该周计划项 (1)")).toBeVisible();
 
@@ -105,7 +120,9 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   expect(ownerEntry).toBeTruthy();
 
   page.once("dialog", (dialog) => dialog.accept());
-  const entryRow = page.getByText(entryTitle, { exact: true }).locator("..").locator("..");
+  const entryRow = page
+    .getByText(entryTitle, { exact: true })
+    .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
   await entryRow.getByLabel("删除条目").click();
   await expect(page.getByText(entryTitle, { exact: true })).toHaveCount(0);
 
@@ -126,8 +143,8 @@ test("calendar creates, edits, persists, and deletes overlapping schedule and cr
   const username = unique("calendar");
   const scheduleTitle = unique("重叠课程");
   const updatedScheduleTitle = `${scheduleTitle}-已编辑`;
-  const today = shanghaiDateKey();
-  const tomorrow = shanghaiDateKey(1);
+  const today = shiftDateKey(shanghaiWeekStart(), 3);
+  const tomorrow = shiftDateKey(today, 1);
 
   await page.goto("/register");
   await page.getByLabel("账号").fill(username);
@@ -205,7 +222,7 @@ test("calendar creates, edits, persists, and deletes overlapping schedule and cr
 test("calendar imports an ICS preview into persistent schedules", async ({ page }) => {
   const username = unique("ics-import");
   const title = unique("ICS 导入课程");
-  const today = shanghaiDateKey();
+  const today = shanghaiDateKey(1);
 
   await page.goto("/register");
   await page.getByLabel("账号").fill(username);
@@ -246,7 +263,6 @@ END:VCALENDAR`),
   );
   await importDialog.getByRole("button", { name: /确认写入选中的 1 项日程/ }).click();
   expect((await confirmResponse).status()).toBe(201);
-  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
 
   const importedSchedules = await page.request.get("/api/v1/schedule-blocks");
   expect(importedSchedules.status()).toBe(200);
@@ -273,15 +289,47 @@ END:VCALENDAR`),
   });
   await duplicateImportDialog.getByRole("button", { name: "解析日程表预览" }).click();
   await expect(duplicateImportDialog.getByText(/已存在 1 个同源实例/)).toBeVisible();
-  await expect(duplicateImportDialog.getByRole("button", { name: "确认写入选中的 0 项日程" })).toBeVisible();
+  await expect(duplicateImportDialog.getByRole("button", { name: "确认应用 1 个事件" })).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
-  await duplicateImportDialog.getByRole("button", { name: "确认写入选中的 0 项日程" }).click();
+  await duplicateImportDialog.getByRole("button", { name: "确认应用 1 个事件" }).click();
+
+  const updatedSchedules = await page.request.get("/api/v1/schedule-blocks");
+  const updatedScheduleData = (await updatedSchedules.json()).data;
+  expect(updatedScheduleData.filter((item: { title: string }) => item.title === title)).toEqual([
+    expect.objectContaining({ location: "教室 A", description: "重复导入检查" }),
+  ]);
+
+  await page.getByRole("button", { name: "导入日程表" }).click();
+  const cancelledImportDialog = page.getByRole("dialog", { name: "导入日程表" });
+  await cancelledImportDialog.getByLabel("选择 .ics 日程表文件").setInputFiles({
+    name: "schedule.ics",
+    mimeType: "text/calendar",
+    buffer: Buffer.from(`BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:playwright-ics-event
+DTSTAMP:20260722T000000Z
+DTSTART:${today.replaceAll("-", "")}T090000
+DTEND:${today.replaceAll("-", "")}T100000
+STATUS:CANCELLED
+SUMMARY:${title}
+END:VEVENT
+END:VCALENDAR`),
+  });
+  await cancelledImportDialog.getByRole("button", { name: "解析日程表预览" }).click();
+  await expect(cancelledImportDialog.getByText("取消 1", { exact: false })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await cancelledImportDialog.getByRole("button", { name: "确认应用 1 个事件" }).click();
+
+  const cancelledSchedules = await page.request.get("/api/v1/schedule-blocks");
+  const cancelledScheduleData = (await cancelledSchedules.json()).data;
+  expect(cancelledScheduleData.filter((item: { title: string }) => item.title === title)).toHaveLength(0);
 
   const importsResponse = await page.request.get("/api/v1/schedule-blocks/imports");
   expect(importsResponse.status()).toBe(200);
   const imports = (await importsResponse.json()).data;
   expect(imports).toHaveLength(1);
-  expect(imports[0].blockCount).toBe(1);
+  expect(imports[0].blockCount).toBe(0);
 
   const contextB = await page.context().browser()?.newContext({ baseURL });
   expect(contextB).toBeTruthy();
@@ -315,8 +363,8 @@ test("calendar saves, previews, reapplies, and removes a reusable schedule templ
   const templateName = unique("假期作息");
   const weekdayTitle = unique("工作日学习");
   const weekendTitle = unique("周末娱乐");
-  const fromDate = shanghaiDateKey();
-  const toDate = shanghaiDateKey(6);
+  const fromDate = shanghaiWeekStart();
+  const toDate = shiftDateKey(fromDate, 6);
 
   await page.goto("/register");
   await page.getByLabel("账号").fill(username);

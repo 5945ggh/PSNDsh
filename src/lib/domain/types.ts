@@ -99,6 +99,7 @@ export type ScheduleBlock = {
   source?: "manual" | "ics" | "template";
   importId?: string | null;
   sourceUid?: string | null;
+  sourceInstanceKey?: string | null;
   templateApplicationId?: string | null;
   recurrenceSourceId?: string;
 };
@@ -112,6 +113,8 @@ export type ScheduleBlockInput = {
   location: string | null;
   colorKey: string | null;
   recurrence: ScheduleRecurrence;
+  sourceUid?: string | null;
+  sourceInstanceKey?: string | null;
 };
 
 export type ScheduleImport = {
@@ -119,6 +122,9 @@ export type ScheduleImport = {
   fileName: string;
   importedAt: string;
   blockCount: number;
+  sourceKey?: string | null;
+  sourceName?: string | null;
+  changeCount?: number;
 };
 
 export type TemplateWeekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
@@ -191,11 +197,22 @@ export type IcsImportRow = {
   selected: boolean;
   warnings: string[];
   duplicateCount?: number;
+  change?: "added" | "updated" | "unchanged" | "removed" | "cancelled";
 };
 
 export type IcsImportPreview = {
   importId: string;
   fileName: string;
+  sourceKey?: string;
+  sourceName?: string;
+  isUpdate?: boolean;
+  diff?: {
+    added: number;
+    updated: number;
+    removed: number;
+    cancelled: number;
+    unchanged: number;
+  };
   rows: IcsImportRow[];
   errors: Array<{
     sourceUid: string | null;

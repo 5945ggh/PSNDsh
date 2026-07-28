@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Plus, X } from "lucide-react";
 import { type DataSnapshot, useData } from "@/context/MockContext";
 import type { Entry, EntryCompletionMode, WeekPlan } from "@/lib/domain/types";
+import { dateKeyToEndOfDayIso } from "@/lib/time/timezone";
 
 type CreatedEntryResult = {
   entry: Entry;
@@ -55,7 +56,7 @@ export const EntryCreateDialog: React.FC<EntryCreateDialogProps> = ({
           title: normalizedTitle,
           description: newDescription.trim() || null,
           completionMode: newMode,
-          dueAt: newDueAt ? `${newDueAt}T23:59:59+08:00` : null,
+          dueAt: dateKeyToEndOfDayIso(newDueAt),
         });
         const weekPlan = addToWeekPlan ? await api.addToWeekPlan(entry.id) : null;
         return { entry, weekPlan };

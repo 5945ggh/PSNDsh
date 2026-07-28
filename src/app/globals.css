@@ -6,25 +6,38 @@
 }
 
 :root {
-  --background: #fcfcfc;
-  --foreground: #18181b;
-  --card: #ffffff;
-  --card-foreground: #18181b;
-  --border: #e4e4e7;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
+  --surface-page: #fcfcfc;
+  --surface-raised: #ffffff;
+  --surface-raised-alt: #f8fafc;
+  --surface-rail: #fbfbfc;
+  --surface-rail-soft: #f4f4f5;
+  --surface-rail-hover: #eef2f7;
+  --surface-rail-active: #e8eef8;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --border-subtle: #e4e4e7;
+  --border-strong: #cbd5e1;
+  --ring: #2563eb;
   --accent: #2563eb;
+  --accent-strong: #1d4ed8;
   --accent-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-hover: #fee2e2;
+  --shadow-rail: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-panel: 0 10px 30px rgba(24, 24, 27, 0.08);
 
   /* Status Colors */
-  --color-active: #2563eb;
-  --color-completed: #16a34a;
-  --color-paused: #d97706;
-  --color-archived: #71717a;
+  --color-active: var(--accent);
+  --color-completed: var(--success);
+  --color-paused: var(--warning);
+  --color-archived: var(--text-muted);
   --color-dueSoon: #ea580c;
-  --color-overdue: #dc2626;
+  --color-overdue: var(--danger);
 
   /* Calendar Tracks */
   --track-course: #eff6ff;
@@ -37,17 +50,28 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --card: #141417;
-    --card-foreground: #f4f4f5;
-    --border: #27272a;
-    --muted: #18181b;
-    --muted-foreground: #a1a1aa;
-    --primary: #f4f4f5;
-    --primary-foreground: #09090b;
+    --surface-page: #09090b;
+    --surface-raised: #141417;
+    --surface-raised-alt: #18181b;
+    --surface-rail: #111113;
+    --surface-rail-soft: #18181b;
+    --surface-rail-hover: #1f1f23;
+    --surface-rail-active: #20242f;
+    --text-primary: #f4f4f5;
+    --text-secondary: #d4d4d8;
+    --text-muted: #a1a1aa;
+    --border-subtle: #27272a;
+    --border-strong: #3f3f46;
+    --ring: #60a5fa;
     --accent: #3b82f6;
+    --accent-strong: #60a5fa;
     --accent-foreground: #ffffff;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #f87171;
+    --danger-soft: #2a1212;
+    --danger-border: #7f1d1d;
+    --danger-hover: #3a1717;
 
     --track-course: #1e293b;
     --track-course-border: #334155;
@@ -59,14 +83,148 @@
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--surface-page);
+  color: var(--text-primary);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Ensure tabular numerals for precise time alignment without layout shift */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Shared shell utilities */
+.app-page {
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+.app-rail {
+  background: var(--surface-rail);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-rail);
+  backdrop-filter: blur(12px);
+}
+
+.app-rail-panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+}
+
+.app-shell-sidebar {
+  background: var(--surface-rail);
+  border-color: var(--border-subtle);
+}
+
+.app-shell-nav-link {
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.app-shell-nav-link:hover {
+  background: var(--surface-rail-hover);
+  color: var(--text-primary);
+}
+
+.app-shell-nav-link[data-active="true"] {
+  background: var(--surface-rail-active);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.app-shell-nav-link:focus-visible,
+.app-shell-icon-button:focus-visible,
+.app-shell-primary-button:focus-visible,
+.app-shell-secondary-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.app-shell-icon-button {
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-rail-soft);
+}
+
+.app-shell-icon-button:hover {
+  color: var(--text-primary);
+  background: var(--surface-rail-hover);
+}
+
+.app-shell-primary-button {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: 0 1px 2px rgba(29, 78, 216, 0.15);
+}
+
+.app-shell-primary-button:hover {
+  background: var(--accent-strong);
+}
+
+.app-shell-secondary-button {
+  background: var(--surface-rail-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.app-shell-secondary-button:hover {
+  background: var(--surface-rail-hover);
+  color: var(--text-primary);
+}
+
+.app-focus-rail {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-rail);
+}
+
+.app-focus-time {
+  color: var(--accent);
+}
+
+.app-focus-muted {
+  color: var(--text-muted);
+}
+
+.app-focus-dot {
+  background: var(--success);
+}
+
+.app-focus-action-primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.app-focus-action-destructive {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.app-focus-action-destructive:hover {
+  background: var(--danger-hover);
+}
+
+.app-focus-action-secondary {
+  background: var(--surface-rail-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.app-scenario-toggle {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  color: var(--text-secondary);
+  backdrop-filter: blur(12px);
+}
+
+.app-scenario-panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
 }
 
 /* Tree indent line indicator */
@@ -80,5 +238,5 @@ body {
   top: 0;
   bottom: 0;
   width: 1px;
-  background-color: var(--border);
+  background-color: var(--border-subtle);
 }

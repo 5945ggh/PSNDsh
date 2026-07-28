@@ -6,6 +6,29 @@ import { useRouter } from "next/navigation";
 import { useData } from "@/context/MockContext";
 import { User, Lock, AlertCircle, ArrowRight } from "lucide-react";
 
+const pageShellClass =
+  "min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100";
+const pageInnerClass = "mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-8 sm:py-12";
+const surfaceClass = "w-full space-y-5";
+const panelClass =
+  "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5";
+const brandClass =
+  "inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400";
+const eyebrowClass = "flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500";
+const titleClass = "text-lg font-semibold tracking-tight";
+const descriptionClass = "text-sm leading-6 text-zinc-600 dark:text-zinc-400";
+const labelClass = "block text-xs font-medium text-zinc-600 dark:text-zinc-400";
+const inputShellClass = "relative";
+const inputIconClass = "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400";
+const inputClass =
+  "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 pl-9 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:text-zinc-100";
+const errorClass =
+  "flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300";
+const primaryButtonClass =
+  "inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60";
+const footerClass =
+  "border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800";
+
 export default function LoginPage() {
   const router = useRouter();
   const { api, data, mutate, pendingMutations, status } = useData();
@@ -32,84 +55,84 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
-      <div className="max-w-sm w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-xl">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-bold text-xl mb-3 shadow">
-            P
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">登录 Personal Dash</h1>
-          <p className="text-xs text-zinc-500 mt-1">进入个人专注与意图管理面板</p>
-        </div>
-
-        {errorMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4 text-xs">
-          <div>
-            <label htmlFor="login-username" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-              账号
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                id="login-username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+    <div className={pageShellClass}>
+      <main className={pageInnerClass}>
+        <section className={surfaceClass}>
+          <div className="space-y-2">
+            <div className={eyebrowClass}>
+              <span className={brandClass}>Personal Dash</span>
+              <span>登录</span>
             </div>
+            <h1 className={titleClass}>进入工作台</h1>
+            <p className={descriptionClass}>用账号和密码进入当前实例。</p>
           </div>
 
-          <div>
-            <label htmlFor="login-password" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-              密码
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
-              <input
-                type="password"
-                id="login-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+          <div className={panelClass}>
+            {errorMsg && (
+              <div className={errorClass} role="alert" aria-live="polite">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label htmlFor="login-username" className={labelClass}>
+                  账号
+                </label>
+                <div className={inputShellClass}>
+                  <User className={inputIconClass} aria-hidden="true" />
+                  <input
+                    type="text"
+                    id="login-username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    className={inputClass}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="login-password" className={labelClass}>
+                  密码
+                </label>
+                <div className={inputShellClass}>
+                  <Lock className={inputIconClass} aria-hidden="true" />
+                  <input
+                    type="password"
+                    id="login-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    className={inputClass}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button type="submit" disabled={pendingMutations > 0} className={primaryButtonClass}>
+                <span>{pendingMutations > 0 ? "正在登录..." : "直接登录"}</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </form>
+          </div>
+
+          {capabilities?.registration.available ? (
+            <div className={footerClass}>
+              还没有账号？{" "}
+              <Link href="/register" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                前往注册
+              </Link>
             </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={pendingMutations > 0}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs transition-colors shadow-sm"
-          >
-            <span>{pendingMutations > 0 ? "正在登录..." : "直接登录"}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </form>
-
-        {capabilities?.registration.available ? (
-          <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4 text-center text-xs text-zinc-500">
-            还没有账号？{" "}
-            <Link
-              href="/register"
-              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
-            >
-              前往注册
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4 text-center text-xs text-zinc-400">
-            当前实例已关闭公开注册
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className={footerClass}>
+              当前实例已关闭公开注册
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

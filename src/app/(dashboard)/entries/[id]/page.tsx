@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useData } from "@/context/MockContext";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { EntryCompletionMode, EntryStatus } from "@/lib/domain/types";
+import { dateKeyToEndOfDayIso } from "@/lib/time/timezone";
 import {
   ArrowLeft,
   Play,
@@ -73,7 +74,7 @@ export default function EntryDetailPage() {
         description: description || null,
         completionMode,
         status,
-        dueAt: dueAt ? `${dueAt}T23:59:59+08:00` : null,
+        dueAt: dateKeyToEndOfDayIso(dueAt),
         parentId: parentId || null,
       }), {
         backgroundRefresh: true,

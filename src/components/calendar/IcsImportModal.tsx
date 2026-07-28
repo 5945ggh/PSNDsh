@@ -149,6 +149,17 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                 </span>
               </label>
 
+              <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-900/50" aria-labelledby="ics-support-title">
+                <h3 id="ics-support-title" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">目前支持的 ICS</h3>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-600 dark:text-zinc-400">
+                  支持带时间的 VEVENT、UTC、IANA TZID 和无时区浮动时间；支持有限窗口内的 RRULE、EXDATE 与 RECURRENCE-ID 调课。
+                  无时区时间统一按 {timezone} 解释。
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-500 dark:text-zinc-500">
+                  单文件不超过 1 MiB、最多 200 个事件和 1,000 个展开实例；全天事件、无结束时间和无效时间范围会列入过滤说明。重复事件只展开未来 180 天。
+                </p>
+              </section>
+
               {selectedFile && (
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-800/30">
                   <div className="font-medium text-zinc-800 dark:text-zinc-200">
@@ -183,7 +194,8 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
             <div className="space-y-4">
               <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 p-3 rounded-lg flex items-center justify-between text-purple-900 dark:text-purple-200">
                 <div>
-                  <div className="font-medium">文件：{previewData.fileName}</div>
+                  <div className="font-medium">来源：{previewData.sourceName || previewData.fileName}</div>
+                  <div className="text-[10px] opacity-80">文件：{previewData.fileName}{previewData.isUpdate ? " · 这是已有来源的更新" : " · 新来源"}</div>
                   <div className="text-[10px] opacity-80">
                     解析出 {previewData.rows.length} 条可确认日程，{previewData.errors.length} 条已过滤
                   </div>
@@ -192,6 +204,16 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
                   {previewData.importId}
                 </span>
               </div>
+
+              {previewData.diff && (
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[11px] dark:border-zinc-800 dark:bg-zinc-900/50 sm:grid-cols-5">
+                  <span className="text-emerald-700 dark:text-emerald-300">新增 {previewData.diff.added}</span>
+                  <span className="text-blue-700 dark:text-blue-300">修改 {previewData.diff.updated}</span>
+                  <span className="text-red-700 dark:text-red-300">删除 {previewData.diff.removed}</span>
+                  <span className="text-amber-700 dark:text-amber-300">取消 {previewData.diff.cancelled}</span>
+                  <span className="text-zinc-500">未变 {previewData.diff.unchanged}</span>
+                </div>
+              )}
 
               {/* Rows List */}
               <div className="space-y-2">
@@ -293,7 +315,7 @@ export const IcsImportModal: React.FC<IcsImportModalProps> = ({
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             >
               <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>确认写入选中的 {selectedUids.size} 项日程</span>
+              <span>{previewData?.diff?.removed || previewData?.diff?.updated || previewData?.diff?.cancelled ? `确认应用 ${selectedUids.size} 个事件` : `确认写入选中的 ${selectedUids.size} 项日程`}</span>
             </button>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { ScheduleBlock, ScheduleBlockInput } from "@/lib/domain/types";
+import { dateKeyToEndOfDayIso, DEFAULT_TIMEZONE, localDateTimeToIso } from "@/lib/time/timezone";
 
 type ScheduleEditorModalProps = {
   schedule: ScheduleBlock | null;
@@ -11,7 +12,7 @@ type ScheduleEditorModalProps = {
   onSave: (input: ScheduleBlockInput) => Promise<void>;
 };
 
-const SHANGHAI_TIME_ZONE = "Asia/Shanghai";
+const SHANGHAI_TIME_ZONE = DEFAULT_TIMEZONE;
 
 const toDateTimeLocal = (value: string) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -28,7 +29,7 @@ const toDateTimeLocal = (value: string) => {
 };
 
 const defaultDateTime = (date: string, hour: string) => `${date}T${hour}`;
-const toShanghaiIso = (value: string) => `${value}:00+08:00`;
+const toShanghaiIso = (value: string) => localDateTimeToIso(value, SHANGHAI_TIME_ZONE);
 const weekdayCodes = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
 const weekdayLabels = ["一", "二", "三", "四", "五", "六", "日"];
 const defaultWeekday = (date: string) => {
@@ -68,7 +69,13 @@ export function ScheduleEditorModal({
       setError("请填写日程标题");
       return;
     }
-    if (Date.parse(toShanghaiIso(endedAt)) <= Date.parse(toShanghaiIso(startedAt))) {
+    const startedAtIso = toShanghaiIso(startedAt);
+    const endedAtIso = toShanghaiIso(endedAt);
+    if (!startedAtIso || !endedAtIso) {
+      setError("时间格式无效");
+      return;
+    }
+    if (Date.parse(endedAtIso) <= Date.parse(startedAtIso)) {
       setError("结束时间必须晚于开始时间");
       return;
     }
@@ -83,15 +90,15 @@ export function ScheduleEditorModal({
         title: title.trim(),
         description: description.trim() || null,
         kind,
-        startedAt: toShanghaiIso(startedAt),
-        endedAt: toShanghaiIso(endedAt),
+        startedAt: startedAtIso,
+        endedAt: endedAtIso,
         location: location.trim() || null,
         colorKey,
         recurrence: repeatWeekly ? {
           frequency: "weekly",
           interval: 1,
           weekdays,
-          until: until ? `${until}T23:59:59+08:00` : null,
+          until: until ? dateKeyToEndOfDayIso(until, SHANGHAI_TIME_ZONE) : null,
         } : null,
       });
       onClose();

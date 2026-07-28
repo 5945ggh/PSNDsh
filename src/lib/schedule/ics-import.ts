@@ -10,11 +10,15 @@ export const ICS_PREVIEW_WINDOW_DAYS = 180;
 export type IcsImportCandidate = {
   sourceUid: string;
   blocks: ScheduleBlockInput[];
+  cancelled?: boolean;
 };
 
 export type ParsedIcsImport = {
   preview: IcsImportPreview;
   candidates: IcsImportCandidate[];
+  sourceKey: string;
+  sourceName: string;
+  syncWindow: { from: string; to: string };
 };
 
 type IcsImportOptions = {
@@ -85,6 +89,13 @@ const unfoldedEventProperties = (content: string) => {
 const recurrenceLabel = (event: VEvent, instanceCount: number) =>
   event.rrule ? `重复事件，已展开 ${instanceCount} 次（未来 ${ICS_PREVIEW_WINDOW_DAYS} 天）` : null;
 
+const normalizedSourcePart = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+
+const instanceKeyFor = (event: VEvent, startedAt: Date, isOverride = false) => {
+  const recurrenceId = isOverride && event.recurrenceid ? new Date(event.recurrenceid).toISOString() : null;
+  return recurrenceId ? `recurrence:${recurrenceId}` : `start:${startedAt.toISOString()}`;
+};
+
 const toBlock = (event: VEvent, startedAt: Date, endedAt: Date): ScheduleBlockInput => ({
   kind: "course",
   title: textValue(event.summary).trim() || "未命名日程",
@@ -115,6 +126,12 @@ export const parseIcsImport = async (
   const events = Object.values(calendar).filter((value): value is VEvent => value?.type === "VEVENT" && !value.recurrenceid);
   if (events.length === 0) throw new ApplicationError("ICS_PARSE_FAILED", "ICS 文件中没有可解析的日程事件");
 
+  const calendarName = calendar.vcalendar?.["WR-CALNAME"]?.trim() || fileName;
+  const sourceName = calendarName;
+  const sourceKey = [calendar.vcalendar?.prodid, calendarName]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map(normalizedSourcePart)
+    .join("::");
   const properties = unfoldedEventProperties(content);
   const rows: IcsImportRow[] = [];
   const errors: IcsImportPreview["errors"] = [];
@@ -137,6 +154,7 @@ export const parseIcsImport = async (
     }
     if (event.status === "CANCELLED") {
       errors.push(eventError(event, "已取消事件未导入。"));
+      candidates.push({ sourceUid: event.uid, blocks: [], cancelled: true });
       continue;
     }
     const raw = properties.get(event.uid);
@@ -154,11 +172,16 @@ export const parseIcsImport = async (
       blocks = instances.map((instance) => {
         const startedAt = new Date(instance.start);
         const endedAt = new Date(instance.end);
-        return toBlock(
+        const block = toBlock(
           instance.event,
           raw.explicitTimezone ? startedAt : mapFloatingDateToTimezone(startedAt, effectiveTimezone),
           raw.explicitTimezone ? endedAt : mapFloatingDateToTimezone(endedAt, effectiveTimezone),
         );
+        return {
+          ...block,
+          sourceUid: event.uid,
+          sourceInstanceKey: instanceKeyFor(instance.event, startedAt, instance.isOverride),
+        };
       });
       if (blocks.length === 0) {
         errors.push(eventError(event, `重复事件在未来 ${ICS_PREVIEW_WINDOW_DAYS} 天内没有实例，未导入。`));
@@ -171,7 +194,11 @@ export const parseIcsImport = async (
         errors.push(eventError(event, "无时区事件的时间格式无效，未导入。"));
         continue;
       }
-      blocks = [toBlock(event, startedAt, endedAt)];
+      blocks = [{
+        ...toBlock(event, startedAt, endedAt),
+        sourceUid: event.uid,
+        sourceInstanceKey: instanceKeyFor(event, startedAt),
+      }];
     }
     if (blocks.some((block) => Date.parse(block.endedAt) <= Date.parse(block.startedAt))) {
       errors.push(eventError(event, "结束时间必须晚于开始时间，未导入。"));
@@ -202,5 +229,18 @@ export const parseIcsImport = async (
     candidates.push({ sourceUid: event.uid, blocks });
   }
 
-  return { preview: { importId: "", fileName, rows, errors }, candidates };
+  return {
+    preview: {
+      importId: "",
+      fileName,
+      sourceKey,
+      sourceName,
+      rows,
+      errors,
+    },
+    candidates,
+    sourceKey,
+    sourceName,
+    syncWindow: { from: now.toISOString(), to: horizonEnd.toISOString() },
+  };
 };

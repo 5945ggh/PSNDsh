@@ -48,14 +48,14 @@
 - Color: 由前端样例提出，但必须至少区分中性色界面、计划时间、实际专注、提醒或逾期、成功完成；不能只靠颜色表达状态
 - Typography: 中文正文优先保证阅读与数字对齐；面板内标题克制，不使用 hero 级大字；字距为 0
 - Spacing/layout rhythm: 紧凑但不拥挤，桌面端适合扫描与重复操作，移动端优先单列任务流
-- Shape/radius/elevation: 控件和重复项圆角不超过 8px；页面区块不做漂浮卡片；模态框、单个重复项和真正工具容器才使用边框或阴影
+- Shape/radius/elevation: 首页与统计页恢复独立工作卡片，用边框、浅阴影和清晰间距组织高频信息；卡片不可嵌套卡片，卡片内的条目仍使用轻量列表行。正式实现沿用当前兼容视觉的 `rounded-xl` 主容器，控件和列表行保持较小圆角，避免装饰性浮层
 - Motion: 只用于状态连续性、展开折叠和轻量反馈；尊重 reduced motion；计时数字变化不得造成布局跳动
 - Imagery/iconography: 功能按钮优先 Lucide 图标；天气可使用简洁图标；不需要插画、人物或装饰性背景图
 
 ## Components
 
 - Existing components to reuse: 当前 AppShell、日历轨道、日程编辑弹窗与 ICS 导入弹窗；导入接入真实 API 时保持既有弹窗布局、预览选择和就地错误表达
-- New/changed components: AppShell、PrimaryNav、GlobalFocusBar、EntryTree、EntryRow、WeekPlanList、ScheduleGrid、FocusBlock、ScheduleBlock、StatBreakdown、TimeTrend、DeadlineList、ProfileForm、FocusEditor、SegmentEditor
+- New/changed components: AppShell、PrimaryNav、GlobalFocusBar、EntryTree、EntryRow、WeekPlanList、ScheduleGrid、FocusBlock、ScheduleBlock、StatBreakdown、TimeTrend、DeadlineList、ProfileForm、FocusEditor、SegmentEditor；首页与统计页使用独立卡片分组承载这些信息，不把页面整体改成无边界分区
 - Variants and states: 活跃、暂停、完成、归档、逾期、临期、未关联、加载、空、错误、禁用；日程与专注必须有稳定独立变体
 - Token/component ownership: 前端样例应输出颜色、排版、间距和状态 token；正式实现吸收其思想后由根 `DESIGN.md` 维护最终 token 语义
 
@@ -97,7 +97,7 @@
 - Performance constraints: 活动计时数字不触发全页刷新；确认写入后的数据重校验不卸载当前工作台，深树和周历更新避免明显重排；首版不加载天气，名句从版本化本地 JSON 数据包读取
 - Compatibility constraints: 响应式 Web；桌面和手机现代浏览器；鼠标、键盘和触摸可用
 - Test/screenshot expectations: 前端样例交付桌面和手机关键页面截图；正式实现后再建立稳定视觉基线
-- Source priority: PRD 决定产品语义，本文决定设计原则，前端样例提供视觉与交互参考但不是像素级强约束
+- Source priority: PRD 决定产品语义，本文决定设计原则，前端样例提供视觉与交互参考但不是像素级强约束；当前首页与统计页的卡片式信息组织是已确认的正式实现方向
 
 ## Deferred design decisions
 

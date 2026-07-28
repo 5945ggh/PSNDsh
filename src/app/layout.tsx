@@ -17,7 +17,7 @@ export default function RootLayout({
       lang="zh-CN"
       className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+      <body className="min-h-full flex flex-col app-page">
         <MockProvider>
           {children}
         </MockProvider>

@@ -246,6 +246,92 @@ describe("SqliteApplicationService", () => {
     expect(app.getScheduleImports()).toEqual([]);
   });
 
+  it("updates a stable ICS source by instance key and removes missing instances in the sync window", () => {
+    const app = service();
+    const first = {
+      kind: "course" as const,
+      title: "周一课程",
+      startedAt: "2026-06-29T01:00:00.000Z",
+      endedAt: "2026-06-29T02:00:00.000Z",
+      location: "教室 A",
+      colorKey: "purple",
+      recurrence: null,
+      sourceUid: "stable-course",
+      sourceInstanceKey: "start:2026-06-29T01:00:00.000Z",
+    };
+    const second = {
+      ...first,
+      title: "周三课程",
+      startedAt: "2026-07-01T01:00:00.000Z",
+      endedAt: "2026-07-01T02:00:00.000Z",
+      sourceInstanceKey: "start:2026-07-01T01:00:00.000Z",
+    };
+    expect(app.importIcsScheduleBlocks([first, second], "spring.ics", {
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      syncWindow: { from: "2026-06-26T12:00:00.000Z", to: "2026-12-23T12:00:00.000Z" },
+    })).toBe(2);
+    expect(app.importIcsScheduleBlocks([{
+      ...first,
+      title: "周一课程（调整后）",
+    }], "spring-renamed.ics", {
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      syncWindow: { from: "2026-06-26T12:00:00.000Z", to: "2026-12-23T12:00:00.000Z" },
+      preserveSourceUids: ["stable-course"],
+    })).toBe(1);
+    expect(app.getScheduleBlocks()).toHaveLength(2);
+    expect(app.importIcsScheduleBlocks([{
+      ...first,
+      title: "周一课程（调整后）",
+    }], "spring-renamed.ics", {
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      syncWindow: { from: "2026-06-26T12:00:00.000Z", to: "2026-12-23T12:00:00.000Z" },
+    })).toBe(1);
+    expect(app.getScheduleBlocks()).toEqual([expect.objectContaining({
+      title: "周一课程（调整后）",
+      sourceInstanceKey: "start:2026-06-29T01:00:00.000Z",
+    })]);
+    expect(app.getScheduleImports()).toEqual([expect.objectContaining({
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      fileName: "spring-renamed.ics",
+      blockCount: 1,
+      changeCount: 1,
+    })]);
+  });
+
+  it("removes cancelled source instances when the update does not preserve their UID", () => {
+    const app = service();
+    const block = {
+      kind: "course" as const,
+      title: "已取消课程",
+      startedAt: "2026-06-29T01:00:00.000Z",
+      endedAt: "2026-06-29T02:00:00.000Z",
+      location: null,
+      colorKey: "purple",
+      recurrence: null,
+      sourceUid: "cancelled-course",
+      sourceInstanceKey: "start:2026-06-29T01:00:00.000Z",
+    };
+    const syncWindow = { from: "2026-06-26T12:00:00.000Z", to: "2026-12-23T12:00:00.000Z" };
+
+    expect(app.importIcsScheduleBlocks([block], "spring.ics", {
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      syncWindow,
+    })).toBe(1);
+    expect(app.importIcsScheduleBlocks([], "spring.ics", {
+      sourceKey: "prodid::spring",
+      sourceName: "春季课表",
+      syncWindow,
+      removedSourceUids: ["cancelled-course"],
+      preserveSourceUids: [],
+    })).toBe(1);
+    expect(app.getScheduleBlocks()).toEqual([]);
+  });
+
   it("projects weekly schedule rules into a requested calendar range", () => {
     const app = service();
     const rule = app.addScheduleBlock({

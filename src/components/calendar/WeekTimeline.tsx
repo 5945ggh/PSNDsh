@@ -60,10 +60,14 @@ export function WeekTimeline({
   onCreateSchedule,
 }: WeekTimelineProps) {
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm overflow-x-auto">
-      <div className="min-w-[900px] flex">
-        <div className="w-16 shrink-0 border-r border-zinc-200 dark:border-zinc-800 pr-2 pt-9 space-y-0 text-right select-none">
-          {hours.map((hour) => <div key={hour} className="font-mono text-[11px] text-zinc-400 tabular-nums flex items-start justify-end" style={{ height: `${HOUR_ROW_HEIGHT}px` }}><span>{String(hour).padStart(2, "0")}:00</span></div>)}
+    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="min-w-[920px] flex">
+        <div className="w-16 shrink-0 select-none border-r border-zinc-200 pr-2 pt-9 text-right dark:border-zinc-800">
+          {hours.map((hour) => (
+            <div key={hour} className="flex items-start justify-end font-mono text-[11px] tabular-nums text-zinc-400" style={{ height: `${HOUR_ROW_HEIGHT}px` }}>
+              <span>{String(hour).padStart(2, "0")}:00</span>
+            </div>
+          ))}
         </div>
 
         <div className="flex-1 grid grid-cols-7 divide-x divide-zinc-200 dark:divide-zinc-800 relative">
@@ -76,27 +80,52 @@ export function WeekTimeline({
             const dayFocuses = rangeFocusesForDay(day.date, focusSessions);
             return (
               <div key={day.date} data-testid={`calendar-day-${day.date}`} className="flex flex-col relative min-w-0">
-                <div className="text-center pb-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 z-10 sticky top-0">
+                <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 pb-2 text-center backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
                   <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-200">{day.dayName}</div>
-                  <div className="text-[10px] font-mono text-zinc-400">{day.date.slice(5)}</div>
+                  <div className="font-mono text-[10px] text-zinc-400">{day.date.slice(5)}</div>
                 </div>
                 <div className="relative flex-1" style={{ height: `${GRID_HEIGHT}px` }}>
                   <div className="absolute inset-0 flex">
                     {(trackFilter === "both" || trackFilter === "schedule") && (
-                      <div onDoubleClick={(event) => { if (event.target === event.currentTarget) onCreateSchedule(day.date); }} className={`relative border-r border-dashed border-zinc-200/50 dark:border-zinc-800/40 ${trackFilter === "both" ? "w-1/2" : "w-full"}`}>
+                      <div
+                        onDoubleClick={(event) => { if (event.target === event.currentTarget) onCreateSchedule(day.date); }}
+                        className={`relative border-r border-dashed border-zinc-200/50 dark:border-zinc-800/40 ${trackFilter === "both" ? "w-1/2" : "w-full"}`}
+                      >
                         {daySchedules.map(({ item: schedule, range }) => {
                           const position = computeTimePosition(new Date(range.startMs).toISOString(), new Date(range.endMs).toISOString());
                           return (
-                            <div key={schedule.id} onClick={() => onScheduleClick(schedule)} style={{ top: `${position.top}px`, height: `${position.height}px` }} className="absolute inset-x-0.5 group/block z-10 hover:z-50 cursor-pointer">
-                              <div style={{ borderLeftWidth: "3px", borderLeftColor: scheduleAccentColor(schedule.colorKey) }} className="w-full h-full p-1.5 rounded bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-[11px] overflow-hidden shadow-2xs hover:border-blue-400 hover:shadow-md transition-all">
-                                <div className="font-semibold truncate leading-tight flex items-center justify-between"><span className="truncate">{schedule.title}</span><ArrowRight className="w-3 h-3 opacity-0 group-hover/block:opacity-100 shrink-0 text-blue-500" /></div>
-                                <div className="text-[9px] font-mono opacity-80 tabular-nums">{formatTime(range.startMs)}–{formatTime(range.endMs)}</div>
+                            <button
+                              key={schedule.id}
+                              type="button"
+                              onClick={() => onScheduleClick(schedule)}
+                              aria-label={`打开日程：${schedule.title}，${formatTime(range.startMs)} 至 ${formatTime(range.endMs)}${schedule.location ? `，地点 ${schedule.location}` : ""}${schedule.recurrenceLabel ? `，${schedule.recurrenceLabel}` : ""}`}
+                              style={{ top: `${position.top}px`, height: `${position.height}px` }}
+                              className="absolute inset-x-0.5 z-10 group/block cursor-pointer rounded-md text-left transition-transform hover:z-50 hover:scale-[1.01] focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.99]"
+                            >
+                              <div
+                                style={{ borderLeftWidth: "3px", borderLeftColor: scheduleAccentColor(schedule.colorKey) }}
+                                className="flex h-full w-full flex-col overflow-hidden rounded-md border border-blue-200 bg-blue-50 p-1.5 text-[11px] text-blue-900 shadow-2xs transition-all hover:border-blue-400 hover:shadow-md dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-200"
+                              >
+                                <div className="flex items-start justify-between gap-1 leading-tight">
+                                  <span className="truncate font-semibold">{schedule.title}</span>
+                                  <ArrowRight className="h-3 w-3 shrink-0 text-blue-500 opacity-0 transition-opacity group-hover/block:opacity-100 group-focus-visible/block:opacity-100" aria-hidden="true" />
+                                </div>
+                                <div className="mt-0.5 font-mono text-[9px] tabular-nums opacity-80">
+                                  {formatTime(range.startMs)}–{formatTime(range.endMs)}
+                                </div>
                               </div>
-                              <div className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-64 p-4 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-sm space-y-2 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${getPopoverPositionClass(position.top, dayIndex)}`}>
-                                <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-2 flex items-center justify-between gap-2"><span className="truncate">{schedule.title}</span><span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-900 text-blue-200">日程 (点击跳转)</span></div>
-                                <div className="space-y-1.5 text-xs font-mono text-zinc-300 tabular-nums"><div>时间：{formatTime(range.startMs)} – {formatTime(range.endMs)}</div>{schedule.location && <div>地点：{schedule.location}</div>}{schedule.recurrenceLabel && <div className="text-[10px] text-zinc-400">重复：{schedule.recurrenceLabel}</div>}</div>
+                              <div className={`absolute hidden w-64 space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-100 shadow-2xl animate-in fade-in zoom-in-95 duration-150 group-hover/block:block group-focus-visible/block:block dark:bg-zinc-800 ${getPopoverPositionClass(position.top, dayIndex)}`}>
+                                <div className="flex items-center justify-between gap-2 border-b border-zinc-700/60 pb-2 font-semibold text-zinc-200">
+                                  <span className="truncate">{schedule.title}</span>
+                                  <span className="rounded bg-blue-900 px-1.5 py-0.5 font-mono text-[9px] text-blue-200">日程</span>
+                                </div>
+                                <div className="space-y-1.5 font-mono text-xs tabular-nums text-zinc-300">
+                                  <div>时间：{formatTime(range.startMs)} - {formatTime(range.endMs)}</div>
+                                  {schedule.location && <div>地点：{schedule.location}</div>}
+                                  {schedule.recurrenceLabel && <div className="text-[10px] text-zinc-400">重复：{schedule.recurrenceLabel}</div>}
+                                </div>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -109,17 +138,37 @@ export function WeekTimeline({
                           const entryId = focus.segments[0]?.entryId ?? null;
                           const entryTitle = getEntryTitle(entries, entryId);
                           return (
-                            <div key={focus.id} onClick={() => onFocusClick(entryId)} style={{ top: `${position.top}px`, height: `${position.height}px` }} className="absolute inset-x-0.5 group/block z-10 hover:z-50 cursor-pointer">
-                              <div className="w-full h-full p-1.5 rounded bg-purple-50 dark:bg-purple-950/70 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-[11px] overflow-hidden shadow-2xs hover:border-purple-400 hover:shadow-md transition-all">
-                                <div className="font-semibold truncate leading-tight flex items-center justify-between"><span className="truncate">{entryTitle}</span><ArrowRight className="w-3 h-3 opacity-0 group-hover/block:opacity-100 shrink-0 text-purple-500" /></div>
-                                <div className="text-[9px] font-mono opacity-80 tabular-nums">{formatTime(range.startMs)}–{focus.endedAt ? formatTime(range.endMs) : "进行中"}</div>
-                                {focus.segments.length > 1 && <div className="text-[9px] text-purple-600 dark:text-purple-300 font-semibold truncate">[{focus.segments.length}片段]</div>}
+                            <button
+                              key={focus.id}
+                              type="button"
+                              onClick={() => onFocusClick(entryId)}
+                              aria-label={`打开专注：${entryTitle}，${formatTime(range.startMs)} 至 ${focus.endedAt ? formatTime(range.endMs) : "进行中"}，${focus.captureMode === "timer" ? "实时计时" : "手动补录"}${focus.segments.length > 1 ? `，${focus.segments.length} 个拆分片段` : ""}${focus.outcome ? `，成果 ${focus.outcome}` : ""}${focus.note ? `，备注 ${focus.note}` : ""}`}
+                              style={{ top: `${position.top}px`, height: `${position.height}px` }}
+                              className="absolute inset-x-0.5 z-10 group/block cursor-pointer rounded-md text-left transition-transform hover:z-50 hover:scale-[1.01] focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 active:scale-[0.99]"
+                            >
+                              <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-purple-200 bg-purple-50 p-1.5 text-[11px] text-purple-900 shadow-2xs transition-all hover:border-purple-400 hover:shadow-md dark:border-purple-800 dark:bg-purple-950/70 dark:text-purple-200">
+                                <div className="flex items-start justify-between gap-1 leading-tight">
+                                  <span className="truncate font-semibold">{entryTitle}</span>
+                                  <ArrowRight className="h-3 w-3 shrink-0 text-purple-500 opacity-0 transition-opacity group-hover/block:opacity-100 group-focus-visible/block:opacity-100" aria-hidden="true" />
+                                </div>
+                                <div className="mt-0.5 font-mono text-[9px] tabular-nums opacity-80">
+                                  {formatTime(range.startMs)}–{focus.endedAt ? formatTime(range.endMs) : "进行中"}
+                                </div>
+                                {focus.segments.length > 1 && <div className="mt-0.5 truncate text-[9px] font-semibold text-purple-600 dark:text-purple-300">[{focus.segments.length}片段]</div>}
                               </div>
-                              <div className={`absolute hidden group-hover/block:block group-focus-within/block:block z-50 w-64 p-4 bg-zinc-900 text-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl text-sm space-y-2 pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${getPopoverPositionClass(position.top, dayIndex)}`}>
-                                <div className="font-semibold text-zinc-200 border-b border-zinc-700/60 pb-2 flex items-center justify-between gap-2"><span className="truncate">{entryTitle}</span><span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-900 text-purple-200">专注 (点击跳转)</span></div>
-                                <div className="space-y-1.5 text-xs font-mono text-zinc-300 tabular-nums"><div>时间：{formatTime(range.startMs)} – {focus.endedAt ? formatTime(range.endMs) : "进行中"}</div><div>类型：{focus.captureMode === "timer" ? "实时计时" : "手动补录"}</div>{focus.outcome && <div className="text-[10px] text-emerald-400">成果：{focus.outcome}</div>}{focus.note && <div className="text-[10px] text-zinc-400">备注：{focus.note}</div>}</div>
+                              <div className={`absolute hidden w-64 space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-100 shadow-2xl animate-in fade-in zoom-in-95 duration-150 group-hover/block:block group-focus-visible/block:block dark:bg-zinc-800 ${getPopoverPositionClass(position.top, dayIndex)}`}>
+                                <div className="flex items-center justify-between gap-2 border-b border-zinc-700/60 pb-2 font-semibold text-zinc-200">
+                                  <span className="truncate">{entryTitle}</span>
+                                  <span className="rounded bg-purple-900 px-1.5 py-0.5 font-mono text-[9px] text-purple-200">专注</span>
+                                </div>
+                                <div className="space-y-1.5 font-mono text-xs tabular-nums text-zinc-300">
+                                  <div>时间：{formatTime(range.startMs)} - {focus.endedAt ? formatTime(range.endMs) : "进行中"}</div>
+                                  <div>类型：{focus.captureMode === "timer" ? "实时计时" : "手动补录"}</div>
+                                  {focus.outcome && <div className="text-[10px] text-emerald-400">成果：{focus.outcome}</div>}
+                                  {focus.note && <div className="text-[10px] text-zinc-400">备注：{focus.note}</div>}
+                                </div>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
