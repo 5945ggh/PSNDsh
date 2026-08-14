@@ -1,17 +1,20 @@
 import { spawn } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { cleanupStaleE2eArtifacts } from "./e2e-cleanup.mjs";
 
 const root = process.cwd();
 const runId = `${Date.now()}-${process.pid}`;
-const databasePath = path.join(root, "data", `playwright-e2e-${runId}.db`);
+const dataDirectory = path.join(root, "data");
+const databasePath = path.join(dataDirectory, `playwright-e2e-${runId}.db`);
 const distDir = `.next-e2e-${runId}`;
 const tsconfigPath = path.join(root, "tsconfig.json");
 const port = process.env.PLAYWRIGHT_PORT || "3100";
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const originalTsconfig = await readFile(tsconfigPath);
 
-await mkdir(path.dirname(databasePath), { recursive: true });
+await cleanupStaleE2eArtifacts({ root, dataDirectory });
+await mkdir(dataDirectory, { recursive: true });
 
 const child = spawn(
   pnpm,
