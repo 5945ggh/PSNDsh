@@ -1,0 +1,23 @@
+scripts/e2e-cleanup.test.ts
+  s_be0e29fdcd8b47::t_5ca49c156e06fe 1-101
+scripts/e2e-cleanup.mjs
+  s_be0e29fdcd8b47::t_59ebb0d8f317e3 1-75
+scripts/e2e-server.mjs
+  s_be0e29fdcd8b47::t_59ebb0d8f317e3 4,8-9,16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "52e4abacdee9181163a0f40402179f895f735b20",
+  "prompts": {},
+  "sessions": {
+    "s_be0e29fdcd8b47": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa81b-b022-7890-89e3-98debfce649a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
