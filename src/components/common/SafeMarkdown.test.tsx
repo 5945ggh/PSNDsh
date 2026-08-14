@@ -30,4 +30,22 @@ describe("SafeMarkdown", () => {
     expect(html).not.toContain("href=\"javascript:alert(1)\"");
     expect(html).toContain("href=\"https://example.com\"");
   });
+
+  it("preserves line breaks inside paragraphs", () => {
+    const html = renderToStaticMarkup(<SafeMarkdown content={"第一行\n第二行"} />);
+
+    expect(html).toContain("第一行<br/>第二行");
+  });
+
+  it("preserves nested checklist hierarchy", () => {
+    const html = renderToStaticMarkup(
+      <SafeMarkdown content={`- [ ] 父项
+  - [x] 子项`} />,
+    );
+
+    expect(html).toMatch(/<ul[^>]*><li[^>]*>[\s\S]*父项[\s\S]*<ul[^>]*><li[^>]*>[\s\S]*子项/);
+    expect((html.match(/<input/g) ?? [])).toHaveLength(2);
+    expect(html).toContain('aria-label="已完成"');
+    expect(html).toContain('aria-label="未完成"');
+  });
 });

@@ -84,8 +84,83 @@ const renderInline = (text: string): React.ReactNode[] => {
   return nodes;
 };
 
-const isUnorderedItem = (line: string) => /^\s*[-*]\s+/.test(line);
-const isOrderedItem = (line: string) => /^\s*\d+\.\s+/.test(line);
+type ParsedListLine = {
+  indent: number;
+  ordered: boolean;
+  content: string;
+};
+
+const parseListLine = (line: string): ParsedListLine | null => {
+  const match = /^([ \t]*)([-*]|\d+\.)\s+(.+)$/.exec(line);
+  if (!match) return null;
+
+  return {
+    indent: (match[1] ?? "").replace(/\t/g, "    ").length,
+    ordered: match[2]?.endsWith(".") === true && /^\d/.test(match[2]),
+    content: match[3] ?? "",
+  };
+};
+
+const isListItem = (line: string) => parseListLine(line) !== null;
+
+const renderListContent = (content: string): React.ReactNode => {
+  const checkbox = /^\[([ xX])\]\s+(.+)$/.exec(content);
+  if (!checkbox) return renderInline(content);
+
+  return (
+    <span className="inline-flex items-start gap-1.5">
+      <input
+        type="checkbox"
+        checked={checkbox[1].toLowerCase() === "x"}
+        readOnly
+        disabled
+        aria-label={checkbox[1].toLowerCase() === "x" ? "已完成" : "未完成"}
+        className="mt-0.5 h-3 w-3 shrink-0 accent-emerald-600"
+      />
+      <span className={checkbox[1].toLowerCase() === "x" ? "text-zinc-500 line-through dark:text-zinc-500" : undefined}>
+        {renderInline(checkbox[2])}
+      </span>
+    </span>
+  );
+};
+
+const renderListBlock = (lines: string[], startIndex: number): { node: React.ReactNode; nextIndex: number } => {
+  const first = parseListLine(lines[startIndex] ?? "");
+  if (!first) return { node: null, nextIndex: startIndex };
+
+  const items: React.ReactNode[] = [];
+  let index = startIndex;
+  while (index < lines.length) {
+    const current = parseListLine(lines[index] ?? "");
+    if (!current || current.indent !== first.indent || current.ordered !== first.ordered) break;
+
+    index += 1;
+    let nested: React.ReactNode = null;
+    const child = parseListLine(lines[index] ?? "");
+    if (child && child.indent > first.indent) {
+      const nestedBlock = renderListBlock(lines, index);
+      nested = nestedBlock.node;
+      index = nestedBlock.nextIndex;
+    }
+
+    items.push(
+      <li key={`item-${index}-${items.length}`}>
+        {renderListContent(current.content)}
+        {nested}
+      </li>,
+    );
+  }
+
+  const ListTag = first.ordered ? "ol" : "ul";
+  return {
+    node: (
+      <ListTag className={`space-y-1 pl-5 ${first.ordered ? "list-decimal" : "list-disc"}`}>
+        {items}
+      </ListTag>
+    ),
+    nextIndex: index,
+  };
+};
 
 export const SafeMarkdown: React.FC<{ content: string; fallback?: string; className?: string }> = ({
   content,
@@ -118,27 +193,10 @@ export const SafeMarkdown: React.FC<{ content: string; fallback?: string; classN
       continue;
     }
 
-    if (isUnorderedItem(line) || isOrderedItem(line)) {
-      const ordered = isOrderedItem(line);
-      const items: React.ReactNode[] = [];
-      while (index < lines.length && (ordered ? isOrderedItem(lines[index]) : isUnorderedItem(lines[index]))) {
-        items.push(
-          <li key={`item-${index}`}>
-            {renderInline(lines[index].replace(ordered ? /^\s*\d+\.\s+/ : /^\s*[-*]\s+/, ""))}
-          </li>
-        );
-        index += 1;
-      }
-      index -= 1;
-      const ListTag = ordered ? "ol" : "ul";
-      blocks.push(
-        <ListTag
-          key={`block-${index}`}
-          className={`space-y-1 pl-5 ${ordered ? "list-decimal" : "list-disc"}`}
-        >
-          {items}
-        </ListTag>
-      );
+    if (isListItem(line)) {
+      const listBlock = renderListBlock(lines, index);
+      blocks.push(React.cloneElement(listBlock.node as React.ReactElement, { key: `block-${index}` }));
+      index = listBlock.nextIndex - 1;
       continue;
     }
 
@@ -160,17 +218,21 @@ export const SafeMarkdown: React.FC<{ content: string; fallback?: string; classN
       index + 1 < lines.length &&
       lines[index + 1].trim() &&
       !/^(#{1,3})\s+/.test(lines[index + 1]) &&
-      !isUnorderedItem(lines[index + 1]) &&
-      !isOrderedItem(lines[index + 1]) &&
+      !isListItem(lines[index + 1]) &&
       !/^>\s?/.test(lines[index + 1])
     ) {
       index += 1;
       paragraph.push(lines[index].trim());
     }
 
+    const paragraphContent = paragraph.flatMap((line, lineIndex) => [
+      ...(lineIndex > 0 ? [<br key={`break-${index}-${lineIndex}`} />] : []),
+      ...renderInline(line),
+    ]);
+
     blocks.push(
       <p key={`block-${index}`} className="leading-relaxed">
-        {renderInline(paragraph.join(" "))}
+        {paragraphContent}
       </p>
     );
   }
