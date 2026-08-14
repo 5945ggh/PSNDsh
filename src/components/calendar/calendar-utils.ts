@@ -6,6 +6,7 @@ export const MOBILE_VIEWPORT_QUERY = "(max-width: 767px)";
 const shanghaiTimePartsFormatter = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
   hourCycle: "h23",
   timeZone: SHANGHAI_TIME_ZONE,
 });
@@ -69,11 +70,22 @@ export const getShanghaiDecimalHour = (value: Date) => {
   const parts = shanghaiTimePartsFormatter.formatToParts(value);
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
   const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
-  return hour + minute / 60;
+  const second = Number(parts.find((part) => part.type === "second")?.value ?? 0);
+  return hour + minute / 60 + second / 3600;
 };
 
-export const getPopoverPositionClass = (topPx: number, dayIdx: number) => {
-  const verticalClass = topPx < 90 ? "top-full mt-2" : "bottom-full mb-2";
+export const CALENDAR_START_HOUR = 6;
+
+/** Maps Shanghai local time onto a day that starts at 06:00 and ends at 06:00. */
+export const getCalendarHourOffset = (value: Date) => {
+  const hour = getShanghaiDecimalHour(value);
+  return hour >= CALENDAR_START_HOUR
+    ? hour - CALENDAR_START_HOUR
+    : hour + (24 - CALENDAR_START_HOUR);
+};
+
+export const getPopoverPositionClass = (topHours: number, dayIdx: number) => {
+  const verticalClass = topHours < 1.5 ? "top-full mt-2" : "bottom-full mb-2";
   const horizontalClass = dayIdx <= 1 ? "left-0 translate-x-0" : dayIdx >= 5 ? "right-0 translate-x-0" : "left-1/2 -translate-x-1/2";
   return `${verticalClass} ${horizontalClass}`;
 };
