@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "catalogVersion": "2026.07.23.initial.1",
+  "catalogVersion": "2026.07.29.manual.1",
   "season": "spring",
   "months": [3, 4, 5],
   "quotations": [
@@ -9,6 +9,10 @@
     { "id": "spring-early", "text": "天街小雨润如酥，草色遥看近却无。", "author": "韩愈", "work": "《早春呈水部张十八员外》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "spring-willow", "text": "不知细叶谁裁出，二月春风似剪刀。", "author": "贺知章", "work": "《咏柳》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "spring-flower", "text": "竹外桃花三两枝，春江水暖鸭先知。", "author": "苏轼", "work": "《惠崇春江晚景》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "spring-jiangnan", "text": "日出江花红胜火，春来江水绿如蓝。", "author": "白居易", "work": "《忆江南·江南好》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "spring-jiangnan", "text": "日出江花红胜火，春来江水绿如蓝。", "author": "白居易", "work": "《忆江南·江南好》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-late-breeze", "text": "迟日江山丽，春风花草香。", "author": "杜甫", "work": "《绝句二首》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-tender-buds", "text": "繁枝容易纷纷落，嫩蕊商量细细开。", "author": "杜甫", "work": "《江畔独步寻花七绝句》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-new-growth", "text": "林花扫更落，径草踏还生。", "author": "孟浩然", "work": "《春中喜王九相寻》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "spring-empty-birds", "text": "芳树无人花自落，春山一路鸟空啼。", "author": "李华", "work": "《春行即兴》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }

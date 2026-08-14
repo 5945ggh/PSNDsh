@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "catalogVersion": "2026.07.23.initial.1",
+  "catalogVersion": "2026.07.29.manual.1",
   "season": "summer",
   "months": [6, 7, 8],
   "quotations": [
@@ -9,6 +9,10 @@
     { "id": "summer-shade", "text": "绿树阴浓夏日长，楼台倒影入池塘。", "author": "高骈", "work": "《山亭夏日》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "summer-rose", "text": "水晶帘动微风起，满架蔷薇一院香。", "author": "高骈", "work": "《山亭夏日》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "summer-night", "text": "稻花香里说丰年，听取蛙声一片。", "author": "辛弃疾", "work": "《西江月·夜行黄沙道中》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "summer-cool", "text": "清风明月无人管，并作南楼一缕凉。", "author": "黄庭坚", "work": "《鄂州南楼书事》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "summer-cool", "text": "清风明月无人管，并作南楼一缕凉。", "author": "黄庭坚", "work": "《鄂州南楼书事》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-lotus-wind", "text": "荷风送香气，竹露滴清响。", "author": "孟浩然", "work": "《夏日南亭怀辛大》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-sleep", "text": "日长睡起无情思，闲看儿童捉柳花。", "author": "杨万里", "work": "《闲居初夏午睡起》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-rain-on-lotus", "text": "柳外轻雷池上雨，雨声滴碎荷声。", "author": "欧阳修", "work": "《临江仙·柳外轻雷池上雨》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "summer-green-shade", "text": "晴日暖风生麦气，绿阴幽草胜花时。", "author": "王安石", "work": "《初夏即事》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }

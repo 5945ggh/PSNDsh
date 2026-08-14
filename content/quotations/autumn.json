@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "catalogVersion": "2026.07.23.initial.1",
+  "catalogVersion": "2026.07.29.manual.1",
   "season": "autumn",
   "months": [9, 10, 11],
   "quotations": [
@@ -9,6 +9,10 @@
     { "id": "autumn-water", "text": "落霞与孤鹜齐飞，秋水共长天一色。", "author": "王勃", "work": "《滕王阁序》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "autumn-maple", "text": "停车坐爱枫林晚，霜叶红于二月花。", "author": "杜牧", "work": "《山行》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "autumn-gui", "text": "桂子月中落，天香云外飘。", "author": "宋之问", "work": "《灵隐寺》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "autumn-wildgeese", "text": "长风万里送秋雁，对此可以酣高楼。", "author": "李白", "work": "《宣州谢朓楼饯别校书叔云》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "autumn-wildgeese", "text": "长风万里送秋雁，对此可以酣高楼。", "author": "李白", "work": "《宣州谢朓楼饯别校书叔云》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-withered-lotus", "text": "秋阴不散霜飞晚，留得枯荷听雨声。", "author": "李商隐", "work": "《宿骆氏亭寄怀崔雍崔衮》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-night-rain", "text": "一声梧叶一声秋，一点芭蕉一点愁。", "author": "徐再思", "work": "《水仙子·夜雨》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-red-leaves", "text": "山明水净夜来霜，数树深红出浅黄。", "author": "刘禹锡", "work": "《秋词二首》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "autumn-wood-leaves", "text": "天秋木叶下，月冷莎鸡悲。", "author": "李白", "work": "《秋思》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }

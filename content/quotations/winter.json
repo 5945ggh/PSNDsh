@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "catalogVersion": "2026.07.23.initial.1",
+  "catalogVersion": "2026.07.29.manual.1",
   "season": "winter",
   "months": [12, 1, 2],
   "quotations": [
@@ -9,6 +9,10 @@
     { "id": "winter-river", "text": "孤舟蓑笠翁，独钓寒江雪。", "author": "柳宗元", "work": "《江雪》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "winter-drink", "text": "晚来天欲雪，能饮一杯无？", "author": "白居易", "work": "《问刘十九》", "sourceUrl": "https://www.gushiwen.cn/" },
     { "id": "winter-home", "text": "柴门闻犬吠，风雪夜归人。", "author": "刘长卿", "work": "《逢雪宿芙蓉山主人》", "sourceUrl": "https://www.gushiwen.cn/" },
-    { "id": "winter-plum-fragrance", "text": "零落成泥碾作尘，只有香如故。", "author": "陆游", "work": "《卜算子·咏梅》", "sourceUrl": "https://www.gushiwen.cn/" }
+    { "id": "winter-plum-fragrance", "text": "零落成泥碾作尘，只有香如故。", "author": "陆游", "work": "《卜算子·咏梅》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "winter-solitary-night", "text": "乱山残雪夜，孤烛异乡人。", "author": "崔涂", "work": "《除夜有怀》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "winter-early-plum", "text": "前村深雪里，昨夜一枝开。", "author": "齐己", "work": "《早梅》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "winter-white-plum", "text": "冰雪林中著此身，不同桃李混芳尘。", "author": "王冕", "work": "《白梅》", "sourceUrl": "https://www.gushiwen.cn/" },
+    { "id": "winter-moon-snow", "text": "明月照积雪，朔风劲且哀。", "author": "谢灵运", "work": "《岁暮》", "sourceUrl": "https://www.gushiwen.cn/" }
   ]
 }
