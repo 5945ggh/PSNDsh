@@ -1,0 +1,138 @@
+src/lib/persistence/sqlite-service.ts
+  s_bf679c0ec9b17f::t_ff048273e022c8 623,628,694-702
+  s_1ee9b4d060e1f3::t_5d926587b0648e 161-165,539,573-583,625,1214-1217,1219,1224-1226
+  s_50851ee908eec7::t_6c7ce296c0072c 607-608,615,622
+  s_db681915ef9adf::t_84f0d20f3d6e13 55,547-550,558-564,588-594,603-604,606,609-614,616-620,631-633,703,1290-1291
+  s_db681915ef9adf::t_1a200f244257ce 634
+  s_db681915ef9adf::t_95388019ff88c4 704
+src/lib/persistence/sqlite-service.test.ts
+  s_bf679c0ec9b17f::t_666a3bf048add4 702-703,705,708-712,714-715
+  s_50851ee908eec7::t_bc316e44ddb09b 144-208,664-680
+  s_db681915ef9adf::t_7fa8e9aed8961e 116-118,121-122
+  s_bf679c0ec9b17f::t_33750d9399b48e 704,706-707,713
+  s_1ee9b4d060e1f3::t_151a1985de5a11 127-128
+  s_bf679c0ec9b17f::t_728b6aaea8d256 129,265,681,683-701,716
+  s_1ee9b4d060e1f3::t_7a75920d0e2028 6,131-143,240-264
+  s_db681915ef9adf::t_733d12c29d2479 108-109,115,119-120,125-126
+  s_bf679c0ec9b17f::t_bbec163d2d6da3 266
+  s_bf679c0ec9b17f::t_1ce7c9a37a9fc8 682
+  s_bf679c0ec9b17f::t_3178f9593490e1 717
+src/lib/api/adapter.ts
+  s_bf679c0ec9b17f::t_aacce150c41e8d 81
+  s_1ee9b4d060e1f3::t_e266569c6d6469 50-52
+  s_db681915ef9adf::t_2522f624399bd1 59-65,67
+src/lib/mock/api.ts
+  s_db681915ef9adf::t_2522f624399bd1 31-32
+  s_bf679c0ec9b17f::t_aacce150c41e8d 38
+  s_1ee9b4d060e1f3::t_a628f62d59e86e 29,57
+src/lib/db/schema.ts
+  s_db681915ef9adf::t_7103ed463646a2 84
+  s_db681915ef9adf::t_6413e9c0118ab3 83
+src/lib/domain/types.ts
+  s_db681915ef9adf::t_7103ed463646a2 52-53,57
+  s_db681915ef9adf::t_b3244c979432fc 58
+src/lib/mock/fixtures.ts
+  s_db681915ef9adf::t_7fa8e9aed8961e 238-242,255-257,270-272
+src/app/api/v1/statistics/route.ts
+  s_1ee9b4d060e1f3::t_db710f5d54eabe 1
+  s_1ee9b4d060e1f3::t_35cb3def96b64c 3-11,15-20
+src/lib/mock/store.ts
+  s_50851ee908eec7::t_6c7ce296c0072c 399-401,405-406,414
+  s_db681915ef9adf::t_9a4bcffad88719 14,366-368,371-374,395,398,413,419,421-423
+  s_1ee9b4d060e1f3::t_59debc975d5ca7 45-49,79-83,102,362,384-388,424,524,746-748
+  s_bf679c0ec9b17f::t_ff048273e022c8 515-523
+  s_1ee9b4d060e1f3::t_1f32784e4f6c6b 389
+  s_db681915ef9adf::t_124bd42593ca09 420
+  s_1ee9b4d060e1f3::t_733b66e7d30566 425
+  s_1ee9b4d060e1f3::t_024c9a2646257b 525
+src/lib/mock/store.test.ts
+  s_db681915ef9adf::t_7fa8e9aed8961e 65-66
+  s_db681915ef9adf::t_733d12c29d2479 11-30
+  s_1ee9b4d060e1f3::t_0d98dbb4d9b5b0 79-99,183-199
+  s_50851ee908eec7::t_bc316e44ddb09b 100-114,117,122,126-127,130,134,140,142,200-203,205-207,209-212
+  s_50851ee908eec7::t_283646565bb79f 204,208
+  s_db681915ef9adf::t_a25f5ec20a0bb6 46-47
+  s_50851ee908eec7::t_bfff03b123251e 115-116
+  s_50851ee908eec7::t_2a19d357a5aaf9 118-121
+  s_50851ee908eec7::t_f902fd86b1ab31 123-125
+  s_50851ee908eec7::t_27aa549c7a9644 128-129
+  s_50851ee908eec7::t_688f6a8bde1429 131-133
+  s_50851ee908eec7::t_e14b9bb2f3e925 135-139
+  s_50851ee908eec7::t_6d55ba9a8d800c 141
+src/lib/domain/week-plan.ts
+  s_50851ee908eec7::t_6c7ce296c0072c 1-20,28,41,56,58
+  s_50851ee908eec7::t_ee07c450d85d2b 21-23,25-27
+  s_50851ee908eec7::t_8acf93021ff56b 29-31,38-40
+  s_50851ee908eec7::t_2890d047a293d9 42-44,53-55
+  s_50851ee908eec7::t_921850a0ca5e15 57
+src/lib/application/contract.ts
+  s_bf679c0ec9b17f::t_aacce150c41e8d 110
+  s_db681915ef9adf::t_7103ed463646a2 21,97-98
+  s_1ee9b4d060e1f3::t_306876981bff8a 69-77,95,129
+src/lib/mock/service.ts
+  s_db681915ef9adf::t_2522f624399bd1 143-147,150-152,157,203
+  s_bf679c0ec9b17f::t_ff048273e022c8 197-202
+  s_1ee9b4d060e1f3::t_43f01ed8ab9fce 41,58-59
+  s_50851ee908eec7::t_6c7ce296c0072c 14,148-149,156
+  s_db681915ef9adf::t_56a5004498f8d5 204
+drizzle/0004_week_plan_focus.sql
+  s_db681915ef9adf::t_7103ed463646a2 1-9
+src/lib/api/client.ts
+  s_bf679c0ec9b17f::t_aacce150c41e8d 108,322-323
+  s_db681915ef9adf::t_2522f624399bd1 29,95-96,274,277-281,284
+  s_1ee9b4d060e1f3::t_95689747c3eda6 6,93,130-131,257-263,269,276,283,290,423-426
+  s_bf679c0ec9b17f::t_c8b165b349f612 324-325
+  s_b3e935ba5077a3::t_8b200efda8c428 275
+src/app/api/v1/week-plans/[weekStart]/route.ts
+  s_1ee9b4d060e1f3::t_85e5b9dd5ef195 3,27-34,41
+  s_50851ee908eec7::t_6c7ce296c0072c 17-19
+  s_db681915ef9adf::t_2522f624399bd1 6-16,20,44-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e5ab8f822c90a26f23714b9bed9a5139f60f2b02",
+  "prompts": {},
+  "sessions": {
+    "s_1ee9b4d060e1f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae72-781c-7691-b159-68e6192901a9",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_50851ee908eec7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb30c-9299-7a40-8068-df122fa2cc31",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b3e935ba5077a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae75-c989-7820-94f3-f2823e3e5811",
+        "model": "unknown"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_bf679c0ec9b17f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa857-4b71-7883-8304-613f474782e4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_db681915ef9adf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fab89-db05-7db2-bd63-a6b6635f7b5f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
