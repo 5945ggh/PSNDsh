@@ -11,6 +11,7 @@ import {
 import type { ScenarioPreset } from "@/lib/mock/types";
 import { ApplicationService, LoginInput, RegisterInput } from "@/lib/application/contract";
 import { MockDataStore } from "./store";
+import { assertValidWeekPlanItemInput } from "@/lib/domain/week-plan";
 import {
   assertEntryMoveIsValid,
   assertEntryStatusIsValid,
@@ -37,6 +38,7 @@ export class MockApplicationService implements ApplicationService {
   getEntries() { return this.store.getEntries(); }
   getEntryById(id: string) { return this.store.getEntryById(id); }
   getWeekPlan(weekStart?: string) { return this.store.getWeekPlan(weekStart); }
+  getExistingWeekPlan(weekStart: string) { return this.store.getExistingWeekPlan(weekStart); }
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
@@ -53,8 +55,8 @@ export class MockApplicationService implements ApplicationService {
   getCalendarPayload(from?: string, to?: string) { return this.store.getCalendarPayload(from, to); }
   getIcsPreview() { return this.store.getIcsPreview(); }
   getDashboardPayload() { return this.store.getDashboardPayload(); }
-  getStatisticsPayload(scale?: "day" | "week" | "month") {
-    return this.store.getStatisticsPayload(scale);
+  getStatisticsPayload(...args: Parameters<ApplicationService["getStatisticsPayload"]>) {
+    return this.store.getStatisticsPayload(...args);
   }
   exportUserData(): UserDataExport {
     const profile = this.getUser();
@@ -138,11 +140,21 @@ export class MockApplicationService implements ApplicationService {
   updateWeekPlanNote(note: string, weekStart?: string) {
     this.store.updateWeekPlanNote(note, weekStart);
   }
-  addToWeekPlan(entryId: string, weekStart?: string) {
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Parameters<ApplicationService["addToWeekPlan"]>[2]) {
+    const entry = this.store.getEntryById(entryId);
+    if (!entry) {
+      throw new MockDomainError("ENTRY_NOT_FOUND", "条目不存在");
+    }
+    const role = input?.role ?? (entry.completionMode === "ongoing" ? "focus" : "commitment");
+    assertValidWeekPlanItemInput({ role, plannedFocusSeconds: input?.plannedFocusSeconds ?? null });
+    this.store.addToWeekPlan(entryId, weekStart, input);
+  }
+  updateWeekPlanItem(entryId: string, input: Parameters<ApplicationService["updateWeekPlanItem"]>[1], weekStart?: string) {
     if (!this.store.getEntryById(entryId)) {
       throw new MockDomainError("ENTRY_NOT_FOUND", "条目不存在");
     }
-    this.store.addToWeekPlan(entryId, weekStart);
+    assertValidWeekPlanItemInput(input);
+    this.store.updateWeekPlanItem(entryId, input, weekStart);
   }
   removeFromWeekPlan(entryId: string, weekStart?: string) {
     this.store.removeFromWeekPlan(entryId, weekStart);
@@ -180,6 +192,14 @@ export class MockApplicationService implements ApplicationService {
     assertSegmentsPartitionSession({ startedAt: session.startedAt, endedAt }, segments);
     assertNoFocusOverlap(this.getFocusSessions(), session.startedAt, endedAt, session.id);
     return this.store.stopFocusSession(sessionId, outcome, note, segments, endedAt);
+  }
+
+  discardFocusSession(): void {
+    const active = this.getActiveFocus();
+    if (!active) {
+      throw new MockDomainError("FOCUS_NOT_FOUND", "活动专注会话不存在");
+    }
+    this.store.discardFocusSession(active.id);
   }
 
   addManualFocusSession(input: Parameters<MockDataStore["addManualFocusSession"]>[0]) {

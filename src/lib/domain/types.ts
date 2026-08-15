@@ -49,8 +49,12 @@ export type Entry = {
 export type WeekPlanItem = {
   entryId: string;
   source: "manual" | "rollover";
+  role: "focus" | "commitment";
+  plannedFocusSeconds: number | null;
   sortKey: string;
 };
+
+export type WeekPlanItemInput = Pick<WeekPlanItem, "role" | "plannedFocusSeconds">;
 
 export type WeekPlan = {
   weekStart: string; // YYYY-MM-DD

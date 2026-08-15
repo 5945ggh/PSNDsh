@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { ApplicationError } from "@/lib/application/error";
 import { QUOTATION_CATALOG_VERSION } from "@/lib/ambient/quotations";
 import { openDatabase } from "@/lib/db";
-import { entries, users } from "@/lib/db/schema";
+import { entries, focusSegments, users, weekPlans } from "@/lib/db/schema";
 import { SqliteApplicationService } from "./sqlite-service";
 
 const USER_A = "user-a";
@@ -105,15 +105,107 @@ describe("SqliteApplicationService", () => {
     const archived = app.addEntry({ parentId: null, title: "已归档", description: null, completionMode: "completable", dueAt: null });
     app.updateEntry(completed.id, { status: "completed" });
     app.updateEntry(archived.id, { status: "archived" });
-    app.addToWeekPlan(rollover.id, "2026-06-22");
+    app.updateWeekPlanNote("## 上周清单\n- [ ] 继续事项", "2026-06-22");
+    app.addToWeekPlan(rollover.id, "2026-06-22", { role: "focus", plannedFocusSeconds: 10800 });
     app.addToWeekPlan(completed.id, "2026-06-22");
     app.addToWeekPlan(archived.id, "2026-06-22");
 
     const first = app.getWeekPlan("2026-06-29");
     const second = app.getWeekPlan("2026-06-29");
-    expect(first.items).toEqual([{ entryId: rollover.id, source: "rollover", sortKey: expect.any(String) }]);
+    expect(first.note).toBe("## 上周清单\n- [ ] 继续事项");
+    expect(first.items).toEqual([{
+      entryId: rollover.id,
+      source: "rollover",
+      role: "focus",
+      plannedFocusSeconds: 10800,
+      sortKey: expect.any(String),
+    }]);
     expect(second.items).toEqual(first.items);
     expect(app.getEntries().filter((entry) => entry.id === rollover.id)).toHaveLength(1);
+
+    app.updateWeekPlanItem(rollover.id, { role: "focus", plannedFocusSeconds: 14400 }, "2026-06-29");
+    expect(app.getWeekPlan("2026-06-29").items.find((item) => item.entryId === rollover.id)?.plannedFocusSeconds).toBe(14400);
+    expect(app.getWeekPlan("2026-06-22").items.find((item) => item.entryId === rollover.id)?.plannedFocusSeconds).toBe(10800);
+  });
+
+  it("reads existing week plans without creating missing historical plans", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "已有计划", description: null, completionMode: "completable", dueAt: null });
+    app.addToWeekPlan(entry.id, "2026-06-22");
+
+    expect(app.getExistingWeekPlan("2026-06-22")).toEqual(app.getWeekPlan("2026-06-22"));
+    expect(app.getExistingWeekPlan("2026-07-06")).toBeNull();
+    expect(handle.db.select().from(weekPlans).where(eq(weekPlans.weekStart, "2026-07-06")).all()).toHaveLength(0);
+
+    expect(() => app.getExistingWeekPlan("2026-06-23")).toThrow(/REQUEST_INVALID/);
+    expect(() => app.getWeekPlan("2026-02-30")).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects planned focus time for commitment items", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "结构化事项", description: null, completionMode: "completable", dueAt: null });
+
+    expect(() => app.addToWeekPlan(entry.id, "2026-06-22", {
+      role: "commitment",
+      plannedFocusSeconds: 3_600,
+    })).toThrow(/REQUEST_INVALID/);
+
+    app.addToWeekPlan(entry.id, "2026-06-22", { role: "commitment" });
+    expect(() => app.updateWeekPlanItem(entry.id, {
+      role: "commitment",
+      plannedFocusSeconds: 3_600,
+    }, "2026-06-22")).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects negative or fractional planned focus time at the service boundary", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "关注项", description: null, completionMode: "ongoing", dueAt: null });
+
+    expect(() => app.addToWeekPlan(entry.id, "2026-06-22", {
+      role: "focus",
+      plannedFocusSeconds: -3_600,
+    })).toThrow(/REQUEST_INVALID/);
+    expect(() => app.addToWeekPlan(entry.id, "2026-06-22", {
+      role: "focus",
+      plannedFocusSeconds: 1.5,
+    })).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects updating an item outside the week plan without creating the plan", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "未纳入", description: null, completionMode: "ongoing", dueAt: null });
+
+    expect(() => app.updateWeekPlanItem(entry.id, {
+      role: "focus",
+      plannedFocusSeconds: 3_600,
+    }, "2026-06-22")).toThrow(/WEEK_PLAN_ITEM_NOT_FOUND/);
+    expect(app.getExistingWeekPlan("2026-06-22")).toBeNull();
+
+    app.addToWeekPlan(entry.id, "2026-06-22", { role: "focus", plannedFocusSeconds: null });
+    const other = app.addEntry({ parentId: null, title: "其他", description: null, completionMode: "ongoing", dueAt: null });
+    expect(() => app.updateWeekPlanItem(other.id, {
+      role: "focus",
+      plannedFocusSeconds: 3_600,
+    }, "2026-06-22")).toThrow(/WEEK_PLAN_ITEM_NOT_FOUND/);
+  });
+
+  it("excludes historical focus from the selected week's entry aggregate", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "本周关注", description: null, completionMode: "ongoing", dueAt: null });
+    app.addManualFocusSession({
+      startedAt: "2026-06-20T09:00:00+08:00",
+      endedAt: "2026-06-20T11:00:00+08:00",
+      note: null,
+      outcome: null,
+      entryId: entry.id,
+    });
+    app.addToWeekPlan(entry.id, "2026-06-22", { role: "focus", plannedFocusSeconds: null });
+
+    expect(app.getEntries().find((candidate) => candidate.id === entry.id)?.aggregateFocusSeconds).toBe(7_200);
+    expect(app.getStatisticsPayload("week", "2026-06-22").entryBreakdown.find((item) => item.entryId === entry.id)).toMatchObject({
+      directSeconds: 0,
+      aggregateSeconds: 0,
+    });
   });
 
   it("keeps focus facts isolated, permits schedule overlap, and splits cross-midnight time by local day", () => {
@@ -143,6 +235,33 @@ describe("SqliteApplicationService", () => {
     expect(week.daily.find((bucket) => bucket.date === "2026-06-26")?.seconds).toBe(1_800);
     expect(week.totalSeconds).toBe(3_600);
     expect(week.unassignedSeconds).toBe(0);
+  });
+
+  it("returns week statistics for a caller-selected Monday using the effective timezone", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "历史投入", description: null, completionMode: "completable", dueAt: null });
+    app.addManualFocusSession({
+      startedAt: "2026-06-17T23:30:00+08:00",
+      endedAt: "2026-06-18T00:30:00+08:00",
+      note: null,
+      outcome: null,
+      entryId: entry.id,
+    });
+
+    const selectedWeek = app.getStatisticsPayload("week", "2026-06-15");
+
+    expect(selectedWeek.daily).toEqual([
+      { date: "2026-06-15", seconds: 0 },
+      { date: "2026-06-16", seconds: 0 },
+      { date: "2026-06-17", seconds: 1_800 },
+      { date: "2026-06-18", seconds: 1_800 },
+      { date: "2026-06-19", seconds: 0 },
+      { date: "2026-06-20", seconds: 0 },
+      { date: "2026-06-21", seconds: 0 },
+    ]);
+    expect(selectedWeek.totalSeconds).toBe(3_600);
+    expect(selectedWeek.entryBreakdown.find((item) => item.entryId === entry.id)?.directSeconds).toBe(3_600);
+    expect(() => app.getStatisticsPayload("day", "2026-06-15")).toThrow(/REQUEST_INVALID/);
   });
 
   it("updates owned schedules and returns calendar records that overlap a requested half-open range", () => {
@@ -540,6 +659,60 @@ describe("SqliteApplicationService", () => {
     ]);
     expect(stopped.segments.map((segment) => segment.entryId)).toEqual([firstEntry.id, secondEntry.id]);
     expect(stopped.segments.reduce((sum, segment) => sum + (Date.parse(segment.endedAt) - Date.parse(segment.startedAt)), 0)).toBe(3_600_000);
+  });
+
+  it("preserves a 90-second split as 60 seconds plus 30 seconds", () => {
+    const app = service();
+    const firstEntry = app.addEntry({ parentId: null, title: "第一项", description: null, completionMode: "completable", dueAt: null });
+    const secondEntry = app.addEntry({ parentId: null, title: "第二项", description: null, completionMode: "completable", dueAt: null });
+    currentTime = at("2026-06-26T10:00:00.000Z");
+    const active = app.startFocusSession();
+    currentTime = at("2026-06-26T10:01:30.000Z");
+
+    const stopped = app.stopFocusSession(active.id, null, null, [
+      { id: "first", startedAt: active.startedAt, endedAt: "2026-06-26T10:01:00.000Z", entryId: firstEntry.id, note: null },
+      { id: "second", startedAt: "2026-06-26T10:01:00.000Z", endedAt: "2026-06-26T10:01:30.000Z", entryId: secondEntry.id, note: null },
+    ]);
+
+    expect(stopped.segments.map((segment) => [segment.startedAt, segment.endedAt])).toEqual([
+      ["2026-06-26T10:00:00.000Z", "2026-06-26T10:01:00.000Z"],
+      ["2026-06-26T10:01:00.000Z", "2026-06-26T10:01:30.000Z"],
+    ]);
+  });
+
+  it("persists an unassigned timer when the client submits no custom partition", () => {
+    const app = service();
+    currentTime = at("2026-06-26T10:00:00.000Z");
+    const active = app.startFocusSession();
+    currentTime = at("2026-06-26T10:05:00.000Z");
+
+    const stopped = app.stopFocusSession(active.id, null, null, []);
+
+    expect(stopped.endedAt).toBe("2026-06-26T10:05:00.000Z");
+    expect(app.getActiveFocus()).toBeNull();
+    expect(stopped.segments).toEqual([
+      expect.objectContaining({
+        startedAt: active.startedAt,
+        endedAt: stopped.endedAt,
+        entryId: null,
+      }),
+    ]);
+  });
+
+  it("discards only the current timer without creating a history record", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "待放弃", description: null, completionMode: "completable", dueAt: null });
+    currentTime = at("2026-06-26T10:00:00.000Z");
+    const active = app.startFocusSession(entry.id);
+    expect(handle.db.select().from(focusSegments).all()).toHaveLength(1);
+
+    app.discardFocusSession();
+
+    expect(app.getActiveFocus()).toBeNull();
+    expect(app.getFocusSessions().some((session) => session.id === active.id)).toBe(false);
+    expect(handle.db.select().from(focusSegments).all()).toHaveLength(0);
+    expect(() => app.discardFocusSession()).toThrow(/FOCUS_NOT_FOUND/);
+    expect(app.startFocusSession()).toEqual(expect.objectContaining({ captureMode: "timer", endedAt: null }));
   });
 
   it("leaves a tombstone and historical segment explainable after entry deletion", () => {

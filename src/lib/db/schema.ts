@@ -80,6 +80,8 @@ export const weekPlanEntries = sqliteTable(
       .notNull()
       .references(() => entries.id, { onDelete: "restrict" }),
     source: text("source", { enum: ["manual", "rollover"] }).notNull(),
+    role: text("role", { enum: ["focus", "commitment"] }).notNull().default("commitment"),
+    plannedFocusSeconds: integer("planned_focus_seconds"),
     sortKey: text("sort_key").notNull(),
   },
   (table) => [

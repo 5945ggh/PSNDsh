@@ -47,15 +47,24 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   moveEntry(...args: Parameters<MockApiAdapter["moveEntry"]>) { return asPromise(() => this.mock.moveEntry(...args)); }
   deleteEntry(...args: Parameters<MockApiAdapter["deleteEntry"]>) { return asPromise(() => this.mock.deleteEntry(...args)); }
   getWeekPlan(...args: Parameters<MockApiAdapter["getWeekPlan"]>) { return asPromise(() => this.mock.getWeekPlan(...args)); }
+  getExistingWeekPlan(...args: Parameters<MockApiAdapter["getExistingWeekPlan"]>) {
+    return asPromise(() => this.mock.getExistingWeekPlan(...args));
+  }
   updateWeekPlanNote(note: string, weekStart?: string) {
     return asPromise(() => {
       this.mock.updateWeekPlanNote(note, weekStart);
       return this.mock.getWeekPlan(weekStart);
     });
   }
-  addToWeekPlan(entryId: string, weekStart?: string) {
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Parameters<MockApiAdapter["addToWeekPlan"]>[2]) {
     return asPromise(() => {
-      this.mock.addToWeekPlan(entryId, weekStart);
+      this.mock.addToWeekPlan(entryId, weekStart, input);
+      return this.mock.getWeekPlan(weekStart);
+    });
+  }
+  updateWeekPlanItem(entryId: string, input: Parameters<MockApiAdapter["updateWeekPlanItem"]>[1], weekStart?: string) {
+    return asPromise(() => {
+      this.mock.updateWeekPlanItem(entryId, input, weekStart);
       return this.mock.getWeekPlan(weekStart);
     });
   }
@@ -69,6 +78,7 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   getFocusSessions() { return asPromise(() => this.mock.getFocusSessions()); }
   startFocusSession(...args: Parameters<MockApiAdapter["startFocusSession"]>) { return asPromise(() => this.mock.startFocusSession(...args)); }
   stopFocusSession(...args: Parameters<MockApiAdapter["stopFocusSession"]>) { return asPromise(() => this.mock.stopFocusSession(...args)); }
+  discardFocusSession() { return asPromise(() => this.mock.discardFocusSession()); }
   addManualFocusSession(...args: Parameters<MockApiAdapter["addManualFocusSession"]>) { return asPromise(() => this.mock.addManualFocusSession(...args)); }
   getScheduleBlocks() { return asPromise(() => this.mock.getScheduleBlocks()); }
   getScheduleImports() { return asPromise(() => this.mock.getScheduleImports()); }

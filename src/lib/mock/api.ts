@@ -26,13 +26,16 @@ export class MockApiAdapter {
   moveEntry(id: string, parentId: string | null) { return this.service.moveEntry(id, parentId); }
   deleteEntry(id: string) { return this.service.deleteEntry(id); }
   getWeekPlan(weekStart?: string) { return this.service.getWeekPlan(weekStart); }
+  getExistingWeekPlan(weekStart: string) { return this.service.getExistingWeekPlan(weekStart); }
   updateWeekPlanNote(note: string, weekStart?: string) { return this.service.updateWeekPlanNote(note, weekStart); }
-  addToWeekPlan(entryId: string, weekStart?: string) { return this.service.addToWeekPlan(entryId, weekStart); }
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Parameters<MockApplicationService["addToWeekPlan"]>[2]) { return this.service.addToWeekPlan(entryId, weekStart, input); }
+  updateWeekPlanItem(entryId: string, input: Parameters<MockApplicationService["updateWeekPlanItem"]>[1], weekStart?: string) { return this.service.updateWeekPlanItem(entryId, input, weekStart); }
   removeFromWeekPlan(entryId: string, weekStart?: string) { return this.service.removeFromWeekPlan(entryId, weekStart); }
   getActiveFocus() { return this.service.getActiveFocus(); }
   getFocusSessions() { return this.service.getFocusSessions(); }
   startFocusSession(entryId?: string | null) { return this.service.startFocusSession(entryId); }
   stopFocusSession(...args: Parameters<MockApplicationService["stopFocusSession"]>) { return this.service.stopFocusSession(...args); }
+  discardFocusSession() { return this.service.discardFocusSession(); }
   addManualFocusSession(input: Parameters<MockApplicationService["addManualFocusSession"]>[0]) { return this.service.addManualFocusSession(input); }
   getScheduleBlocks() { return this.service.getScheduleBlocks(); }
   getScheduleImports() { return this.service.getScheduleImports(); }
@@ -51,7 +54,7 @@ export class MockApiAdapter {
   getIcsPreview() { return this.service.getIcsPreview(); }
   confirmIcsImport(ids: string[]) { return this.service.confirmIcsImport(ids); }
   getDashboardPayload() { return this.service.getDashboardPayload(); }
-  getStatisticsPayload(scale?: "day" | "week" | "month") { return this.service.getStatisticsPayload(scale); }
+  getStatisticsPayload(...args: Parameters<MockApplicationService["getStatisticsPayload"]>) { return this.service.getStatisticsPayload(...args); }
   getCalendarPayload(from?: string, to?: string) { return this.service.getCalendarPayload(from, to); }
 }
 

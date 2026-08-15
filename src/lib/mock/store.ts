@@ -11,8 +11,10 @@ import {
   FocusSegment,
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
+  WeekPlanItemInput,
 } from "@/lib/domain/types";
 import type { ScenarioPreset } from "@/lib/mock/types";
+import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import {
   MOCK_USER,
   MOCK_CAPABILITIES_NORMAL,
@@ -38,6 +40,11 @@ const cloneWeekPlan = (plan: WeekPlan): WeekPlan => ({
 const parseYmd = (date: string) => {
   const [year, month, day] = date.split("-").map((value) => Number(value));
   return Date.UTC(year, month - 1, day);
+};
+
+const assertValidWeekStart = (weekStart: string) => {
+  const issue = parseWeekStart(weekStart);
+  if (issue) throw new MockDomainError("REQUEST_INVALID", WEEK_START_MESSAGES[issue]);
 };
 
 const formatYmd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -69,7 +76,11 @@ const buildDailyBuckets = (startDate: string, count: number) =>
     return { date, startMs, endMs };
   });
 
-const getScaleRange = (scale: "day" | "week" | "month" = "week") => {
+const getScaleRange = (scale: "day" | "week" | "month" = "week", weekStart?: string) => {
+  if (weekStart && scale !== "week") {
+    throw new MockDomainError("REQUEST_INVALID", "weekStart 仅支持周统计");
+  }
+
   if (scale === "day") {
     return {
       label: "今日",
@@ -88,7 +99,7 @@ const getScaleRange = (scale: "day" | "week" | "month" = "week") => {
 
   return {
     label: "本周",
-    startDate: DEFAULT_WEEK_START,
+    startDate: weekStart ?? DEFAULT_WEEK_START,
     dailyCount: 7,
   };
 };
@@ -348,13 +359,19 @@ export class MockDataStore {
 
   private getOrCreateWeekPlan(weekStart?: string) {
     const normalizedWeekStart = weekStart || DEFAULT_WEEK_START;
+    assertValidWeekStart(normalizedWeekStart);
     const existing = this.weekPlans.get(normalizedWeekStart);
     if (existing) return existing;
 
+    const previousWeek = shiftYmd(normalizedWeekStart, -7);
+    const previous = this.weekPlans.get(previousWeek);
+    const activeEntries = new Map(this.entries.filter((entry) => entry.status === "active").map((entry) => [entry.id, entry]));
     const created: WeekPlan = {
       weekStart: normalizedWeekStart,
-      note: "",
-      items: [],
+      note: previous?.note ?? "",
+      items: previous?.items
+        .filter((item) => activeEntries.has(item.entryId))
+        .map((item) => ({ ...item, source: "rollover" as const })) ?? [],
     };
     this.weekPlans.set(normalizedWeekStart, created);
     return created;
@@ -364,21 +381,46 @@ export class MockDataStore {
     return cloneWeekPlan(this.getOrCreateWeekPlan(weekStart));
   }
 
+  public getExistingWeekPlan(weekStart: string): WeekPlan | null {
+    assertValidWeekStart(weekStart);
+    const existing = this.weekPlans.get(weekStart);
+    return existing ? cloneWeekPlan(existing) : null;
+  }
+
   public updateWeekPlanNote(note: string, weekStart?: string) {
     this.getOrCreateWeekPlan(weekStart).note = note;
     this.notify();
   }
 
-  public addToWeekPlan(entryId: string, weekStart?: string) {
+  public addToWeekPlan(entryId: string, weekStart?: string, input?: Partial<WeekPlanItemInput>) {
     const weekPlan = this.getOrCreateWeekPlan(weekStart);
     if (!weekPlan.items.some((i) => i.entryId === entryId)) {
+      const entry = this.entries.find((candidate) => candidate.id === entryId);
+      const role = input?.role ?? (entry?.completionMode === "ongoing" ? "focus" : "commitment");
+      const plannedFocusSeconds = input?.plannedFocusSeconds ?? null;
+      assertValidWeekPlanItemInput({ role, plannedFocusSeconds });
       weekPlan.items.push({
         entryId,
         source: "manual",
+        role,
+        plannedFocusSeconds,
         sortKey: `wp_${Date.now()}`,
       });
       this.notify();
     }
+  }
+
+  public updateWeekPlanItem(entryId: string, input: WeekPlanItemInput, weekStart?: string) {
+    assertValidWeekPlanItemInput(input);
+    const normalizedWeekStart = weekStart || DEFAULT_WEEK_START;
+    assertValidWeekStart(normalizedWeekStart);
+    const weekPlan = this.weekPlans.get(normalizedWeekStart);
+    if (!weekPlan) throw new MockDomainError("WEEK_PLAN_ITEM_NOT_FOUND", "该周计划不存在");
+    const item = weekPlan.items.find((candidate) => candidate.entryId === entryId);
+    if (!item) throw new MockDomainError("WEEK_PLAN_ITEM_NOT_FOUND", "条目不在该周计划中");
+    item.role = input.role;
+    item.plannedFocusSeconds = input.plannedFocusSeconds;
+    this.notify();
   }
 
   public removeFromWeekPlan(entryId: string, weekStart?: string) {
@@ -468,6 +510,17 @@ export class MockDataStore {
     this.recalculateEntryFocusSeconds();
     this.notify();
     return session;
+  }
+
+  public discardFocusSession(sessionId: string): void {
+    const index = this.focusSessions.findIndex((session) => session.id === sessionId && !session.endedAt);
+    if (index === -1) {
+      throw new MockDomainError("FOCUS_NOT_FOUND", "活动专注会话不存在");
+    }
+
+    this.focusSessions.splice(index, 1);
+    this.recalculateEntryFocusSeconds();
+    this.notify();
   }
 
   public addManualFocusSession(input: {
@@ -690,8 +743,9 @@ export class MockDataStore {
     };
   }
 
-  public getStatisticsPayload(scale?: "day" | "week" | "month"): StatisticsPayload {
-    const { startDate, dailyCount } = getScaleRange(scale);
+  public getStatisticsPayload(scale?: "day" | "week" | "month", weekStart?: string): StatisticsPayload {
+    if (weekStart) assertValidWeekStart(weekStart);
+    const { startDate, dailyCount } = getScaleRange(scale, weekStart);
     const dailyBuckets = buildDailyBuckets(startDate, dailyCount).map((bucket) => ({
       date: bucket.date,
       startMs: bucket.startMs,

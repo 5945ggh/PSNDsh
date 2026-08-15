@@ -8,6 +8,26 @@ const sumDailySeconds = (daily: Array<{ seconds: number }>) =>
   daily.reduce((sum, bucket) => sum + bucket.seconds, 0);
 
 describe("MockDataStore week plans", () => {
+  it("copies the previous markdown checklist and focus intention into a new week", () => {
+    const store = new MockDataStore();
+    const previous = store.getWeekPlan(DEFAULT_WEEK_START);
+    const next = store.getWeekPlan("2026-06-29");
+
+    expect(next.note).toBe(previous.note);
+    expect(next.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entryId: "entry_ics2",
+        role: "focus",
+        plannedFocusSeconds: 10800,
+        source: "rollover",
+      }),
+    ]));
+    expect(next.items.some((item) => item.entryId === "entry_hw8")).toBe(false);
+
+    store.updateWeekPlanNote("新周清单", "2026-06-29");
+    expect(store.getWeekPlan(DEFAULT_WEEK_START).note).toBe(previous.note);
+  });
+
   it("keeps a selected non-default week isolated from the default week", () => {
     const store = new MockDataStore();
     const defaultBefore = store.getWeekPlan(DEFAULT_WEEK_START);
@@ -23,6 +43,8 @@ describe("MockDataStore week plans", () => {
     selectedFromGet.items.push({
       entryId: "entry_ostep",
       source: "manual",
+      role: "commitment",
+      plannedFocusSeconds: null,
       sortKey: "caller-only",
     });
     expect(store.getWeekPlan(SELECTED_WEEK_START)).toEqual({
@@ -40,6 +62,8 @@ describe("MockDataStore week plans", () => {
         expect.objectContaining({
           entryId: "entry_ostep",
           source: "manual",
+          role: "commitment",
+          plannedFocusSeconds: null,
         }),
       ],
     });
@@ -51,6 +75,70 @@ describe("MockDataStore week plans", () => {
       items: [],
     });
     expect(store.getWeekPlan(DEFAULT_WEEK_START)).toEqual(defaultBefore);
+  });
+
+  it("reads an existing week plan without creating missing historical weeks", () => {
+    const store = new MockDataStore();
+
+    expect(store.getExistingWeekPlan(DEFAULT_WEEK_START)).toEqual(store.getWeekPlan(DEFAULT_WEEK_START));
+    expect(store.getExistingWeekPlan("2026-07-06")).toBeNull();
+    expect(store.getExistingWeekPlan("2026-07-06")).toBeNull();
+
+    expect(store.getWeekPlan("2026-07-06")).toEqual({
+      weekStart: "2026-07-06",
+      note: "",
+      items: [],
+    });
+  });
+
+  it("rejects malformed or non-Monday week starts", () => {
+    const store = new MockDataStore();
+
+    expect(() => store.getExistingWeekPlan("2026-06-23")).toThrow(/REQUEST_INVALID/);
+    expect(() => store.getWeekPlan("2026-02-30")).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects planned focus time for commitment items", () => {
+    const store = new MockDataStore();
+
+    expect(() => store.addToWeekPlan("entry_openviking", SELECTED_WEEK_START, {
+      role: "commitment",
+      plannedFocusSeconds: 3_600,
+    })).toThrow(/REQUEST_INVALID/);
+
+    store.addToWeekPlan("entry_openviking", SELECTED_WEEK_START, { role: "commitment" });
+    expect(() => store.updateWeekPlanItem("entry_openviking", {
+      role: "commitment",
+      plannedFocusSeconds: 3_600,
+    }, SELECTED_WEEK_START)).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects negative or fractional planned focus time at the service boundary", () => {
+    const store = new MockDataStore();
+
+    expect(() => store.addToWeekPlan("entry_ics2", SELECTED_WEEK_START, {
+      role: "focus",
+      plannedFocusSeconds: -3_600,
+    })).toThrow(/REQUEST_INVALID/);
+    expect(() => store.addToWeekPlan("entry_ics2", SELECTED_WEEK_START, {
+      role: "focus",
+      plannedFocusSeconds: 1.5,
+    })).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("rejects updating an item outside the selected week plan without creating it", () => {
+    const store = new MockDataStore();
+
+    expect(() => store.updateWeekPlanItem("entry_ics2", {
+      role: "focus",
+      plannedFocusSeconds: 3_600,
+    }, SELECTED_WEEK_START)).toThrow(/WEEK_PLAN_ITEM_NOT_FOUND/);
+    expect(store.getExistingWeekPlan(SELECTED_WEEK_START)).toBeNull();
+
+    expect(() => store.updateWeekPlanItem("entry_missing", {
+      role: "focus",
+      plannedFocusSeconds: 3_600,
+    }, DEFAULT_WEEK_START)).toThrow(/WEEK_PLAN_ITEM_NOT_FOUND/);
   });
 });
 
@@ -91,6 +179,36 @@ describe("MockDataStore statistics", () => {
     expect(sumDailySeconds(month.daily)).toBe(month.totalSeconds);
     expect(day.totalSeconds).toBeLessThan(week.totalSeconds);
     expect(week.totalSeconds).toBeLessThan(month.totalSeconds);
+  });
+
+  it("returns statistics for a caller-selected Monday week", () => {
+    const store = new MockDataStore();
+    const selectedWeek = store.getStatisticsPayload("week", "2026-06-08");
+
+    expect(selectedWeek.daily).toEqual([
+      { date: "2026-06-08", seconds: 0 },
+      { date: "2026-06-09", seconds: 0 },
+      { date: "2026-06-10", seconds: 0 },
+      { date: "2026-06-11", seconds: 0 },
+      { date: "2026-06-12", seconds: 4_500 },
+      { date: "2026-06-13", seconds: 0 },
+      { date: "2026-06-14", seconds: 0 },
+    ]);
+    expect(selectedWeek.totalSeconds).toBe(4_500);
+    expect(selectedWeek.unassignedSeconds).toBe(0);
+    expect(() => store.getStatisticsPayload("day", "2026-06-22")).toThrow(/REQUEST_INVALID/);
+  });
+
+  it("keeps focus from earlier weeks out of the selected week breakdown", () => {
+    const store = new MockDataStore();
+    const entry = store.getEntryById("entry_ostep_fs");
+    const selectedWeek = store.getStatisticsPayload("week", "2026-06-22");
+
+    expect(entry?.aggregateFocusSeconds).toBeGreaterThan(0);
+    expect(selectedWeek.entryBreakdown.find((item) => item.entryId === "entry_ostep_fs")).toMatchObject({
+      directSeconds: 0,
+      aggregateSeconds: 0,
+    });
   });
 });
 

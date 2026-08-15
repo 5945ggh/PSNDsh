@@ -235,11 +235,11 @@ const WEEK_PLAN_CURRENT: WeekPlan = {
 
 > 提醒：周三上午听课同时记录 OSTEP 核心疑问；周末安排 2 小时日语听力。`,
   items: [
-    { entryId: "entry_ics2", source: "rollover", sortKey: "w1" },
-    { entryId: "entry_lab4", source: "manual", sortKey: "w2" },
-    { entryId: "entry_ai_paper", source: "rollover", sortKey: "w3" },
-    { entryId: "entry_japanese", source: "rollover", sortKey: "w4" },
-    { entryId: "entry_openviking", source: "manual", sortKey: "w5" },
+    { entryId: "entry_ics2", source: "rollover", role: "focus", plannedFocusSeconds: 10800, sortKey: "w1" },
+    { entryId: "entry_lab4", source: "manual", role: "focus", plannedFocusSeconds: 7200, sortKey: "w2" },
+    { entryId: "entry_ai_paper", source: "rollover", role: "commitment", plannedFocusSeconds: null, sortKey: "w3" },
+    { entryId: "entry_japanese", source: "rollover", role: "focus", plannedFocusSeconds: 5400, sortKey: "w4" },
+    { entryId: "entry_openviking", source: "manual", role: "commitment", plannedFocusSeconds: null, sortKey: "w5" },
   ],
 };
 
@@ -252,9 +252,9 @@ const WEEK_PLAN_LAST: WeekPlan = {
 
 > 备注：这周以收尾为主，下一周继续推进论文初稿。`,
   items: [
-    { entryId: "entry_ostep_io", source: "rollover", sortKey: "w1" },
-    { entryId: "entry_hw8", source: "manual", sortKey: "w2" },
-    { entryId: "entry_lab4_sub", source: "manual", sortKey: "w3" },
+    { entryId: "entry_ostep_io", source: "rollover", role: "commitment", plannedFocusSeconds: null, sortKey: "w1" },
+    { entryId: "entry_hw8", source: "manual", role: "commitment", plannedFocusSeconds: null, sortKey: "w2" },
+    { entryId: "entry_lab4_sub", source: "manual", role: "commitment", plannedFocusSeconds: null, sortKey: "w3" },
   ],
 };
 
@@ -267,9 +267,9 @@ const WEEK_PLAN_TWO_WEEKS_AGO: WeekPlan = {
 
 > 这是一份更早的历史周计划，方便对比滚动结果。`,
   items: [
-    { entryId: "entry_ostep", source: "rollover", sortKey: "w1" },
-    { entryId: "entry_ai_ethics", source: "manual", sortKey: "w2" },
-    { entryId: "entry_github", source: "manual", sortKey: "w3" },
+    { entryId: "entry_ostep", source: "rollover", role: "focus", plannedFocusSeconds: 7200, sortKey: "w1" },
+    { entryId: "entry_ai_ethics", source: "manual", role: "focus", plannedFocusSeconds: 5400, sortKey: "w2" },
+    { entryId: "entry_github", source: "manual", role: "focus", plannedFocusSeconds: 3600, sortKey: "w3" },
   ],
 };
 

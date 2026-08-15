@@ -3,6 +3,7 @@ import {
   LoginInput,
   ManualFocusInput,
   RegisterInput,
+  StatisticsScale,
   UpdateEntryInput,
 } from "@/lib/application/contract";
 import {
@@ -25,6 +26,7 @@ import {
   StatisticsPayload,
   UserProfile,
   WeekPlan,
+  WeekPlanItemInput,
 } from "@/lib/domain/types";
 
 type ApiEnvelope<T> = { data: T };
@@ -88,8 +90,10 @@ export interface ApiAdapter {
   deleteEntry(id: string): Promise<void>;
 
   getWeekPlan(weekStart?: string): Promise<WeekPlan>;
+  getExistingWeekPlan(weekStart: string): Promise<WeekPlan | null>;
   updateWeekPlanNote(note: string, weekStart?: string): Promise<WeekPlan>;
-  addToWeekPlan(entryId: string, weekStart?: string): Promise<WeekPlan>;
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Partial<WeekPlanItemInput>): Promise<WeekPlan>;
+  updateWeekPlanItem(entryId: string, input: WeekPlanItemInput, weekStart?: string): Promise<WeekPlan>;
   removeFromWeekPlan(entryId: string, weekStart?: string): Promise<WeekPlan>;
 
   getActiveFocus(): Promise<FocusSession | null>;
@@ -101,6 +105,7 @@ export interface ApiAdapter {
     note: string | null,
     segments: FocusSegment[]
   ): Promise<FocusSession>;
+  discardFocusSession(): Promise<void>;
   addManualFocusSession(input: ManualFocusInput): Promise<FocusSession>;
 
   getScheduleBlocks(): Promise<ScheduleBlock[]>;
@@ -122,7 +127,8 @@ export interface ApiAdapter {
 
   getDashboardPayload(): Promise<DashboardPayload>;
   getStatisticsPayload(
-    scale?: "day" | "week" | "month"
+    scale?: StatisticsScale,
+    weekStart?: string
   ): Promise<StatisticsPayload>;
   getCalendarPayload(from?: string, to?: string): Promise<CalendarPayload>;
 }
@@ -248,27 +254,40 @@ export class PersistentApiAdapter implements ApiAdapter {
 
   getWeekPlan(weekStart?: string) {
     return this.request<WeekPlan>(
-      `/api/v1/week-plans/${weekStart ?? "current"}`
+      `/api/v1/week-plans/${weekStart ? encodeURIComponent(weekStart) : "current"}`
+    );
+  }
+
+  getExistingWeekPlan(weekStart: string) {
+    return this.request<WeekPlan | null>(
+      `/api/v1/week-plans/${encodeURIComponent(weekStart)}?create=false`
     );
   }
 
   updateWeekPlanNote(note: string, weekStart?: string) {
     return this.request<WeekPlan>(
-      `/api/v1/week-plans/${weekStart ?? "current"}`,
+      `/api/v1/week-plans/${weekStart ? encodeURIComponent(weekStart) : "current"}`,
       { method: "POST", body: JSON.stringify({ action: "note", note }) }
     );
   }
 
-  addToWeekPlan(entryId: string, weekStart?: string) {
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Partial<WeekPlanItemInput>) {
     return this.request<WeekPlan>(
-      `/api/v1/week-plans/${weekStart ?? "current"}`,
-      { method: "POST", body: JSON.stringify({ action: "add", entryId }) }
+      `/api/v1/week-plans/${weekStart ? encodeURIComponent(weekStart) : "current"}`,
+      { method: "POST", body: JSON.stringify({ action: "add", entryId, ...input }) }
+    );
+  }
+
+  updateWeekPlanItem(entryId: string, input: WeekPlanItemInput, weekStart?: string) {
+    return this.request<WeekPlan>(
+      `/api/v1/week-plans/${weekStart ? encodeURIComponent(weekStart) : "current"}`,
+      { method: "POST", body: JSON.stringify({ action: "update", entryId, ...input }) }
     );
   }
 
   removeFromWeekPlan(entryId: string, weekStart?: string) {
     return this.request<WeekPlan>(
-      `/api/v1/week-plans/${weekStart ?? "current"}`,
+      `/api/v1/week-plans/${weekStart ? encodeURIComponent(weekStart) : "current"}`,
       { method: "POST", body: JSON.stringify({ action: "remove", entryId }) }
     );
   }
@@ -298,6 +317,10 @@ export class PersistentApiAdapter implements ApiAdapter {
       method: "POST",
       body: JSON.stringify({ action: "stop", sessionId, outcome, note, segments }),
     });
+  }
+
+  discardFocusSession() {
+    return this.request<void>("/api/v1/focus/current", { method: "DELETE" });
   }
 
   addManualFocusSession(input: ManualFocusInput) {
@@ -397,10 +420,10 @@ export class PersistentApiAdapter implements ApiAdapter {
     });
   }
 
-  getStatisticsPayload(scale?: "day" | "week" | "month") {
-    return this.request<StatisticsPayload>(
-      `/api/v1/statistics?scale=${scale ?? "week"}`
-    );
+  getStatisticsPayload(scale?: StatisticsScale, weekStart?: string) {
+    const params = new URLSearchParams({ scale: scale ?? "week" });
+    if (weekStart) params.set("weekStart", weekStart);
+    return this.request<StatisticsPayload>(`/api/v1/statistics?${params}`);
   }
 
   getDashboardPayload() {

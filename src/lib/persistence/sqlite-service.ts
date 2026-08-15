@@ -52,7 +52,9 @@ import {
   UserDataExport,
   WeekPlan,
   WeekPlanItem,
+  WeekPlanItemInput,
 } from "@/lib/domain/types";
+import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 
 const DEFAULT_TIMEZONE = "Asia/Shanghai";
 const DEFAULT_USER_ID = "usr_demo";
@@ -154,6 +156,11 @@ const mondayOf = (dateKey: string) => {
   const distance = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   value.setUTCDate(value.getUTCDate() - distance);
   return value.toISOString().slice(0, 10);
+};
+
+const assertValidWeekStart = (weekStart: string) => {
+  const issue = parseWeekStart(weekStart);
+  if (issue) throw new ApplicationError("REQUEST_INVALID", WEEK_START_MESSAGES[issue]);
 };
 
 const daysBetween = (from: string, to: string) => {
@@ -529,14 +536,18 @@ export class SqliteApplicationService implements ApplicationService {
   private ensureWeekPlan(weekStart?: string) {
     const userId = this.requireUserId();
     const normalized = weekStart ?? mondayOf(localDateKey(this.clock(), this.timezone));
+    assertValidWeekStart(normalized);
     const existing = this.db.select().from(weekPlans).where(and(eq(weekPlans.userId, userId), eq(weekPlans.weekStart, normalized))).get();
     if (existing) return existing;
     const createdAt = nowIso(this.clock);
     const plan = { id: randomUUID(), userId, weekStart: normalized, note: "", createdAt, updatedAt: createdAt };
     this.db.transaction((tx) => {
-      tx.insert(weekPlans).values(plan).run();
       const previousWeek = shiftDateKey(normalized, -7);
       const previous = tx.select().from(weekPlans).where(and(eq(weekPlans.userId, userId), eq(weekPlans.weekStart, previousWeek))).get();
+      tx.insert(weekPlans).values({
+        ...plan,
+        note: previous?.note ?? "",
+      }).run();
       if (!previous) return;
       const previousItems = tx.select().from(weekPlanEntries).where(eq(weekPlanEntries.weekPlanId, previous.id)).all();
       const ownedEntries = tx.select().from(entries).where(eq(entries.userId, userId)).all();
@@ -544,7 +555,13 @@ export class SqliteApplicationService implements ApplicationService {
         const entry = ownedEntries.find((candidate) => candidate.id === item.entryId);
         if (!entry || entry.deletedAt !== null || entry.status !== "active") continue;
         tx.insert(weekPlanEntries).values({
-          id: randomUUID(), weekPlanId: plan.id, entryId: entry.id, source: "rollover", sortKey: item.sortKey,
+          id: randomUUID(),
+          weekPlanId: plan.id,
+          entryId: entry.id,
+          source: "rollover",
+          role: item.role,
+          plannedFocusSeconds: item.plannedFocusSeconds,
+          sortKey: item.sortKey,
         }).onConflictDoNothing().run();
       }
     });
@@ -553,11 +570,28 @@ export class SqliteApplicationService implements ApplicationService {
 
   getWeekPlan(weekStart?: string): WeekPlan {
     const plan = this.ensureWeekPlan(weekStart);
+    return this.weekPlanFromRow(plan);
+  }
+
+  getExistingWeekPlan(weekStart: string): WeekPlan | null {
+    assertValidWeekStart(weekStart);
+    const userId = this.requireUserId();
+    const plan = this.db.select().from(weekPlans).where(and(eq(weekPlans.userId, userId), eq(weekPlans.weekStart, weekStart))).get();
+    return plan ? this.weekPlanFromRow(plan) : null;
+  }
+
+  private weekPlanFromRow(plan: typeof weekPlans.$inferSelect): WeekPlan {
     const items = this.db.select().from(weekPlanEntries).where(eq(weekPlanEntries.weekPlanId, plan.id)).orderBy(asc(weekPlanEntries.sortKey)).all();
     return {
       weekStart: plan.weekStart,
       note: plan.note,
-      items: items.map((item): WeekPlanItem => ({ entryId: item.entryId, source: item.source, sortKey: item.sortKey })),
+      items: items.map((item): WeekPlanItem => ({
+        entryId: item.entryId,
+        source: item.source,
+        role: item.role,
+        plannedFocusSeconds: item.plannedFocusSeconds,
+        sortKey: item.sortKey,
+      })),
     };
   }
 
@@ -566,10 +600,38 @@ export class SqliteApplicationService implements ApplicationService {
     this.db.update(weekPlans).set({ note, updatedAt: nowIso(this.clock) }).where(eq(weekPlans.id, plan.id)).run();
   }
 
-  addToWeekPlan(entryId: string, weekStart?: string): void {
-    this.getOwnedEntryRow(entryId, false);
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Partial<WeekPlanItemInput>): void {
+    const entry = this.getOwnedEntryRow(entryId, false);
     const plan = this.ensureWeekPlan(weekStart);
-    this.db.insert(weekPlanEntries).values({ id: randomUUID(), weekPlanId: plan.id, entryId, source: "manual", sortKey: `z_${nowIso(this.clock)}_${randomUUID().slice(0, 8)}` }).onConflictDoNothing().run();
+    const role = input?.role ?? (entry.completionMode === "ongoing" ? "focus" : "commitment");
+    const plannedFocusSeconds = input?.plannedFocusSeconds ?? null;
+    assertValidWeekPlanItemInput({ role, plannedFocusSeconds });
+    this.db.insert(weekPlanEntries).values({
+      id: randomUUID(),
+      weekPlanId: plan.id,
+      entryId,
+      source: "manual",
+      role,
+      plannedFocusSeconds,
+      sortKey: `z_${nowIso(this.clock)}_${randomUUID().slice(0, 8)}`,
+    }).onConflictDoNothing().run();
+  }
+
+  updateWeekPlanItem(entryId: string, input: WeekPlanItemInput, weekStart?: string): void {
+    this.getOwnedEntryRow(entryId, false);
+    assertValidWeekPlanItemInput(input);
+    const userId = this.requireUserId();
+    const normalized = weekStart ?? mondayOf(localDateKey(this.clock(), this.timezone));
+    assertValidWeekStart(normalized);
+    const plan = this.db.select().from(weekPlans)
+      .where(and(eq(weekPlans.userId, userId), eq(weekPlans.weekStart, normalized)))
+      .get();
+    if (!plan) throw new ApplicationError("WEEK_PLAN_ITEM_NOT_FOUND", "该周计划不存在");
+    const result = this.db.update(weekPlanEntries).set({
+      role: input.role,
+      plannedFocusSeconds: input.plannedFocusSeconds,
+    }).where(and(eq(weekPlanEntries.weekPlanId, plan.id), eq(weekPlanEntries.entryId, entryId))).run();
+    if (result.changes === 0) throw new ApplicationError("WEEK_PLAN_ITEM_NOT_FOUND", "条目不在该周计划中");
   }
 
   removeFromWeekPlan(entryId: string, weekStart?: string): void {
@@ -627,6 +689,17 @@ export class SqliteApplicationService implements ApplicationService {
       tx.insert(focusSegments).values(segments.map((segment) => ({ id: randomUUID(), sessionId, startedAt: segment.startedAt, endedAt: segment.endedAt, entryId: segment.entryId, note: segment.note }))).run();
     });
     return this.toFocusSession(this.db.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get() as FocusSessionRow);
+  }
+
+  discardFocusSession(): void {
+    const userId = this.requireUserId();
+    const active = this.db.select({ id: focusSessions.id })
+      .from(focusSessions)
+      .where(and(eq(focusSessions.userId, userId), isNull(focusSessions.endedAt)))
+      .get();
+    if (!active) throw new ApplicationError("FOCUS_NOT_FOUND", "活动专注会话不存在");
+
+    this.db.delete(focusSessions).where(and(eq(focusSessions.id, active.id), eq(focusSessions.userId, userId))).run();
   }
 
   addManualFocusSession(input: ManualFocusInput): FocusSession {
@@ -1138,15 +1211,19 @@ export class SqliteApplicationService implements ApplicationService {
     if (result.changes === 0) throw new ApplicationError("SCHEDULE_TEMPLATE_APPLICATION_NOT_FOUND", "模板应用批次不存在");
   }
 
-  private rangeForScale(scale: "day" | "week" | "month" = "week") {
+  private rangeForScale(scale: "day" | "week" | "month" = "week", weekStart?: string) {
+    if (weekStart && scale !== "week") {
+      throw new ApplicationError("REQUEST_INVALID", "weekStart 仅支持周统计");
+    }
     const today = localDateKey(this.clock(), this.timezone);
-    const startDate = scale === "day" ? today : scale === "week" ? mondayOf(today) : `${today.slice(0, 7)}-01`;
+    const startDate = scale === "day" ? today : scale === "week" ? (weekStart ?? mondayOf(today)) : `${today.slice(0, 7)}-01`;
     const dailyCount = scale === "day" ? 1 : scale === "week" ? 7 : Number(shiftDateKey(startDate, 1).slice(8, 10)) === 1 ? 28 : new Date(Date.UTC(Number(startDate.slice(0, 4)), Number(startDate.slice(5, 7)), 0)).getUTCDate();
     return { startDate, dailyCount };
   }
 
-  getStatisticsPayload(scale: "day" | "week" | "month" = "week"): StatisticsPayload {
-    const { startDate, dailyCount } = this.rangeForScale(scale);
+  getStatisticsPayload(scale: "day" | "week" | "month" = "week", weekStart?: string): StatisticsPayload {
+    if (weekStart) assertValidWeekStart(weekStart);
+    const { startDate, dailyCount } = this.rangeForScale(scale, weekStart);
     const buckets = Array.from({ length: dailyCount }, (_, index) => {
       const date = shiftDateKey(startDate, index);
       return { date, startMs: zonedMidnight(date, this.timezone), endMs: zonedMidnight(shiftDateKey(date, 1), this.timezone), seconds: 0 };
@@ -1210,6 +1287,8 @@ export class SqliteApplicationService implements ApplicationService {
           .map((item): WeekPlanItem => ({
             entryId: item.entryId,
             source: item.source,
+            role: item.role,
+            plannedFocusSeconds: item.plannedFocusSeconds,
             sortKey: item.sortKey,
           })),
       })),

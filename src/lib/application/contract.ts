@@ -18,7 +18,9 @@ import {
   UserProfile,
   UserDataExport,
   WeekPlan,
+  WeekPlanItemInput,
 } from "@/lib/domain/types";
+import { parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import { z } from "zod";
 
 const optionalProfileText = z.string().trim().max(80).nullable().optional();
@@ -64,6 +66,15 @@ export type ManualFocusInput = {
   entryId: string | null;
 };
 
+export const statisticsScaleSchema = z.enum(["day", "week", "month"]);
+
+export type StatisticsScale = z.infer<typeof statisticsScaleSchema>;
+
+export const weekStartSchema = z.string().superRefine((value, ctx) => {
+  const issue = parseWeekStart(value);
+  if (issue) ctx.addIssue({ code: "custom", message: WEEK_START_MESSAGES[issue] });
+});
+
 export interface ApplicationService {
   getCapabilities(): Capabilities;
   getSession(): AuthSession;
@@ -81,8 +92,10 @@ export interface ApplicationService {
   deleteEntry(id: string): void;
 
   getWeekPlan(weekStart?: string): WeekPlan;
+  getExistingWeekPlan(weekStart: string): WeekPlan | null;
   updateWeekPlanNote(note: string, weekStart?: string): void;
-  addToWeekPlan(entryId: string, weekStart?: string): void;
+  addToWeekPlan(entryId: string, weekStart?: string, input?: Partial<WeekPlanItemInput>): void;
+  updateWeekPlanItem(entryId: string, input: WeekPlanItemInput, weekStart?: string): void;
   removeFromWeekPlan(entryId: string, weekStart?: string): void;
 
   getActiveFocus(): FocusSession | null;
@@ -94,6 +107,7 @@ export interface ApplicationService {
     note: string | null,
     submittedSegments: FocusSegment[]
   ): FocusSession;
+  discardFocusSession(): void;
   addManualFocusSession(input: ManualFocusInput): FocusSession;
 
   getScheduleBlocks(): ScheduleBlock[];
@@ -112,6 +126,6 @@ export interface ApplicationService {
   deleteScheduleBlock(id: string): void;
   getCalendarPayload(from?: string, to?: string): CalendarPayload;
   getDashboardPayload(): DashboardPayload;
-  getStatisticsPayload(scale?: "day" | "week" | "month"): StatisticsPayload;
+  getStatisticsPayload(scale?: StatisticsScale, weekStart?: string): StatisticsPayload;
   exportUserData(): UserDataExport;
 }
