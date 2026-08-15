@@ -1,0 +1,52 @@
+src/context/FocusTimerContext.tsx
+  s_bf679c0ec9b17f::t_728b6aaea8d256 103-105
+  s_bf679c0ec9b17f::t_64ba9934a1837a 22,120-128,156
+  s_bf679c0ec9b17f::t_0b0f8803cffc8d 106-108,117-119
+  s_bf679c0ec9b17f::t_08da30fdcbea28 109-116
+src/components/layout/GlobalFocusBar.tsx
+  s_bf679c0ec9b17f::t_bf8f29fdf8d56b 43
+src/app/api/v1/focus/current/route.ts
+  s_bf679c0ec9b17f::t_ff048273e022c8 2,25-30
+  s_bf679c0ec9b17f::t_69570196d1f063 31-32
+src/components/focus/FocusSplitModal.tsx
+  s_bf679c0ec9b17f::t_7bff0ce1614b38 54,68-69,120-133,319-357,361-362,370
+  s_bf679c0ec9b17f::t_728b6aaea8d256 67,82-83,112-117,368,374
+  s_50851ee908eec7::t_fa1a8f227039e9 251
+  s_50851ee908eec7::t_2df7e41d738163 11-42,62,71,77,91-92,94,99,149,253,258,264,302
+  s_bf679c0ec9b17f::t_4d3bc06d6ed109 266-281
+  s_bf679c0ec9b17f::t_84d75257237e7b 63-65,78,106,201-205,207,213-214
+  s_bf679c0ec9b17f::t_bb84a8b729ddd7 5,206,208-212
+  s_bf679c0ec9b17f::t_95516d53590965 118-119
+  s_bf679c0ec9b17f::t_d7078beefec2ca 215
+src/components/focus/FocusSplitModal.test.tsx
+  s_50851ee908eec7::t_2df7e41d738163 1-28
+src/components/entries/EntryPicker.tsx
+  s_bf679c0ec9b17f::t_389688292cdbfc 123,153,197
+  s_bf679c0ec9b17f::t_1b243e8f080e9b 1-122,124-152,154-196,198-216
+src/components/focus/FocusManualModal.tsx
+  s_bf679c0ec9b17f::t_bb84a8b729ddd7 5,148,150-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a2d978bb2fb0f197902d1cfbacaad676a7c00181",
+  "prompts": {},
+  "sessions": {
+    "s_50851ee908eec7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb30c-9299-7a40-8068-df122fa2cc31",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_bf679c0ec9b17f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa857-4b71-7883-8304-613f474782e4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
