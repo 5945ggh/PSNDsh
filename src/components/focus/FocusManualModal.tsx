@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { EntryPicker } from "@/components/entries/EntryPicker";
 import { useFocusTimer } from "@/context/FocusTimerContext";
 import { useData } from "@/context/MockContext";
 import { X, PlusCircle, AlertCircle } from "lucide-react";
@@ -144,19 +145,13 @@ export const FocusManualModal: React.FC = () => {
             <label htmlFor="manual-entry" className="block font-medium mb-1 text-zinc-700 dark:text-zinc-300">
               关联条目
             </label>
-            <select
+            <EntryPicker
               id="manual-entry"
-              value={selectedEntryId || ""}
-              onChange={(e) => setSelectedEntryId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            >
-              <option value="">未关联 (无归属)</option>
-              {entries.map((ent) => (
-                <option key={ent.id} value={ent.id}>
-                  {ent.title}
-                </option>
-              ))}
-            </select>
+              value={selectedEntryId}
+              entries={entries}
+              onChange={setSelectedEntryId}
+              ariaLabel="关联条目"
+            />
           </div>
 
           <div>

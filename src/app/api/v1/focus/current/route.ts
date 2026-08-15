@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { jsonData, jsonError, readJson, serviceForRequest } from "@/lib/api/http";
+import { assertSameOrigin, jsonData, jsonError, noContent, readJson, serviceForRequest } from "@/lib/api/http";
 
 const stopInput = z.object({
   action: z.enum(["start", "stop"]),
@@ -20,5 +20,13 @@ export async function POST(request: Request) {
     const service = serviceForRequest(request);
     if (input.action === "start") return jsonData(service.startFocusSession(input.entryId), { status: 201 });
     return jsonData(service.stopFocusSession(input.sessionId as string, input.outcome ?? null, input.note ?? null, input.segments ?? []));
+  } catch (error) { return jsonError(error); }
+}
+
+export function DELETE(request: Request) {
+  try {
+    assertSameOrigin(request);
+    serviceForRequest(request).discardFocusSession();
+    return noContent();
   } catch (error) { return jsonError(error); }
 }

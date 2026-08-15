@@ -40,7 +40,7 @@ export const GlobalFocusBar: React.FC = () => {
               </strong>
             </span>
           ) : (
-            <span>随时开启一次无归属专注，结束后可将时间拆分归属</span>
+            <span>随时记录自己的专注时刻</span>
           )}
         </div>
       </div>

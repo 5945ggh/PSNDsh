@@ -19,6 +19,7 @@ interface FocusTimerContextType {
     note: string | null,
     segments: FocusSegment[]
   ) => Promise<void>;
+  discardFocus: () => Promise<void>;
 }
 
 const FocusTimerContext = createContext<FocusTimerContextType | null>(null);
@@ -99,7 +100,32 @@ export const FocusTimerProvider: React.FC<{ children: React.ReactNode }> = ({
           update: (snapshot, session) => ({
             ...snapshot,
             activeFocus: null,
-            focusSessions: snapshot.focusSessions.map((item) => item.id === session.id ? session : item),
+            focusSessions: snapshot.focusSessions.some((item) => item.id === session.id)
+              ? snapshot.focusSessions.map((item) => item.id === session.id ? session : item)
+              : [session, ...snapshot.focusSessions],
+            dashboard: snapshot.dashboard
+              ? { ...snapshot.dashboard, activeFocus: null }
+              : null,
+          }),
+        });
+        setIsSplitModalOpen(false);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          alert(err.message);
+        }
+      }
+    }
+  };
+
+  const discardFocus = async () => {
+    if (activeFocus) {
+      try {
+        await mutate(() => api.discardFocusSession(), {
+          backgroundRefresh: true,
+          update: (snapshot) => ({
+            ...snapshot,
+            activeFocus: null,
+            focusSessions: snapshot.focusSessions.filter((item) => item.id !== activeFocus.id),
             dashboard: snapshot.dashboard
               ? { ...snapshot.dashboard, activeFocus: null }
               : null,
@@ -127,6 +153,7 @@ export const FocusTimerProvider: React.FC<{ children: React.ReactNode }> = ({
         startFocus,
         triggerStopFocus,
         finishStopFocus,
+        discardFocus,
       }}
     >
       {children}
