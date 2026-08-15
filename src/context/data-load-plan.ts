@@ -22,10 +22,10 @@ export const resourcesForPathname = (pathname: string): DataResource[] => {
   const resources = [...WORKSPACE_BASE];
 
   if (pathname === "/") resources.push("dashboard");
-  else if (pathname === "/plan") resources.push("currentWeekPlan");
+  else if (pathname === "/plan") resources.push("currentWeekPlan", "weekStatistics");
   else if (pathname.startsWith("/entries/")) resources.push("focusSessions");
   else if (pathname === "/statistics") resources.push("weekStatistics");
-  else if (pathname === "/review") resources.push("currentWeekPlan", "focusSessions", "weekStatistics");
+  else if (pathname === "/review") resources.push("currentWeekPlan", "weekStatistics");
   else if (pathname === "/settings") {
     resources.push("focusSessions", "scheduleBlocks");
   }

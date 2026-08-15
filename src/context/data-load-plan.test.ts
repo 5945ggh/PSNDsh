@@ -16,12 +16,13 @@ describe("resourcesForPathname", () => {
     ]);
   });
 
-  it("loads the week plan only for the plan route", () => {
+  it("loads the week plan and current-week statistics for the plan route", () => {
     expect(resourcesForPathname("/plan")).toEqual([
       "capabilities",
       "entries",
       "activeFocus",
       "currentWeekPlan",
+      "weekStatistics",
     ]);
   });
 
@@ -49,6 +50,16 @@ describe("resourcesForPathname", () => {
       "capabilities",
       "entries",
       "activeFocus",
+      "weekStatistics",
+    ]);
+  });
+
+  it("loads the review route without redundant focus history", () => {
+    expect(resourcesForPathname("/review")).toEqual([
+      "capabilities",
+      "entries",
+      "activeFocus",
+      "currentWeekPlan",
       "weekStatistics",
     ]);
   });
