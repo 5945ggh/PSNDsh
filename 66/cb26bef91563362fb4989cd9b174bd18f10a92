@@ -1,0 +1,41 @@
+src/context/data-load-plan.ts
+  s_50851ee908eec7::t_6c7ce296c0072c 25
+src/app/(dashboard)/review/page.tsx
+  s_1ee9b4d060e1f3::t_02685de3e778db 252,284
+  s_1ee9b4d060e1f3::t_96494ed3b5cf04 3,5-17,19-23,27-160,162-168,170-174,176,178-179,182-183,185,188,190-198,200-207,209,211,215-218,220-225,228-229,232-234,237,239-245,249,254,257-258,260-261,264,266-269,271,273-275,277,279,281-283,285,287-293,295-302,304-310
+  s_1ee9b4d060e1f3::t_a649de5d25f0e6 18,169,177,180-181,184,186-187,189,199,208,210,212-214,219,226-227,235,238,247-248,265,270,272,280,286,303
+  s_1ee9b4d060e1f3::t_b422c8aa76deff 236
+  s_1ee9b4d060e1f3::t_82751ff34f0cb6 246
+  s_1ee9b4d060e1f3::t_c60558a2a64c7a 250
+e2e/weekly-review.spec.ts
+  s_1ee9b4d060e1f3::t_0f30ceaa1b93ca 29
+  s_1ee9b4d060e1f3::t_edff318b009817 1-28,30-64
+src/context/data-load-plan.test.ts
+  s_50851ee908eec7::t_bc316e44ddb09b 19,25,63
+  s_50851ee908eec7::t_de8430eb661288 60-62
+  s_50851ee908eec7::t_7ff3d70ac09544 64-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "66cb26bef91563362fb4989cd9b174bd18f10a92",
+  "prompts": {},
+  "sessions": {
+    "s_1ee9b4d060e1f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae72-781c-7691-b159-68e6192901a9",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_50851ee908eec7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb30c-9299-7a40-8068-df122fa2cc31",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
