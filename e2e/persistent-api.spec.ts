@@ -87,6 +87,15 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   });
   await createDialog.getByRole("button", { name: "创建条目" }).click();
   await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
+  const childTitle = `新子条目 - ${entryTitle}`;
+  const row = page
+    .getByText(entryTitle, { exact: true })
+    .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
+  await row.getByLabel("添加子条目").click();
+  const childLink = page.getByRole("link", { name: childTitle, exact: true });
+  await expect(childLink).toBeVisible();
+  await expect(childLink).toBeFocused();
+  await expect(row.getByLabel("折叠子节点")).toBeVisible();
   await page.getByPlaceholder("搜索条目标题或描述…").fill("日常计划");
   await expect(page.getByText(entryTitle, { exact: true })).toBeVisible();
   await page.getByLabel("筛选条目").selectOption("unfinished");
@@ -97,11 +106,10 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   expect(dashboardRequestCount).toBe(0);
   await page.unroute("**/api/v1/dashboard");
 
-  const row = page
-    .getByText(entryTitle, { exact: true })
-    .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
-  await row.getByLabel("加入本周计划").click();
-  await expect(page.getByText("该周计划项 (1)")).toBeVisible();
+  await row.getByLabel("加入本周事项").click();
+  await expect(page.getByRole("heading", { name: "本周清单" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "结构化事项" })).toHaveCount(0);
+  await expect(page.getByText(entryTitle, { exact: true }).last()).toBeVisible();
 
   await page.getByRole("button", { name: "开始无归属专注" }).click();
   await expect(page.getByRole("button", { name: "结束当前专注" })).toBeVisible();
@@ -110,20 +118,32 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
 
   await page.getByRole("button", { name: "结束当前专注" }).click();
   const stopDialog = page.getByRole("dialog", { name: "结束本次专注" });
-  await stopDialog.getByRole("checkbox").check();
-  await stopDialog.getByLabel("片段 1 归属条目").selectOption({ label: entryTitle });
+  await stopDialog.getByRole("combobox", { name: "关联条目" }).click();
+  await stopDialog.getByRole("option", { name: entryTitle, exact: true }).click();
   await stopDialog.getByRole("button", { name: "保存记录" }).click();
   await expect(page.getByRole("button", { name: "开始无归属专注" })).toBeVisible();
+
+  const focusSessionsResponse = await page.request.get("/api/v1/focus/sessions");
+  expect(focusSessionsResponse.status()).toBe(200);
+  const timerSessions = (await focusSessionsResponse.json()).data.filter(
+    (session: { captureMode: string }) => session.captureMode === "timer",
+  );
+  expect(timerSessions).toEqual([
+    expect.objectContaining({
+      endedAt: expect.any(String),
+      segments: [expect.objectContaining({ entryId: expect.any(String) })],
+    }),
+  ]);
 
   const ownerEntries = await page.request.get("/api/v1/entries");
   const ownerEntry = (await ownerEntries.json()).data.find((entry: { title: string }) => entry.title === entryTitle);
   expect(ownerEntry).toBeTruthy();
 
-  page.once("dialog", (dialog) => dialog.accept());
   const entryRow = page
     .getByText(entryTitle, { exact: true })
     .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
   await entryRow.getByLabel("删除条目").click();
+  await page.getByRole("dialog", { name: "删除条目" }).getByRole("button", { name: "确认删除" }).click();
   await expect(page.getByText(entryTitle, { exact: true })).toHaveCount(0);
 
   const contextB = await browser.newContext({ baseURL });
@@ -153,6 +173,17 @@ test("calendar creates, edits, persists, and deletes overlapping schedule and cr
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await page.getByRole("link", { name: "日历", exact: true }).click();
   await expect(page.getByText(/至 .*日程与专注分别独立呈现/)).toBeVisible();
+  await expect(page.getByText("06:00", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("00:00", { exact: true }).first()).toBeVisible();
+  const calendarTimeGrid = page.getByTestId("calendar-time-grid").first();
+  const defaultGridHeight = await calendarTimeGrid.evaluate((element) => element.getBoundingClientRect().height);
+  await page.setViewportSize({ width: 1280, height: 600 });
+  const compactGridHeight = await calendarTimeGrid.evaluate((element) => element.getBoundingClientRect().height);
+  await page.setViewportSize({ width: 1280, height: 1200 });
+  const expandedGridHeight = await calendarTimeGrid.evaluate((element) => element.getBoundingClientRect().height);
+  expect(compactGridHeight).toBeLessThan(defaultGridHeight);
+  expect(expandedGridHeight).toBeGreaterThan(defaultGridHeight);
+  expect(expandedGridHeight).toBeLessThanOrEqual(24 * 56);
   const weekNavigation = page.getByLabel("周导航");
   await expect(weekNavigation.getByText("本周", { exact: true })).toHaveAttribute("aria-current", "date");
   await expect(weekNavigation.getByRole("button", { name: "返回本周" })).toHaveCount(0);
@@ -183,6 +214,29 @@ test("calendar creates, edits, persists, and deletes overlapping schedule and cr
   await expect(page.getByTestId(`calendar-day-${tomorrow}`).getByText(scheduleTitle, { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId(`calendar-day-${today}`).getByText("未关联专注", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId(`calendar-day-${tomorrow}`).getByText("未关联专注", { exact: true }).first()).toBeVisible();
+
+  const focusBindingTitle = unique("日历归属条目");
+  await page.getByRole("link", { name: "计划", exact: true }).click();
+  await page.getByRole("button", { name: "新建顶层条目" }).click();
+  const focusBindingDialog = page.getByRole("dialog", { name: "新建顶层条目" });
+  await focusBindingDialog.getByLabel("条目标题").fill(focusBindingTitle);
+  await focusBindingDialog.getByRole("button", { name: "创建条目" }).click();
+  await expect(page.getByText(focusBindingTitle, { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "日历", exact: true }).click();
+  await expect(page.getByTestId(`calendar-day-${today}`).getByText("未关联专注", { exact: true }).first()).toBeVisible();
+
+  await page.getByTestId(`calendar-day-${today}`).getByText("未关联专注", { exact: true }).first().click();
+  const focusDetails = page.getByRole("dialog", { name: "专注记录详情" });
+  await expect(focusDetails).toBeVisible();
+  await focusDetails.getByRole("combobox", { name: "片段 1 关联条目" }).click();
+  await focusDetails.getByRole("option", { name: focusBindingTitle, exact: true }).click();
+  const focusUpdateResponse = page.waitForResponse((response) =>
+    response.request().method() === "PATCH" && response.url().includes("/api/v1/focus/sessions/")
+  );
+  await focusDetails.getByRole("button", { name: "保存归属" }).click();
+  expect((await focusUpdateResponse).status()).toBe(200);
+  await expect(focusDetails).toHaveCount(0);
+  await expect(page.getByTestId(`calendar-day-${today}`).getByText(focusBindingTitle, { exact: true }).first()).toBeVisible();
 
   const nextWeekResponse = page.waitForResponse((response) =>
     response.url().includes("/api/v1/calendar?from=") && response.status() === 200
@@ -426,14 +480,14 @@ test("week notes render Markdown and remain stable after save", async ({ page })
   await page.getByRole("button", { name: "完成注册并进入" }).click();
   await page.getByRole("link", { name: "计划", exact: true }).click();
 
-  await page.getByRole("button", { name: "编辑批注" }).click();
-  await page.getByLabel("周备忘 Markdown 内容").fill(note);
+  await page.getByRole("button", { name: "编辑清单" }).click();
+  await page.getByLabel("本周清单 Markdown 内容").fill(note);
   const noteSave = page.waitForResponse((response) =>
     response.request().method() === "POST" && response.url().includes("/api/v1/week-plans/")
   );
-  await page.getByRole("button", { name: "保存批注" }).click();
+  await page.getByRole("button", { name: "保存清单" }).click();
   expect((await noteSave).status()).toBe(200);
-  await expect(page.getByRole("button", { name: "编辑批注" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "编辑清单" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "本周重点" })).toBeVisible();
   await expect(page.locator("strong").getByText("完成", { exact: true })).toBeVisible();
   await expect(page.getByText("复盘", { exact: true })).toBeVisible();
