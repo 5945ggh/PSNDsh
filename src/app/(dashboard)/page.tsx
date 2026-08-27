@@ -110,7 +110,7 @@ export default function DashboardPage() {
                   <CloudOff className="h-4 w-4 text-zinc-400" aria-hidden="true" />
                   <div>
                     <div className="font-medium text-zinc-500">天气未配置</div>
-                    <div className="text-[10px] text-zinc-400">首版不启用天气服务</div>
+                    <div className="text-[10px] text-zinc-400">暂不启用天气服务</div>
                   </div>
                 </>
               )}
@@ -156,10 +156,10 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3 py-2">
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  暂无活动中的专注计时
+                  暂无进行中的专注计时
                 </p>
                 <p className="text-xs text-zinc-500">
-                  随时开启一次无归属专注，结束后可将时间分配至对应条目。
+                  随时记录自己的专注时刻
                 </p>
               </div>
             )}
@@ -248,9 +248,8 @@ export default function DashboardPage() {
                     <div className="space-y-1 truncate pr-2">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`h-2 w-2 rounded-full ${
-                            entry.completionMode === "ongoing" ? "bg-blue-500" : "bg-emerald-500"
-                          }`}
+                          className={`h-2 w-2 rounded-full ${entry.completionMode === "ongoing" ? "bg-blue-500" : "bg-emerald-500"
+                            }`}
                           aria-hidden="true"
                         />
                         <Link
@@ -323,11 +322,10 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={ent.id}
-                      className={`space-y-1 rounded-lg border p-3 text-xs ${
-                        isOverdue
-                          ? "border-red-200 bg-red-50/60 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
-                          : "border-amber-200 bg-amber-50/60 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                      }`}
+                      className={`space-y-1 rounded-lg border p-3 text-xs ${isOverdue
+                        ? "border-red-200 bg-red-50/60 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+                        : "border-amber-200 bg-amber-50/60 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                        }`}
                     >
                       <div className="flex items-center justify-between font-semibold">
                         <Link

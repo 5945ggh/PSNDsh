@@ -15,6 +15,7 @@
 | 任务 | 文档 |
 |---|---|
 | 产品语义、范围、不变量 | [产品需求](product/PRD.md) |
+| 本周清单 Markdown 约定 | [本周清单](product/WEEKLY_MARKDOWN.md) |
 | UI/UX、视觉、交互契约 | [设计契约](../DESIGN.md) |
 | 架构、API、数据库、部署约束 | [技术设计](architecture/TECHNICAL_DESIGN.md) |
 | 测试范围和验收证据 | [薄测策略](testing/TEST_STRATEGY.md)、[PRD 首版验收审计](testing/PRD_ACCEPTANCE_AUDIT.md) |
