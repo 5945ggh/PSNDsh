@@ -107,6 +107,7 @@ export interface ApplicationService {
     note: string | null,
     submittedSegments: FocusSegment[]
   ): FocusSession;
+  updateFocusSession(sessionId: string, segments: FocusSegment[]): FocusSession;
   discardFocusSession(): void;
   addManualFocusSession(input: ManualFocusInput): FocusSession;
 

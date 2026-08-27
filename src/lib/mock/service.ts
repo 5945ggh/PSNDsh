@@ -194,6 +194,20 @@ export class MockApplicationService implements ApplicationService {
     return this.store.stopFocusSession(sessionId, outcome, note, segments, endedAt);
   }
 
+  updateFocusSession(sessionId: string, segments: FocusSegment[]): FocusSession {
+    const session = this.store.getFocusSessions().find((item) => item.id === sessionId);
+    if (!session || !session.endedAt) {
+      throw new MockDomainError("FOCUS_NOT_FOUND", "已结束的专注会话不存在");
+    }
+    for (const segment of segments) {
+      if (segment.entryId && !this.store.getEntryById(segment.entryId)) {
+        throw new MockDomainError("ENTRY_NOT_FOUND", "片段关联的条目不存在");
+      }
+    }
+    assertSegmentsPartitionSession({ startedAt: session.startedAt, endedAt: session.endedAt }, segments);
+    return this.store.updateFocusSession(sessionId, segments);
+  }
+
   discardFocusSession(): void {
     const active = this.getActiveFocus();
     if (!active) {

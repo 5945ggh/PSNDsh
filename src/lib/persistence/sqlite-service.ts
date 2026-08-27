@@ -691,6 +691,32 @@ export class SqliteApplicationService implements ApplicationService {
     return this.toFocusSession(this.db.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get() as FocusSessionRow);
   }
 
+  updateFocusSession(sessionId: string, segments: FocusSegment[]): FocusSession {
+    const userId = this.requireUserId();
+    const session = this.db.select().from(focusSessions)
+      .where(and(eq(focusSessions.id, sessionId), eq(focusSessions.userId, userId)))
+      .get();
+    if (!session || !session.endedAt) throw new ApplicationError("FOCUS_NOT_FOUND", "已结束的专注会话不存在");
+    for (const segment of segments) {
+      if (segment.entryId) this.getOwnedEntryRow(segment.entryId, false);
+    }
+    assertSegmentsPartitionSession({ startedAt: session.startedAt, endedAt: session.endedAt }, segments);
+    const updatedAt = nowIso(this.clock);
+    this.db.transaction((tx) => {
+      tx.delete(focusSegments).where(eq(focusSegments.sessionId, sessionId)).run();
+      tx.insert(focusSegments).values(segments.map((segment) => ({
+        id: randomUUID(),
+        sessionId,
+        startedAt: segment.startedAt,
+        endedAt: segment.endedAt,
+        entryId: segment.entryId,
+        note: segment.note,
+      }))).run();
+      tx.update(focusSessions).set({ updatedAt }).where(eq(focusSessions.id, sessionId)).run();
+    });
+    return this.toFocusSession(this.db.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get() as FocusSessionRow);
+  }
+
   discardFocusSession(): void {
     const userId = this.requireUserId();
     const active = this.db.select({ id: focusSessions.id })

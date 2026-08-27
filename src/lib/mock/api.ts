@@ -35,6 +35,7 @@ export class MockApiAdapter {
   getFocusSessions() { return this.service.getFocusSessions(); }
   startFocusSession(entryId?: string | null) { return this.service.startFocusSession(entryId); }
   stopFocusSession(...args: Parameters<MockApplicationService["stopFocusSession"]>) { return this.service.stopFocusSession(...args); }
+  updateFocusSession(...args: Parameters<MockApplicationService["updateFocusSession"]>) { return this.service.updateFocusSession(...args); }
   discardFocusSession() { return this.service.discardFocusSession(); }
   addManualFocusSession(input: Parameters<MockApplicationService["addManualFocusSession"]>[0]) { return this.service.addManualFocusSession(input); }
   getScheduleBlocks() { return this.service.getScheduleBlocks(); }

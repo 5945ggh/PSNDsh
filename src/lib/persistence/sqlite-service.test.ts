@@ -661,6 +661,77 @@ describe("SqliteApplicationService", () => {
     expect(stopped.segments.reduce((sum, segment) => sum + (Date.parse(segment.endedAt) - Date.parse(segment.startedAt)), 0)).toBe(3_600_000);
   });
 
+  it("binds an ended unassigned focus session to an owned entry", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "补记归属", description: null, completionMode: "completable", dueAt: null });
+    const session = app.addManualFocusSession({
+      startedAt: "2026-06-26T09:00:00.000Z",
+      endedAt: "2026-06-26T10:00:00.000Z",
+      note: "历史记录",
+      outcome: "完成阅读",
+      entryId: null,
+    });
+
+    const updated = app.updateFocusSession(session.id, session.segments.map((segment) => ({
+      ...segment,
+      entryId: entry.id,
+    })));
+
+    expect(updated).toMatchObject({
+      id: session.id,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      note: "历史记录",
+      outcome: "完成阅读",
+    });
+    expect(updated.segments).toEqual([
+      expect.objectContaining({
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        entryId: entry.id,
+      }),
+    ]);
+    expect(app.getEntries().find((candidate) => candidate.id === entry.id)?.directFocusSeconds).toBe(3_600);
+  });
+
+  it("does not let one user reassign another user's historical focus session", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const session = appA.addManualFocusSession({
+      startedAt: "2026-06-26T09:00:00.000Z",
+      endedAt: "2026-06-26T10:00:00.000Z",
+      note: null,
+      outcome: null,
+      entryId: null,
+    });
+    const entryB = appB.addEntry({ parentId: null, title: "B 的条目", description: null, completionMode: "completable", dueAt: null });
+
+    expect(() => appB.updateFocusSession(session.id, session.segments.map((segment) => ({
+      ...segment,
+      entryId: entryB.id,
+    })))).toThrow(/FOCUS_NOT_FOUND/);
+    expect(appA.getFocusSessions().find((candidate) => candidate.id === session.id)?.segments[0]?.entryId).toBeNull();
+  });
+
+  it("rejects invalid historical focus partitions without replacing the saved segments", () => {
+    const app = service();
+    const entry = app.addEntry({ parentId: null, title: "归属目标", description: null, completionMode: "completable", dueAt: null });
+    const session = app.addManualFocusSession({
+      startedAt: "2026-06-26T09:00:00.000Z",
+      endedAt: "2026-06-26T10:00:00.000Z",
+      note: null,
+      outcome: null,
+      entryId: null,
+    });
+
+    expect(() => app.updateFocusSession(session.id, [{
+      ...session.segments[0]!,
+      endedAt: "2026-06-26T09:55:00.000Z",
+      entryId: entry.id,
+    }])).toThrow(/SEGMENTS_INVALID_PARTITION/);
+    expect(app.getFocusSessions().find((candidate) => candidate.id === session.id)?.segments).toEqual(session.segments);
+  });
+
   it("preserves a 90-second split as 60 seconds plus 30 seconds", () => {
     const app = service();
     const firstEntry = app.addEntry({ parentId: null, title: "第一项", description: null, completionMode: "completable", dueAt: null });

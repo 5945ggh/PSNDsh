@@ -105,6 +105,7 @@ export interface ApiAdapter {
     note: string | null,
     segments: FocusSegment[]
   ): Promise<FocusSession>;
+  updateFocusSession(sessionId: string, segments: FocusSegment[]): Promise<FocusSession>;
   discardFocusSession(): Promise<void>;
   addManualFocusSession(input: ManualFocusInput): Promise<FocusSession>;
 
@@ -316,6 +317,13 @@ export class PersistentApiAdapter implements ApiAdapter {
     return this.request<FocusSession>("/api/v1/focus/current", {
       method: "POST",
       body: JSON.stringify({ action: "stop", sessionId, outcome, note, segments }),
+    });
+  }
+
+  updateFocusSession(sessionId: string, segments: FocusSegment[]) {
+    return this.request<FocusSession>(`/api/v1/focus/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ segments }),
     });
   }
 

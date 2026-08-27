@@ -14,7 +14,7 @@ type DayOverviewProps = {
   trackFilter: TrackFilter;
   onSelectedDayChange: (date: string) => void;
   onScheduleClick: (schedule: ScheduleBlock) => void;
-  onFocusClick: (entryId: string | null) => void;
+  onFocusClick: (focus: FocusSession) => void;
 };
 
 const formatTime = (value: number) => new Intl.DateTimeFormat("zh-CN", {
@@ -103,7 +103,7 @@ export function DayOverview({ selectedDay, selectedDayMeta, selectedDayIndex, we
                   <button
                     key={focus.id}
                     type="button"
-                    onClick={() => onFocusClick(entryId)}
+                    onClick={() => onFocusClick(focus)}
                     aria-label={`打开专注：${title}，${formatTime(range.startMs)} 至 ${focus.endedAt ? formatTime(range.endMs) : "进行中"}，${focus.captureMode === "timer" ? "实时计时" : "手动补录"}${focus.outcome ? `，成果 ${focus.outcome}` : ""}${focus.note ? `，备注 ${focus.note}` : ""}`}
                     className="group flex w-full flex-col gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 text-left text-purple-900 transition-colors hover:border-purple-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-200 active:scale-[0.99]"
                   >

@@ -78,6 +78,7 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   getFocusSessions() { return asPromise(() => this.mock.getFocusSessions()); }
   startFocusSession(...args: Parameters<MockApiAdapter["startFocusSession"]>) { return asPromise(() => this.mock.startFocusSession(...args)); }
   stopFocusSession(...args: Parameters<MockApiAdapter["stopFocusSession"]>) { return asPromise(() => this.mock.stopFocusSession(...args)); }
+  updateFocusSession(...args: Parameters<MockApiAdapter["updateFocusSession"]>) { return asPromise(() => this.mock.updateFocusSession(...args)); }
   discardFocusSession() { return asPromise(() => this.mock.discardFocusSession()); }
   addManualFocusSession(...args: Parameters<MockApiAdapter["addManualFocusSession"]>) { return asPromise(() => this.mock.addManualFocusSession(...args)); }
   getScheduleBlocks() { return asPromise(() => this.mock.getScheduleBlocks()); }

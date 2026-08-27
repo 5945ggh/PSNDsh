@@ -19,7 +19,7 @@ type WeekTimelineProps = {
   entries: Entry[];
   trackFilter: TrackFilter;
   onScheduleClick: (schedule: ScheduleBlock) => void;
-  onFocusClick: (entryId: string | null) => void;
+  onFocusClick: (focus: FocusSession) => void;
   onCreateSchedule: (date: string) => void;
 };
 
@@ -151,7 +151,7 @@ export function WeekTimeline({
                             <button
                               key={`${focus.id}-${positionIndex}`}
                               type="button"
-                              onClick={() => onFocusClick(entryId)}
+                              onClick={() => onFocusClick(focus)}
                               aria-label={`打开专注：${entryTitle}，${formatTime(range.startMs)} 至 ${focus.endedAt ? formatTime(range.endMs) : "进行中"}，${focus.captureMode === "timer" ? "实时计时" : "手动补录"}${focus.segments.length > 1 ? `，${focus.segments.length} 个拆分片段` : ""}${focus.outcome ? `，成果 ${focus.outcome}` : ""}${focus.note ? `，备注 ${focus.note}` : ""}`}
                               style={{ top: `calc(var(--calendar-hour-height) * ${position.topHours})`, height: `max(28px, calc(var(--calendar-hour-height) * ${position.heightHours}))` }}
                               className="absolute inset-x-0.5 z-10 group/block cursor-pointer rounded-md text-left transition-transform hover:z-50 hover:scale-[1.01] focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 active:scale-[0.99]"

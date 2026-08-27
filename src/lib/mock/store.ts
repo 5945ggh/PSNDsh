@@ -512,6 +512,17 @@ export class MockDataStore {
     return session;
   }
 
+  public updateFocusSession(sessionId: string, segments: FocusSegment[]): FocusSession {
+    const session = this.focusSessions.find((item) => item.id === sessionId);
+    if (!session || !session.endedAt) {
+      throw new MockDomainError("FOCUS_NOT_FOUND", "已结束的专注会话不存在");
+    }
+    session.segments = segments.map((segment) => ({ ...segment }));
+    this.recalculateEntryFocusSeconds();
+    this.notify();
+    return session;
+  }
+
   public discardFocusSession(sessionId: string): void {
     const index = this.focusSessions.findIndex((session) => session.id === sessionId && !session.endedAt);
     if (index === -1) {

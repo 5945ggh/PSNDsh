@@ -9,6 +9,7 @@ import { ScheduleImportManager } from "./ScheduleImportManager";
 import { ScheduleTemplateManager } from "./ScheduleTemplateManager";
 import { ScheduleEditorModal } from "./ScheduleEditorModal";
 import { CalendarEventDetails } from "./CalendarEventDetails";
+import { FocusEventDetails } from "./FocusEventDetails";
 import { CalendarToolbar, type CalendarViewMode, type TrackFilter } from "./CalendarToolbar";
 import { CompactCalendar } from "./CompactCalendar";
 import { DayOverview } from "./DayOverview";
@@ -19,7 +20,7 @@ import {
   shiftDateKey,
   weekDaysFor,
 } from "./calendar-utils";
-import type { CalendarPayload, ScheduleBlock, ScheduleBlockInput } from "@/lib/domain/types";
+import type { CalendarPayload, FocusSegment, FocusSession, ScheduleBlock, ScheduleBlockInput } from "@/lib/domain/types";
 
 const subscribeToMobileViewport = (onChange: () => void) => {
   const mediaQuery = window.matchMedia(MOBILE_VIEWPORT_QUERY);
@@ -46,6 +47,7 @@ export default function CalendarController() {
   const [trackFilter, setTrackFilter] = useState<TrackFilter>("both");
   const [selectedDay, setSelectedDay] = useState(currentShanghaiWeekStart);
   const [activeScheduleModal, setActiveScheduleModal] = useState<ScheduleBlock | null>(null);
+  const [activeFocusModal, setActiveFocusModal] = useState<FocusSession | null>(null);
   const [scheduleEditor, setScheduleEditor] = useState<ScheduleBlock | "new" | null>(null);
   const isMobileViewport = useSyncExternalStore(subscribeToMobileViewport, getMobileViewportSnapshot, getServerViewportSnapshot);
   const displayedViewMode = isMobileViewport && !hasChosenViewMode ? "day" : viewMode;
@@ -110,8 +112,29 @@ export default function CalendarController() {
     await refreshCalendar();
   };
 
-  const handleFocusClick = (entryId: string | null) => {
-    router.push(entryId ? `/entries/${entryId}` : "/plan");
+  const handleFocusClick = (focus: FocusSession) => {
+    const firstEntryId = focus.segments[0]?.entryId ?? null;
+    const allSameEntry = Boolean(firstEntryId) && focus.segments.every((segment) => segment.entryId === firstEntryId);
+    if (allSameEntry) {
+      router.push(`/entries/${firstEntryId}`);
+      return;
+    }
+    setActiveFocusModal(focus);
+  };
+
+  const saveFocusSegments = async (segments: FocusSegment[]) => {
+    if (!activeFocusModal) return;
+    const updated = await mutate(() => api.updateFocusSession(activeFocusModal.id, segments), {
+      refresh: false,
+      update: (snapshot, session) => ({
+        ...snapshot,
+        focusSessions: snapshot.focusSessions.map((item) => item.id === session.id ? session : item),
+      }),
+    });
+    setCalendar((current) => current ? {
+      ...current,
+      focusSessions: current.focusSessions.map((item) => item.id === updated.id ? updated : item),
+    } : current);
   };
 
   const selectedDayIndex = Math.max(0, weekDays.findIndex((day) => day.date === selectedDay));
@@ -141,6 +164,7 @@ export default function CalendarController() {
       {displayedViewMode === "day" && <DayOverview selectedDay={selectedDay} selectedDayMeta={selectedDayMeta} selectedDayIndex={selectedDayIndex} weekDays={weekDays} scheduleBlocks={scheduleBlocks} focusSessions={focusSessions} entries={entries} trackFilter={trackFilter} onSelectedDayChange={setSelectedDay} onScheduleClick={setActiveScheduleModal} onFocusClick={handleFocusClick} />}
 
       <CalendarEventDetails schedule={activeScheduleModal} onClose={() => setActiveScheduleModal(null)} onEdit={(schedule) => { setScheduleEditor(schedule); setActiveScheduleModal(null); }} onDelete={deleteSchedule} />
+      <FocusEventDetails key={activeFocusModal?.id ?? "none"} focus={activeFocusModal} entries={entries} onClose={() => setActiveFocusModal(null)} onSave={saveFocusSegments} />
       {scheduleEditor && <ScheduleEditorModal key={scheduleEditor === "new" ? "new" : scheduleEditor.id} schedule={scheduleEditor === "new" ? null : scheduleEditor} defaultDate={selectedDay} onClose={() => setScheduleEditor(null)} onSave={saveSchedule} />}
       <IcsImportModal isOpen={isIcsOpen} onClose={() => setIsIcsOpen(false)} />
       <ScheduleImportManager isOpen={isImportManagerOpen} onClose={() => setIsImportManagerOpen(false)} onChanged={refreshCalendar} />
