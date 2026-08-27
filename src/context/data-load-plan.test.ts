@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hasLoadedResources, resourcesForPathname } from "./data-load-plan";
+import {
+  hasLoadedResources,
+  resourcesForPathname,
+  resourcesForViewer,
+} from "./data-load-plan";
 
 describe("resourcesForPathname", () => {
   it("keeps authentication routes free of user-owned datasets", () => {
@@ -67,8 +71,16 @@ describe("resourcesForPathname", () => {
   it("does not consider a route ready until all of its resources are loaded", () => {
     const dashboardResources = new Set(resourcesForPathname("/"));
 
-    expect(hasLoadedResources("/", dashboardResources)).toBe(true);
-    expect(hasLoadedResources("/plan", dashboardResources)).toBe(false);
+    expect(hasLoadedResources("/", dashboardResources, true)).toBe(true);
+    expect(hasLoadedResources("/plan", dashboardResources, true)).toBe(false);
+  });
+
+  it("lets anonymous dashboard routes finish after capabilities are loaded", () => {
+    const anonymousResources = new Set(["capabilities"] as const);
+
+    expect(resourcesForViewer("/", false)).toEqual(["capabilities"]);
+    expect(hasLoadedResources("/", anonymousResources, false)).toBe(true);
+    expect(hasLoadedResources("/", anonymousResources, true)).toBe(false);
   });
 
   it("allows background refresh when navigating between routes with loaded resources", () => {
@@ -77,7 +89,7 @@ describe("resourcesForPathname", () => {
       ...resourcesForPathname("/plan"),
     ]);
 
-    expect(hasLoadedResources("/", loadedResources)).toBe(true);
-    expect(hasLoadedResources("/plan", loadedResources)).toBe(true);
+    expect(hasLoadedResources("/", loadedResources, true)).toBe(true);
+    expect(hasLoadedResources("/plan", loadedResources, true)).toBe(true);
   });
 });

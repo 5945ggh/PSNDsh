@@ -33,7 +33,17 @@ export const resourcesForPathname = (pathname: string): DataResource[] => {
   return resources;
 };
 
+export const resourcesForViewer = (
+  pathname: string,
+  isAuthenticated: boolean
+): DataResource[] =>
+  isAuthenticated ? resourcesForPathname(pathname) : ["capabilities"];
+
 export const hasLoadedResources = (
   pathname: string,
-  loadedResources: ReadonlySet<DataResource>
-) => resourcesForPathname(pathname).every((resource) => loadedResources.has(resource));
+  loadedResources: ReadonlySet<DataResource>,
+  isAuthenticated: boolean
+) =>
+  resourcesForViewer(pathname, isAuthenticated).every((resource) =>
+    loadedResources.has(resource)
+  );

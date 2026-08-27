@@ -32,6 +32,7 @@ import {
   type DataResource,
   hasLoadedResources,
   resourcesForPathname,
+  resourcesForViewer,
 } from "@/context/data-load-plan";
 
 export type DataLoadStatus = "loading" | "ready" | "error";
@@ -198,9 +199,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         loadedResourcesRef.current.userId === userId
           ? new Set(loadedResourcesRef.current.resources)
           : new Set<DataResource>();
-      const fetchedResources = session.user
-        ? resourcesForPathname(pathname)
-        : (["capabilities"] satisfies DataResource[]);
+      const fetchedResources = resourcesForViewer(pathname, Boolean(session.user));
       fetchedResources.forEach((resource) => loadedResources.add(resource));
       const nextLoadedResources = { userId, resources: loadedResources };
       loadedResourcesRef.current = nextLoadedResources;
@@ -223,7 +222,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       const currentUserId = snapshotRef.current.session.user?.id ?? null;
       const routeDataReady =
         loadedResourcesRef.current.userId === currentUserId &&
-        hasLoadedResources(pathname, loadedResourcesRef.current.resources);
+        hasLoadedResources(
+          pathname,
+          loadedResourcesRef.current.resources,
+          Boolean(snapshotRef.current.session.user)
+        );
       void refresh({
         background: requestVersion.current > 0 && routeDataReady,
       });
@@ -286,7 +289,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const currentUserId = data.session.user?.id ?? null;
   const routeDataReady =
     loadedResources.userId === currentUserId &&
-    hasLoadedResources(pathname, loadedResources.resources);
+    hasLoadedResources(pathname, loadedResources.resources, Boolean(data.session.user));
   const visibleStatus = status === "ready" && !routeDataReady ? "loading" : status;
 
   const value = useMemo<DataContextType>(
