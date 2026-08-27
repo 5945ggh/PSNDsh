@@ -1,0 +1,23 @@
+src/lib/domain/week-plan.test.ts
+  s_9069daac15c1b5::t_cc346798ee8d94 3,6,30-35,38-41,44-46
+src/app/(dashboard)/plan/page.tsx
+  s_9069daac15c1b5::t_cc346798ee8d94 32,35,677-688,721,723-751
+src/lib/domain/week-plan.ts
+  s_9069daac15c1b5::t_cc346798ee8d94 43-54,56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "10b43ef608458b52052a4fa3d27bb52e85793664",
+  "prompts": {},
+  "sessions": {
+    "s_9069daac15c1b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0433f-4194-7a42-b110-0cfcef0fb7df",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
