@@ -1,0 +1,26 @@
+e2e/auth-routing.spec.ts
+  s_42edeb33f83909::t_3dd521f778cd30 1-7,9
+  s_42edeb33f83909::t_390f5134060607 8
+src/context/MockContext.tsx
+  s_42edeb33f83909::t_e31363ed3d634d 35,202,225-229,292
+src/context/data-load-plan.ts
+  s_42edeb33f83909::t_e31363ed3d634d 36-41,44-49
+src/context/data-load-plan.test.ts
+  s_42edeb33f83909::t_3dd521f778cd30 2-6,74-83,92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9ff05d1fdf31d0e8d7661f1f9b57b8d0fac230dc",
+  "prompts": {},
+  "sessions": {
+    "s_42edeb33f83909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03479-c022-77b2-a349-64e034974aaa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
