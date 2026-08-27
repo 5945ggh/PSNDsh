@@ -1,0 +1,81 @@
+src/app/(dashboard)/plan/page.tsx
+  s_50851ee908eec7::t_6c7ce296c0072c 129-136,534,690,695
+  s_db681915ef9adf::t_2b8a724ae5adf0 783,804,810
+  s_db681915ef9adf::t_dccef06db08178 481-482,484-485,489-490,492,495-498,501-510,514,518,527-529,531-533,538-544,546-550,554-559,561-579,583-586,588-594,600
+  s_bf679c0ec9b17f::t_8e1462d521c52d 3,75,78,154-163,207-230,312-315,429
+  s_2da96790f54639::t_37304bc3e8918b 494,500,512-513,515-517,519,521-526,530,535-537,553
+  s_db681915ef9adf::t_71f4f5877d9a1e 7,10,30-31,64,126-128,137-153
+  s_bf679c0ec9b17f::t_e580ad5354693e 26,231,235,237-239,241-244,249-250,437-442
+  s_db681915ef9adf::t_06ef14eb868b9e 401-402
+  s_bf679c0ec9b17f::t_2cdcbb0fd111d8 33,233-234,240,245-248,251-253
+  s_db681915ef9adf::t_87f76805b292c3 670-689,691-694,696-743
+  s_bf679c0ec9b17f::t_f6ab90c928f51d 5,27,29,76-77,171-193,197-206,461,603-665
+  s_2da96790f54639::t_69c9bef0321686 551-552
+  s_bf679c0ec9b17f::t_c23d85f1a84e1b 25,275-278,285-288,303-304,311,353,384-387,444-458
+  s_2da96790f54639::t_3217445ea0eb27 772,779,790,795,797,800-801,811
+  s_bf679c0ec9b17f::t_19062f8e61ee35 34
+  s_bf679c0ec9b17f::t_40fd7c77ed6c4e 232
+  s_bf679c0ec9b17f::t_b471156079a2bd 443
+  s_bf679c0ec9b17f::t_c946a6b3c1839f 459-460
+  s_bf679c0ec9b17f::t_f49915876d0d5f 602
+  s_db681915ef9adf::t_ed6b5bbc5e4d5b 744
+docs/product/PRD.md
+  s_1ee9b4d060e1f3::t_a048392e9becb2 106
+  s_db681915ef9adf::t_dbbe42b24ba10e 57-58,62
+  s_db681915ef9adf::t_7f81e76721305c 63
+DESIGN.md
+  s_1ee9b4d060e1f3::t_81cf777d0d655a 31-33,84
+  s_bf679c0ec9b17f::t_32e9d26c47b06a 75
+docs/README.md
+  s_db681915ef9adf::t_dbbe42b24ba10e 18
+docs/CURRENT_STATE.md
+  s_1ee9b4d060e1f3::t_a048392e9becb2 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d422f4b50e401e7af54bc9525da3c7dcd8f59064",
+  "prompts": {},
+  "sessions": {
+    "s_1ee9b4d060e1f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fae72-781c-7691-b159-68e6192901a9",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_2da96790f54639": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019facdb-cc2f-7402-a547-22f7b5d834ae",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_50851ee908eec7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb30c-9299-7a40-8068-df122fa2cc31",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_bf679c0ec9b17f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa857-4b71-7883-8304-613f474782e4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_db681915ef9adf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fab89-db05-7db2-bd63-a6b6635f7b5f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
