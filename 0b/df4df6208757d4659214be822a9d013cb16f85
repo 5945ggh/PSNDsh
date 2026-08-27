@@ -1,0 +1,19 @@
+AGENTS.md
+  s_f43b06edd0be0b::t_197b6153549104 35-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0bdf4df6208757d4659214be822a9d013cb16f85",
+  "prompts": {},
+  "sessions": {
+    "s_f43b06edd0be0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03444-6c90-7af2-8d9c-6b8d702eb095",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
