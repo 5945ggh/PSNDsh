@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustPlannedFocusSeconds,
   assertValidWeekPlanItemInput,
   parseWeekStart,
-  plannedFocusOptionValues,
-  plannedFocusSelectValue,
+  PLANNED_FOCUS_STEP_SECONDS,
   WEEK_START_MESSAGES,
 } from "./week-plan";
 
@@ -27,27 +27,23 @@ describe("parseWeekStart", () => {
   });
 });
 
-describe("planned focus select", () => {
-  it("always offers an option matching the current select value", () => {
-    for (const seconds of [null, 0, 3600, 5400, 7200, 10800, 12345]) {
-      const value = plannedFocusSelectValue(seconds);
-      const options = plannedFocusOptionValues(seconds);
-      if (value === "") {
-        expect(options).not.toContain("");
-      } else {
-        expect(options).toContain(value);
-      }
-    }
+describe("planned focus stepper", () => {
+  it("increases from unset in 30-minute steps", () => {
+    expect(PLANNED_FOCUS_STEP_SECONDS).toBe(1800);
+    expect(adjustPlannedFocusSeconds(null, "increase")).toBe(1800);
+    expect(adjustPlannedFocusSeconds(1800, "increase")).toBe(3600);
+    expect(adjustPlannedFocusSeconds(5400, "increase")).toBe(7200);
   });
 
-  it("lists preset hour options as second values", () => {
-    expect(plannedFocusOptionValues(null)).toEqual(["3600", "10800", "18000", "28800", "36000"]);
+  it("returns to unset after decrementing the smallest step", () => {
+    expect(adjustPlannedFocusSeconds(null, "decrease")).toBeNull();
+    expect(adjustPlannedFocusSeconds(1800, "decrease")).toBeNull();
+    expect(adjustPlannedFocusSeconds(3600, "decrease")).toBe(1800);
   });
 
-  it("appends the current value when it is not a preset", () => {
-    const options = plannedFocusOptionValues(5400);
-    expect(options).toContain("5400");
-    expect(options).toHaveLength(6); // 5 presets + current value
+  it("preserves nonstandard historical values while adjusting them", () => {
+    expect(adjustPlannedFocusSeconds(12345, "increase")).toBe(14145);
+    expect(adjustPlannedFocusSeconds(12345, "decrease")).toBe(10545);
   });
 });
 

@@ -40,19 +40,19 @@ export const parseWeekStart = (value: string): WeekStartIssue | null => {
   return null;
 };
 
-// 本周预计投入的快捷档位（小时）。下拉框以秒数为内部值，避免历史值（例如
-// 2 小时、1.5 小时）换算成小时字符串后与预设档位对不上，导致受控 <select>
-// 渲染为空白。
-export const PLANNED_FOCUS_HOUR_OPTIONS = [1, 3, 5, 8, 10];
+export const PLANNED_FOCUS_STEP_SECONDS = 30 * 60;
 
-export const plannedFocusSelectValue = (plannedFocusSeconds: number | null): string =>
-  plannedFocusSeconds === null ? "" : String(plannedFocusSeconds);
-
-export const plannedFocusOptionValues = (plannedFocusSeconds: number | null): string[] => {
-  const values = PLANNED_FOCUS_HOUR_OPTIONS.map((hours) => String(hours * 3600));
-  if (plannedFocusSeconds !== null) {
-    const current = String(plannedFocusSeconds);
-    if (!values.includes(current)) values.push(current);
+export const adjustPlannedFocusSeconds = (
+  plannedFocusSeconds: number | null,
+  direction: "increase" | "decrease",
+): number | null => {
+  if (direction === "increase") {
+    return (plannedFocusSeconds ?? 0) + PLANNED_FOCUS_STEP_SECONDS;
   }
-  return values;
+
+  if (plannedFocusSeconds === null || plannedFocusSeconds <= PLANNED_FOCUS_STEP_SECONDS) {
+    return null;
+  }
+
+  return plannedFocusSeconds - PLANNED_FOCUS_STEP_SECONDS;
 };

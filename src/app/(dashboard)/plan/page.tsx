@@ -29,9 +29,10 @@ import {
   X,
   Play,
   Target,
+  Minus,
 } from "lucide-react";
 import { buildEntriesMarkdown, buildEntryMarkdown, getEntryMarkdownFilename } from "@/lib/entry-markdown";
-import { plannedFocusOptionValues, plannedFocusSelectValue } from "@/lib/domain/week-plan";
+import { adjustPlannedFocusSeconds } from "@/lib/domain/week-plan";
 
 type EntryFilter = "all" | "unfinished" | "completed" | "archived";
 
@@ -673,6 +674,18 @@ const formatHours = (seconds: number) => {
   return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)}h`;
 };
 
+const formatPlannedFocus = (seconds: number | null) => {
+  if (seconds === null) return "未设置";
+  if (seconds === 0) return "0m";
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainderSeconds = seconds % 60;
+  return [hours ? `${hours}h` : null, minutes ? `${minutes}m` : null, remainderSeconds ? `${remainderSeconds}s` : null]
+    .filter(Boolean)
+    .join(" ");
+};
+
 const SummaryMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
     <div className="text-[11px] text-zinc-500">{label}</div>
@@ -705,20 +718,37 @@ const FocusEntryRow: React.FC<{
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[11px] text-zinc-500">
           <span>已投入 {formatHours(actualSeconds)}</span>
-          <label className="inline-flex items-center gap-1">
+          <div className="inline-flex items-center gap-1" aria-label={`${entry.title} 本周预计投入`}>
             <span>本周预计</span>
-            <select
-              value={plannedFocusSelectValue(item.plannedFocusSeconds)}
-              onChange={(event) => onUpdate({ role: "focus", plannedFocusSeconds: event.target.value ? Number(event.target.value) : null })}
-              aria-label={`${entry.title} 本周预计投入`}
-              className="rounded border border-purple-200 bg-white px-1.5 py-0.5 font-mono text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-purple-800 dark:bg-zinc-900"
-            >
-              <option value="">不设置</option>
-              {plannedFocusOptionValues(item.plannedFocusSeconds).map((seconds) => (
-                <option key={seconds} value={seconds}>{formatHours(Number(seconds))}</option>
-              ))}
-            </select>
-          </label>
+            <div className="inline-flex h-6 items-center rounded border border-purple-200 bg-white font-mono text-[11px] text-zinc-700 dark:border-purple-800 dark:bg-zinc-900 dark:text-zinc-200">
+              <button
+                type="button"
+                onClick={() => onUpdate({
+                  role: "focus",
+                  plannedFocusSeconds: adjustPlannedFocusSeconds(item.plannedFocusSeconds, "decrease"),
+                })}
+                disabled={item.plannedFocusSeconds === null}
+                aria-label={`减少 ${entry.title} 的本周预计投入 30 分钟`}
+                title="减少 30 分钟"
+                className="inline-flex h-full w-6 items-center justify-center border-r border-purple-100 text-zinc-500 hover:bg-purple-50 hover:text-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 disabled:pointer-events-none disabled:opacity-35 dark:border-purple-900/60 dark:hover:bg-purple-950/40 dark:hover:text-purple-300"
+              >
+                <Minus className="h-3 w-3" aria-hidden="true" />
+              </button>
+              <output className="min-w-14 px-1.5 text-center tabular-nums">{formatPlannedFocus(item.plannedFocusSeconds)}</output>
+              <button
+                type="button"
+                onClick={() => onUpdate({
+                  role: "focus",
+                  plannedFocusSeconds: adjustPlannedFocusSeconds(item.plannedFocusSeconds, "increase"),
+                })}
+                aria-label={`增加 ${entry.title} 的本周预计投入 30 分钟`}
+                title="增加 30 分钟"
+                className="inline-flex h-full w-6 items-center justify-center border-l border-purple-100 text-zinc-500 hover:bg-purple-50 hover:text-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-purple-900/60 dark:hover:bg-purple-950/40 dark:hover:text-purple-300"
+              >
+                <Plus className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
