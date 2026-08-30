@@ -53,19 +53,23 @@ export const EXPENSE_DIMENSION_TABS: ReadonlyArray<{
 const sortByName = <T extends { name: string }>(items: T[]) =>
   [...items].sort((a, b) => a.name.localeCompare(b.name));
 
-const addCategory = (snapshot: DataSnapshot, category: ExpenseCategory): DataSnapshot => ({
+const upsertById = <T extends { id: string }>(items: T[], item: T) => {
+  return [...items.filter((candidate) => candidate.id !== item.id), item];
+};
+
+export const addCategory = (snapshot: DataSnapshot, category: ExpenseCategory): DataSnapshot => ({
   ...snapshot,
-  expenseCategories: sortByName([...snapshot.expenseCategories, category]),
+  expenseCategories: sortByName(upsertById(snapshot.expenseCategories, category)),
 });
 
-const addTag = (snapshot: DataSnapshot, tag: ExpenseTag): DataSnapshot => ({
+export const addTag = (snapshot: DataSnapshot, tag: ExpenseTag): DataSnapshot => ({
   ...snapshot,
-  expenseTags: sortByName([...snapshot.expenseTags, tag]),
+  expenseTags: sortByName(upsertById(snapshot.expenseTags, tag)),
 });
 
-const addPaymentMethod = (snapshot: DataSnapshot, paymentMethod: PaymentMethod): DataSnapshot => ({
+export const addPaymentMethod = (snapshot: DataSnapshot, paymentMethod: PaymentMethod): DataSnapshot => ({
   ...snapshot,
-  paymentMethods: sortByName([...snapshot.paymentMethods, paymentMethod]),
+  paymentMethods: sortByName(upsertById(snapshot.paymentMethods, paymentMethod)),
 });
 
 export function ExpenseDimensionManager() {

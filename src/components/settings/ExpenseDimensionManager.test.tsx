@@ -2,7 +2,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { DataSnapshot } from "@/context/MockContext";
-import { ExpenseDimensionManager, EXPENSE_DIMENSION_TABS } from "./ExpenseDimensionManager";
+import {
+  addCategory,
+  addPaymentMethod,
+  addTag,
+  ExpenseDimensionManager,
+  EXPENSE_DIMENSION_TABS,
+} from "./ExpenseDimensionManager";
 
 const snapshot = {
   expenseCategories: [{ id: "cat-food", name: "餐饮", archivedAt: null }],
@@ -41,5 +47,24 @@ describe("ExpenseDimensionManager", () => {
   it("keeps the three tabs as the single source for field metadata", () => {
     expect(EXPENSE_DIMENSION_TABS.map((tab) => tab.id)).toEqual(["category", "paymentMethod", "tag"]);
     expect(EXPENSE_DIMENSION_TABS.map((tab) => tab.label)).toEqual(["分类", "支付方式", "标签"]);
+  });
+
+  it("upserts a created dimension when a background refresh reapplies the same result", () => {
+    const category = { id: "cat-new", name: "早餐", archivedAt: null };
+    const tag = { id: "tag-new", name: "报销", archivedAt: null };
+    const paymentMethod = { id: "pay-new", name: "现金", archivedAt: null };
+
+    const snapshotWithDuplicate = addCategory(addCategory(snapshot, category), category);
+    const afterCategory = addCategory(snapshotWithDuplicate, category);
+    const afterTag = addTag(addTag(snapshot, tag), tag);
+    const afterPaymentMethod = addPaymentMethod(addPaymentMethod(snapshot, paymentMethod), paymentMethod);
+
+    expect(afterCategory.expenseCategories.filter((item) => item.id === category.id)).toHaveLength(1);
+    expect(afterTag.expenseTags.filter((item) => item.id === tag.id)).toHaveLength(1);
+    expect(afterPaymentMethod.paymentMethods.filter((item) => item.id === paymentMethod.id)).toHaveLength(1);
+    expect(afterCategory.expenseTags).toBe(snapshot.expenseTags);
+    expect(afterCategory.paymentMethods).toBe(snapshot.paymentMethods);
+    expect(afterTag.expenseCategories).toBe(snapshot.expenseCategories);
+    expect(afterPaymentMethod.expenseTags).toBe(snapshot.expenseTags);
   });
 });
