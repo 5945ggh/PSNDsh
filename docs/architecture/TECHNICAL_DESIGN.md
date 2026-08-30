@@ -119,6 +119,11 @@ User
 | `/api/v1/statistics` | 日、周、月和条目子树统计 |
 | `/api/v1/dashboard` | 首页聚合 DTO |
 | `/api/v1/export` | 当前账号结构化 JSON 导出 |
+| `/api/v1/api-keys` | 已登录网页 session 下创建、列出与撤销快捷捕获 API key |
+| `/api/v1/api-keys/:id` | 已登录网页 session 下再次查看某个 API key |
+| `/api/v1/expenses/capture` | 仅接受 Bearer API key 的最小开销捕获；不使用 cookie session 或 CSRF 同源校验；`id` 可省略，服务端会生成 UUID |
+
+快捷捕获 key 是独立于网页登录 session 的受限凭据。每个 key 由不含用户信息的公开定位符和高熵 secret 组成；服务端仅保存 secret 的 scrypt 哈希和由 `AUTH_SECRET` 派生密钥加密的副本。Bearer key 只被 `/api/v1/expenses/capture` 显式接受，不能代表网页 session 访问其他接口。`AUTH_SECRET` 轮换前必须先轮换已有 API key；当前实现未提供加密密钥环，因此旧 key 的加密副本在 secret 变更后不能再次查看。捕获请求提供 `id` 时按该 UUID 做幂等重试；省略或留空 `id` 时由服务端生成新 UUID，因此网络重试可能产生重复记录。
 
 ## 8. 前端数据加载
 
