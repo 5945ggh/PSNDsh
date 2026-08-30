@@ -1,0 +1,42 @@
+AGENTS.md
+  s_75abd3d22a96dd::t_6392c82c285db1 40-52
+  s_b4d202ea0bf784::t_2f7f48353c8c0a 38
+  s_dc6283a683f871::t_5e8891c70fa967 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "037abf613bba344fae2b8c0b877bb99246c3af7d",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_75abd3d22a96dd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a052a8-9e6b-71d3-895c-f45f26abbe5c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b4d202ea0bf784": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a048a5-44b0-71d1-94af-52fde0533494",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_dc6283a683f871": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04df2-ac24-7601-932f-21be5de0253a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
