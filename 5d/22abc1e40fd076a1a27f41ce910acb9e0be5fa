@@ -1,0 +1,34 @@
+src/lib/mock/expense.test.ts
+  s_4fabb86f48595f::t_779e9ede5404ad 91,108
+  s_a3fa48e732d913::t_49c770bd72bfe0 1-69,110
+  s_4fabb86f48595f::t_94070ef1b9e2c9 70-90,92-107,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5d22abc1e40fd076a1a27f41ce910acb9e0be5fa",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_4fabb86f48595f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0526a-2ceb-77a3-98d6-503ef2035167",
+        "model": "gpt-5.5"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_a3fa48e732d913": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04876-7302-7e63-9253-81ff006033e7",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
