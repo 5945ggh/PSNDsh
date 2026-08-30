@@ -1,0 +1,132 @@
+src/lib/api/http.ts
+  s_b2ef94db0a39d5::t_6044693c2ed838 3
+  s_b2ef94db0a39d5::t_0f003876bffb87 8-9,144-157
+  s_b2ef94db0a39d5::t_15ca96b169773b 158
+src/app/api/v1/expenses/inbox/route.ts
+  s_a3fa48e732d913::t_f0fe9495feb2d9 1-4
+src/app/api/v1/expenses/categories/[id]/route.ts
+  s_4fabb86f48595f::t_93be7e248dd9c2 1-21
+src/app/api/v1/expenses/capture/route.test.ts
+  s_b12b29dd80ebfe::t_206c7172a2182f 78-88
+  s_b2ef94db0a39d5::t_fc376f1afd8d47 1-3,5-9,11-13,15-47,49-56,58,61-62,89-116,118,120-122,124,126-128
+  s_b2ef94db0a39d5::t_e72bbf840f657f 10,14,117,119,123,125
+  s_b2ef94db0a39d5::t_202e6cfda0d9af 4,60
+  s_b2ef94db0a39d5::t_6c24b742cd3bf7 48,59
+  s_b2ef94db0a39d5::t_f2d7d3f7ccf01b 57
+  s_b12b29dd80ebfe::t_6ba7720f4ea023 63-77
+src/lib/api/client.test.ts
+  s_a3fa48e732d913::t_b9e8c514bc3631 54
+  s_a3fa48e732d913::t_1428279954dd05 57
+  s_a3fa48e732d913::t_af64037e474225 1-53,55-56,58-65
+src/app/api/v1/expenses/payment-methods/route.ts
+  s_4fabb86f48595f::t_501c89fd952cbe 1-2
+  s_4fabb86f48595f::t_15b55dd48ab378 3-18
+src/lib/api/adapter.ts
+  s_4fabb86f48595f::t_e860cf64bf3719 111-113,115-118,120-128
+  s_a3fa48e732d913::t_af3301b030c559 109-110,129
+  s_a3fa48e732d913::t_01db79e0c627b8 130
+  s_b12b29dd80ebfe::t_1d80984b80268e 114,119
+src/app/api/v1/expenses/tags/route.ts
+  s_4fabb86f48595f::t_7e0f27ac0df264 3-18
+  s_4fabb86f48595f::t_4dc39bd5d72e7f 1-2
+src/app/api/v1/expenses/payment-methods/[id]/merge/route.ts
+  s_4fabb86f48595f::t_15b55dd48ab378 1-12
+src/app/api/v1/expenses/capture/route.ts
+  s_b2ef94db0a39d5::t_35456b63cecca8 4,43
+  s_b2ef94db0a39d5::t_a8b16dfacb9977 29-32,41,54-57
+  s_b2ef94db0a39d5::t_0afa23a11bb628 2-3,5-7,21,26-28,33-40,42,44-45,47-53,58-61
+  s_b12b29dd80ebfe::t_6ba7720f4ea023 1,8-11,22-24,46
+  s_b12b29dd80ebfe::t_206c7172a2182f 12-20,25
+src/app/api/v1/expenses/categories/route.test.ts
+  s_4fabb86f48595f::t_d9239aa45954eb 26
+  s_4fabb86f48595f::t_10a1f6d335ed7d 1-25,27-72
+src/app/api/v1/expenses/route.ts
+  s_a3fa48e732d913::t_ed05a35995349b 1-5
+src/app/api/v1/expenses/categories/[id]/merge/route.ts
+  s_4fabb86f48595f::t_93be7e248dd9c2 1-12
+src/app/api/v1/expenses/categories/[id]/restore/route.ts
+  s_4fabb86f48595f::t_93be7e248dd9c2 1-14
+src/app/api/v1/expenses/payment-methods/[id]/restore/route.ts
+  s_4fabb86f48595f::t_15b55dd48ab378 1-14
+src/app/api/v1/expenses/tags/[id]/route.ts
+  s_4fabb86f48595f::t_7e0f27ac0df264 1-21
+src/lib/mock/api.ts
+  s_a3fa48e732d913::t_ae9f9e95081b9e 28-29,33-35,40,45,50-51
+  s_4fabb86f48595f::t_f608a44c6dd3d5 30-32,36-39,41-44,46-49
+src/app/api/v1/expenses/_dimension-route.ts
+  s_4fabb86f48595f::t_a6baa4c715f7a8 1-14
+src/app/api/v1/expenses/categories/route.ts
+  s_4fabb86f48595f::t_93be7e248dd9c2 2-18
+  s_a3fa48e732d913::t_f0fe9495feb2d9 1
+src/app/api/v1/api-keys/[id]/route.ts
+  s_b2ef94db0a39d5::t_3e429832be7316 1-16
+src/app/api/v1/api-keys/route.test.ts
+  s_b2ef94db0a39d5::t_6fc284744d754a 1-37,39,41-45,47,49-50
+  s_b2ef94db0a39d5::t_0dda611d3375e8 38,40,46,48
+src/app/api/v1/expenses/tags/[id]/merge/route.ts
+  s_4fabb86f48595f::t_7e0f27ac0df264 1-12
+src/lib/api/client.ts
+  s_4fabb86f48595f::t_1130e1243b9f5a 478-534
+  s_a3fa48e732d913::t_59d4346b5c0afe 160,535
+  s_a3fa48e732d913::t_2ebd7fb22ea55c 15-18,140-141,475-477,536
+  s_4fabb86f48595f::t_8270e6e970185a 5,142-144,146-149,151-159
+  s_b12b29dd80ebfe::t_dc5bc4631fc7ea 145,150
+  s_a3fa48e732d913::t_c09ad11566f563 161,538-539
+  s_a3fa48e732d913::t_bc8c14c8ffca96 537,540
+src/app/api/v1/expenses/tags/[id]/restore/route.ts
+  s_4fabb86f48595f::t_7e0f27ac0df264 1-14
+src/app/api/v1/api-keys/route.ts
+  s_b2ef94db0a39d5::t_3e429832be7316 1-13
+src/app/api/v1/expenses/[id]/route.ts
+  s_a3fa48e732d913::t_f0fe9495feb2d9 1-2,4-5,10-14,17-21,23-32
+  s_a3fa48e732d913::t_34eaff215747f6 6-9
+  s_a3fa48e732d913::t_59d4346b5c0afe 15-16
+  s_a3fa48e732d913::t_ba60f9cf958d2d 3,22
+src/app/api/v1/expenses/payment-methods/[id]/route.ts
+  s_4fabb86f48595f::t_15b55dd48ab378 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "165746076a897ebed1ca61c9f70c13797472125e",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_4fabb86f48595f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0526a-2ceb-77a3-98d6-503ef2035167",
+        "model": "gpt-5.5"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_a3fa48e732d913": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04876-7302-7e63-9253-81ff006033e7",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b12b29dd80ebfe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a051b8-e6bd-7313-907a-875aeb731b18",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b2ef94db0a39d5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04865-6a0e-7932-ab98-5b408dc37eb5",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
