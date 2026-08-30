@@ -15,6 +15,7 @@ import {
   User,
   LogOut,
   ClipboardCheck,
+  Receipt,
 } from "lucide-react";
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,6 +34,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     { label: "日历", href: "/calendar", icon: CalendarIcon },
     { label: "统计", href: "/statistics", icon: BarChart3 },
     { label: "周复盘", href: "/review", icon: ClipboardCheck },
+    { label: "账目", href: "/expenses", icon: Receipt },
     { label: "设置", href: "/settings", icon: Settings },
   ];
 

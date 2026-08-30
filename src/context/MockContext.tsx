@@ -22,7 +22,11 @@ import {
   Capabilities,
   DashboardPayload,
   Entry,
+  Expense,
+  ExpenseCategory,
+  ExpenseTag,
   FocusSession,
+  PaymentMethod,
   ScheduleBlock,
   StatisticsPayload,
   WeekPlan,
@@ -47,6 +51,11 @@ export type DataSnapshot = {
   scheduleBlocks: ScheduleBlock[];
   dashboard: DashboardPayload | null;
   statistics: Partial<Record<"day" | "week" | "month", StatisticsPayload>>;
+  expenses: Expense[];
+  inboxExpenses: Expense[];
+  expenseCategories: ExpenseCategory[];
+  expenseTags: ExpenseTag[];
+  paymentMethods: PaymentMethod[];
 };
 
 export type RefreshOptions = {
@@ -96,6 +105,11 @@ const emptyData = (): DataSnapshot => ({
   scheduleBlocks: [],
   dashboard: null,
   statistics: {},
+  expenses: [],
+  inboxExpenses: [],
+  expenseCategories: [],
+  expenseTags: [],
+  paymentMethods: [],
 });
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -120,6 +134,11 @@ const readAuthenticatedData = async (
     scheduleBlocks,
     dashboard,
     weekStatistics,
+    expenses,
+    inboxExpenses,
+    expenseCategories,
+    expenseTags,
+    paymentMethods,
   ] = await Promise.all([
     resources.has("capabilities") ? api.getCapabilities() : previous.capabilities,
     resources.has("entries") ? api.getEntries() : previous.entries,
@@ -131,6 +150,11 @@ const readAuthenticatedData = async (
     resources.has("weekStatistics")
       ? api.getStatisticsPayload("week")
       : previous.statistics.week,
+    resources.has("expenses") ? api.getExpenses() : previous.expenses,
+    resources.has("inboxExpenses") ? api.getInboxExpenses() : previous.inboxExpenses,
+    resources.has("expenseDimensions") ? api.getExpenseCategories() : previous.expenseCategories,
+    resources.has("expenseDimensions") ? api.getExpenseTags() : previous.expenseTags,
+    resources.has("expenseDimensions") ? api.getPaymentMethods() : previous.paymentMethods,
   ]);
 
   return {
@@ -145,6 +169,11 @@ const readAuthenticatedData = async (
     statistics: weekStatistics
       ? { ...previous.statistics, week: weekStatistics }
       : previous.statistics,
+    expenses,
+    inboxExpenses,
+    expenseCategories,
+    expenseTags,
+    paymentMethods,
   } satisfies DataSnapshot;
 };
 
@@ -167,6 +196,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     isMockApiFeatures(api) ? api.getScenario() : "normal"
   );
   const requestVersion = useRef(0);
+  const mutationVersion = useRef(0);
   const snapshotRef = useRef<DataSnapshot>(emptyData());
   const loadedResourcesRef = useRef<LoadedResources>({
     userId: null,
@@ -175,6 +205,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refresh = useCallback(async ({ background = false }: RefreshOptions = {}) => {
     const requestId = ++requestVersion.current;
+    const refreshMutationVersion = mutationVersion.current;
     if (!background) {
       setStatus("loading");
       setError(null);
@@ -193,7 +224,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         ? await readAuthenticatedData(api, session, pathname, snapshotRef.current)
         : { ...emptyData(), capabilities: await api.getCapabilities() };
 
-      if (requestId !== requestVersion.current) return;
+      if (requestId !== requestVersion.current || refreshMutationVersion !== mutationVersion.current) return;
       const userId = session.user?.id ?? null;
       const loadedResources =
         loadedResourcesRef.current.userId === userId
@@ -246,21 +277,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     async <T,>(operation: () => Promise<T>, options: MutationOptions<T> = {}) => {
       setPendingMutations((current) => current + 1);
       setError(null);
+      mutationVersion.current += 1;
       try {
         const result = await operation();
-        if (options.update) {
+        const applyUpdate = () => {
+          if (!options.update) return;
           setData((current) => {
             const next = options.update?.(current, result) ?? current;
             snapshotRef.current = next;
             return next;
           });
-        }
+        };
+        applyUpdate();
         if (options.refresh !== false) {
           const revalidation = refresh({ background: true });
           if (options.backgroundRefresh) {
-            void revalidation;
+            void revalidation.then(applyUpdate);
           } else {
             await revalidation;
+            // Reapply the server-confirmed mutation after revalidation so an
+            // overlapping/stale response cannot resurrect the edited record.
+            applyUpdate();
           }
         }
         return result;

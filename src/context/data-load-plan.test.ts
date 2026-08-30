@@ -46,6 +46,7 @@ describe("resourcesForPathname", () => {
       "activeFocus",
       "focusSessions",
       "scheduleBlocks",
+      "expenseDimensions",
     ]);
   });
 
@@ -66,6 +67,30 @@ describe("resourcesForPathname", () => {
       "currentWeekPlan",
       "weekStatistics",
     ]);
+  });
+
+  it("loads inbox and expense routes with their dedicated expense resources", () => {
+    expect(resourcesForPathname("/inbox")).toEqual([
+      "capabilities",
+      "entries",
+      "activeFocus",
+      "inboxExpenses",
+      "expenseDimensions",
+    ]);
+    expect(resourcesForPathname("/expenses")).toEqual([
+      "capabilities",
+      "entries",
+      "activeFocus",
+      "expenses",
+      "expenseDimensions",
+    ]);
+  });
+
+  it("loads Inbox records on demand without loading the complete expense history", () => {
+    const resources = resourcesForPathname("/inbox");
+    expect(resources).toContain("inboxExpenses");
+    expect(resources).toContain("expenseDimensions");
+    expect(resources).not.toContain("expenses");
   });
 
   it("does not consider a route ready until all of its resources are loaded", () => {
