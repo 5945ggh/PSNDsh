@@ -60,7 +60,7 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const inlineScrollY = useRef<number | null>(null);
+  const inlineScrollTop = useRef<number | null>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1023px)");
@@ -90,14 +90,20 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
 
   const preserveInlineScrollPosition = useCallback(() => {
     if ((mode === "expenses" || isMobile) && typeof window !== "undefined") {
-      inlineScrollY.current = window.scrollY;
+      const mainContent = document.getElementById("main-content");
+      inlineScrollTop.current = mainContent?.scrollTop ?? window.scrollY;
     }
   }, [isMobile, mode]);
 
   useLayoutEffect(() => {
-    if (inlineScrollY.current === null || typeof window === "undefined") return;
-    window.scrollTo({ top: inlineScrollY.current, left: window.scrollX, behavior: "auto" });
-    inlineScrollY.current = null;
+    if (inlineScrollTop.current === null || typeof window === "undefined") return;
+    const mainContent = document.getElementById("main-content");
+    if (mainContent) {
+      mainContent.scrollTop = inlineScrollTop.current;
+    } else {
+      window.scrollTo({ top: inlineScrollTop.current, left: window.scrollX, behavior: "auto" });
+    }
+    inlineScrollTop.current = null;
   }, [draft, errorMessage, isSubmitting, pageIndex, selectedId, statusMessage]);
 
   const selectRecord = useCallback(

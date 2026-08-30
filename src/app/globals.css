@@ -7,6 +7,8 @@
 
 :root {
   --surface-page: #fcfcfc;
+  --app-top-bar-height: 3.5rem;
+  --app-sidebar-width: 15rem;
   --surface-raised: #ffffff;
   --surface-raised-alt: #f8fafc;
   --surface-rail: #fbfbfc;
@@ -99,6 +101,21 @@ body {
   color: var(--text-primary);
 }
 
+.app-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-main {
+  height: 100%;
+  padding-top: var(--app-top-bar-height);
+  padding-bottom: 5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .app-rail {
   background: var(--surface-rail);
   border: 1px solid var(--border-subtle);
@@ -115,6 +132,15 @@ body {
 .app-shell-sidebar {
   background: var(--surface-rail);
   border-color: var(--border-subtle);
+  position: fixed;
+  top: var(--app-top-bar-height);
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .app-shell-nav-link {
@@ -178,6 +204,9 @@ body {
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-rail);
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
 }
 
 .app-focus-time {
@@ -211,6 +240,13 @@ body {
   background: var(--surface-rail-soft);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 768px) {
+  .app-shell-main {
+    margin-left: var(--app-sidebar-width);
+    padding-bottom: 0;
+  }
 }
 
 .app-scenario-toggle {

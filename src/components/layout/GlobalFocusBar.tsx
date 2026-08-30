@@ -21,7 +21,7 @@ export const GlobalFocusBar: React.FC = () => {
     : null;
 
   return (
-    <header className="app-focus-rail w-full px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+    <header data-testid="global-top-bar" className="app-focus-rail flex h-14 w-full items-center justify-between gap-3 px-4 text-sm">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="flex items-center gap-2 font-mono font-semibold tracking-wider text-base tabular-nums app-focus-time">
           <Timer className="w-4 h-4" aria-hidden="true" />

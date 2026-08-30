@@ -39,13 +39,14 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
   ];
 
   return (
-    <div className="app-page min-h-screen flex flex-col font-sans">
+    <div className="app-shell app-page flex font-sans">
       <GlobalFocusBar />
 
-      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+      <div className="app-shell-body flex h-full min-h-0 w-full">
         <aside
           aria-label="侧边主导航"
-          className="app-shell-sidebar hidden md:flex w-60 flex-col justify-between border-r px-4 py-4 shrink-0"
+          data-testid="global-sidebar"
+          className="app-shell-sidebar hidden md:flex w-60 flex-col justify-between border-r px-4 py-4"
         >
           <div>
             <div className="flex items-center gap-2.5 px-3 py-2 mb-6">
@@ -110,7 +111,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
         </aside>
 
-        <main id="main-content" className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto pb-20 md:pb-0">
+        <main id="main-content" className="app-shell-main flex min-w-0 min-h-0 flex-1 flex-col">
           {children}
         </main>
       </div>

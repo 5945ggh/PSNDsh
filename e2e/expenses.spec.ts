@@ -151,6 +151,7 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
 
 test("expenses overview expands one inline detail row and keeps pagination stable", async ({ page }) => {
   const username = unique("expense-overview");
+  await page.setViewportSize({ width: 1440, height: 900 });
   await registerUser(page, username);
 
   const apiKey = await createApiKey(page, "总览快捷指令");
@@ -181,6 +182,50 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   }
 
   await page.goto("/expenses");
+  const topBar = page.getByTestId("global-top-bar");
+  const sidebar = page.getByTestId("global-sidebar");
+  const mainContent = page.locator("#main-content");
+  await expect(topBar).toBeVisible();
+  await expect(sidebar).toBeVisible();
+  await expect(mainContent).toBeVisible();
+  const shellGeometry = await page.evaluate(() => {
+    const topBar = document.querySelector<HTMLElement>('[data-testid="global-top-bar"]');
+    const sidebar = document.querySelector<HTMLElement>('[data-testid="global-sidebar"]');
+    const main = document.querySelector<HTMLElement>("#main-content");
+    if (!topBar || !sidebar || !main) throw new Error("persistent app shell elements are missing");
+    const topBarRect = topBar.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const mainStyle = getComputedStyle(main);
+    return {
+      topBarPosition: getComputedStyle(topBar).position,
+      topBarTop: topBarRect.top,
+      topBarBottom: topBarRect.bottom,
+      sidebarPosition: getComputedStyle(sidebar).position,
+      sidebarTop: sidebarRect.top,
+      sidebarBottom: sidebarRect.bottom,
+      sidebarWidth: sidebarRect.width,
+      mainOverflowY: mainStyle.overflowY,
+      mainClientHeight: main.clientHeight,
+      mainScrollHeight: main.scrollHeight,
+      windowScrollY: window.scrollY,
+    };
+  });
+  expect(shellGeometry.topBarPosition).toBe("fixed");
+  expect(shellGeometry.topBarTop).toBe(0);
+  expect(shellGeometry.topBarBottom).toBe(56);
+  expect(shellGeometry.sidebarPosition).toBe("fixed");
+  expect(shellGeometry.sidebarTop).toBe(56);
+  expect(shellGeometry.sidebarBottom).toBe(900);
+  expect(shellGeometry.sidebarWidth).toBe(240);
+  expect(shellGeometry.mainOverflowY).toBe("auto");
+  expect(shellGeometry.mainScrollHeight).toBeGreaterThan(shellGeometry.mainClientHeight);
+  expect(shellGeometry.windowScrollY).toBe(0);
+
+  await mainContent.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(sidebar.getByRole("link", { name: "首页" })).toBeVisible();
   await expect(page.getByRole("button", { name: "下一页" })).toBeVisible();
   await expect(page.getByRole("button", { name: "保存修改" })).toHaveCount(0);
   await expect(page.getByTestId(`expense-row-${records[25].id}`)).toBeVisible();
@@ -195,22 +240,24 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(1);
   await expect(latestRow.getByTestId("expense-detail-panel")).toBeVisible();
   await expect.poll(async () => list.evaluate((element) => element.getBoundingClientRect().width)).toBe(listWidth);
+  await expect.poll(() => topBar.evaluate((element) => element.getBoundingClientRect().top)).toBe(0);
+  await expect.poll(() => sidebar.evaluate((element) => element.getBoundingClientRect().top)).toBe(56);
 
   await latestRowButton.click();
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(0);
 
   const previousRow = page.getByTestId(`expense-row-${records[1].id}`);
   await previousRow.scrollIntoViewIfNeeded();
-  const scrollYBeforeSwitch = await page.evaluate(() => window.scrollY);
+  const scrollTopBeforeSwitch = await mainContent.evaluate((element) => element.scrollTop);
   await previousRow.locator(":scope > button").click();
-  await expect.poll(async () => page.evaluate(() => window.scrollY)).toBe(scrollYBeforeSwitch);
+  await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBe(scrollTopBeforeSwitch);
   await expect(previousRow.getByTestId("expense-detail-panel")).toBeVisible();
   await expect(latestRow.getByTestId("expense-detail-panel")).toHaveCount(0);
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(1);
 
-  const scrollYBeforeCollapse = await page.evaluate(() => window.scrollY);
+  const scrollTopBeforeCollapse = await mainContent.evaluate((element) => element.scrollTop);
   await previousRow.locator(":scope > button").click();
-  await expect.poll(async () => page.evaluate(() => window.scrollY)).toBe(scrollYBeforeCollapse);
+  await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBe(scrollTopBeforeCollapse);
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(0);
 
   await page.getByRole("button", { name: "下一页" }).click();
