@@ -1,0 +1,24 @@
+next.config.ts
+  s_b12b29dd80ebfe::t_b42b8e7817bbae 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "faa23c4a165d18dbd9c44332f78aa9760ecff624",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_b12b29dd80ebfe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a051b8-e6bd-7313-907a-875aeb731b18",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
