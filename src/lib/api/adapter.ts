@@ -106,6 +106,28 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   getCalendarPayload(...args: Parameters<MockApiAdapter["getCalendarPayload"]>) {
     return asPromise(() => this.mock.getCalendarPayload(...args));
   }
+  getExpenses() { return asPromise(() => this.mock.getExpenses()); }
+  getInboxExpenses() { return asPromise(() => this.mock.getInboxExpenses()); }
+  getExpenseCategories(...args: Parameters<MockApiAdapter["getExpenseCategories"]>) { return asPromise(() => this.mock.getExpenseCategories(...args)); }
+  getExpenseTags(...args: Parameters<MockApiAdapter["getExpenseTags"]>) { return asPromise(() => this.mock.getExpenseTags(...args)); }
+  getPaymentMethods(...args: Parameters<MockApiAdapter["getPaymentMethods"]>) { return asPromise(() => this.mock.getPaymentMethods(...args)); }
+  createExpenseCategory(...args: Parameters<MockApiAdapter["createExpenseCategory"]>) { return asPromise(() => this.mock.createExpenseCategory(...args)); }
+  renameExpenseCategory(...args: Parameters<MockApiAdapter["renameExpenseCategory"]>) { return asPromise(() => this.mock.renameExpenseCategory(...args)); }
+  archiveExpenseCategory(...args: Parameters<MockApiAdapter["archiveExpenseCategory"]>) { return asPromise(() => this.mock.archiveExpenseCategory(...args)); }
+  restoreExpenseCategory(...args: Parameters<MockApiAdapter["restoreExpenseCategory"]>) { return asPromise(() => this.mock.restoreExpenseCategory(...args)); }
+  mergeExpenseCategory(...args: Parameters<MockApiAdapter["mergeExpenseCategory"]>) { return asPromise(() => this.mock.mergeExpenseCategory(...args)); }
+  createExpenseTag(...args: Parameters<MockApiAdapter["createExpenseTag"]>) { return asPromise(() => this.mock.createExpenseTag(...args)); }
+  renameExpenseTag(...args: Parameters<MockApiAdapter["renameExpenseTag"]>) { return asPromise(() => this.mock.renameExpenseTag(...args)); }
+  archiveExpenseTag(...args: Parameters<MockApiAdapter["archiveExpenseTag"]>) { return asPromise(() => this.mock.archiveExpenseTag(...args)); }
+  restoreExpenseTag(...args: Parameters<MockApiAdapter["restoreExpenseTag"]>) { return asPromise(() => this.mock.restoreExpenseTag(...args)); }
+  mergeExpenseTag(...args: Parameters<MockApiAdapter["mergeExpenseTag"]>) { return asPromise(() => this.mock.mergeExpenseTag(...args)); }
+  createPaymentMethod(...args: Parameters<MockApiAdapter["createPaymentMethod"]>) { return asPromise(() => this.mock.createPaymentMethod(...args)); }
+  renamePaymentMethod(...args: Parameters<MockApiAdapter["renamePaymentMethod"]>) { return asPromise(() => this.mock.renamePaymentMethod(...args)); }
+  archivePaymentMethod(...args: Parameters<MockApiAdapter["archivePaymentMethod"]>) { return asPromise(() => this.mock.archivePaymentMethod(...args)); }
+  restorePaymentMethod(...args: Parameters<MockApiAdapter["restorePaymentMethod"]>) { return asPromise(() => this.mock.restorePaymentMethod(...args)); }
+  mergePaymentMethod(...args: Parameters<MockApiAdapter["mergePaymentMethod"]>) { return asPromise(() => this.mock.mergePaymentMethod(...args)); }
+  updateExpense(...args: Parameters<MockApiAdapter["updateExpense"]>) { return asPromise(() => this.mock.updateExpense(...args)); }
+  captureExpense(...args: Parameters<MockApiAdapter["captureExpense"]>) { return asPromise(() => this.mock.captureExpense(...args).expense); }
 }
 
 export const isMockApiFeatures = (
