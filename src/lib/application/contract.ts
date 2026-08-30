@@ -4,8 +4,15 @@ import {
   Capabilities,
   DashboardPayload,
   Entry,
+  Expense,
+  ExpenseCategory,
+  ExpenseCurrency,
+  ExpenseOccurrencePrecision,
+  ExpenseSource,
+  ExpenseTag,
   FocusSegment,
   FocusSession,
+  PaymentMethod,
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleImport,
@@ -65,6 +72,83 @@ export type ManualFocusInput = {
   outcome: string | null;
   entryId: string | null;
 };
+
+export type CaptureExpenseInput = {
+  /** Stable client UUID reused across retries for the same capture. */
+  id: string;
+  amountCents: number;
+  currency?: ExpenseCurrency;
+  occurredAt?: string;
+  occurredOn?: string;
+  occurredTimezone?: string | null;
+  occurrencePrecision?: ExpenseOccurrencePrecision;
+  captureMessage?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  source?: ExpenseSource;
+};
+
+export type CaptureExpenseResult = {
+  expense: Expense;
+  created: boolean;
+};
+
+export type UpdateExpenseInput = Partial<Pick<
+  Expense,
+  "amountCents" | "occurredAt" | "occurredOn" | "occurrencePrecision" | "note" | "categoryId" | "paymentMethodId" | "reviewStatus" | "recoverableCents" | "settled"
+>> & {
+  tagIds?: string[];
+};
+
+export type CreateExpenseDimensionInput = {
+  name: string;
+};
+
+export type MergeExpenseDimensionInput = {
+  targetId: string;
+};
+
+export type ApiKeyMetadata = { id: string; name: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
+export type ApiKeyCreated = ApiKeyMetadata & { apiKey: string };
+
+export interface ApiKeyApplicationService {
+  createApiKey(name: string): ApiKeyCreated;
+  listApiKeys(): ApiKeyMetadata[];
+  revealApiKey(id: string): string;
+  revokeApiKey(id: string): void;
+}
+
+/**
+ * Separate from the existing dashboard service so the current mock adapter does
+ * not accidentally claim support for persistent expense operations.
+ */
+export interface ExpenseApplicationService {
+  createExpenseCategory(input: CreateExpenseDimensionInput): ExpenseCategory;
+  getExpenseCategories(includeArchived?: boolean): ExpenseCategory[];
+  renameExpenseCategory(id: string, input: CreateExpenseDimensionInput): ExpenseCategory;
+  archiveExpenseCategory(id: string): ExpenseCategory;
+  restoreExpenseCategory(id: string): ExpenseCategory;
+  mergeExpenseCategory(id: string, input: MergeExpenseDimensionInput): ExpenseCategory;
+  createExpenseTag(input: CreateExpenseDimensionInput): ExpenseTag;
+  getExpenseTags(includeArchived?: boolean): ExpenseTag[];
+  renameExpenseTag(id: string, input: CreateExpenseDimensionInput): ExpenseTag;
+  archiveExpenseTag(id: string): ExpenseTag;
+  restoreExpenseTag(id: string): ExpenseTag;
+  mergeExpenseTag(id: string, input: MergeExpenseDimensionInput): ExpenseTag;
+  createPaymentMethod(input: CreateExpenseDimensionInput): PaymentMethod;
+  getPaymentMethods(includeArchived?: boolean): PaymentMethod[];
+  renamePaymentMethod(id: string, input: CreateExpenseDimensionInput): PaymentMethod;
+  archivePaymentMethod(id: string): PaymentMethod;
+  restorePaymentMethod(id: string): PaymentMethod;
+  mergePaymentMethod(id: string, input: MergeExpenseDimensionInput): PaymentMethod;
+
+  captureExpense(input: CaptureExpenseInput): CaptureExpenseResult;
+  getExpenses(): Expense[];
+  getInboxExpenses(): Expense[];
+  getExpenseById(id: string, options?: { includeDeleted?: boolean }): Expense | undefined;
+  updateExpense(id: string, input: UpdateExpenseInput): Expense;
+  deleteExpense(id: string): void;
+}
 
 export const statisticsScaleSchema = z.enum(["day", "week", "month"]);
 

@@ -3,6 +3,9 @@ import {
   Entry,
   FocusSegment,
   FocusSession,
+  ExpenseCategory,
+  ExpenseTag,
+  PaymentMethod,
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
   UserDataExport,
@@ -41,6 +44,32 @@ export class MockApplicationService implements ApplicationService {
   getExistingWeekPlan(weekStart: string) { return this.store.getExistingWeekPlan(weekStart); }
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
+  getExpenses() { return this.store.getExpenses(); }
+  getInboxExpenses() { return this.store.getInboxExpenses(); }
+  getExpenseCategories(includeArchived = false) { return this.store.getExpenseCategories(includeArchived); }
+  getExpenseTags(includeArchived = false) { return this.store.getExpenseTags(includeArchived); }
+  getPaymentMethods(includeArchived = false) { return this.store.getPaymentMethods(includeArchived); }
+  captureExpense(input: Parameters<MockDataStore["captureExpense"]>[0]) { return this.store.captureExpense(input); }
+  updateExpense(id: string, input: Parameters<MockDataStore["updateExpense"]>[1]) { return this.store.updateExpense(id, input); }
+  createExpenseCategory(input: { name: string }): ExpenseCategory { return this.store.createExpenseCategory(input); }
+  renameExpenseCategory(id: string, input: { name: string }): ExpenseCategory { return this.store.renameExpenseCategory(id, input); }
+  archiveExpenseCategory(id: string): ExpenseCategory { return this.store.archiveExpenseCategory(id); }
+  restoreExpenseCategory(id: string): ExpenseCategory { return this.store.restoreExpenseCategory(id); }
+  mergeExpenseCategory(id: string, input: { targetId: string }): ExpenseCategory { return this.store.mergeExpenseCategory(id, input); }
+  createExpenseTag(input: { name: string }): ExpenseTag { return this.store.createExpenseTag(input); }
+  renameExpenseTag(id: string, input: { name: string }): ExpenseTag { return this.store.renameExpenseTag(id, input); }
+  archiveExpenseTag(id: string): ExpenseTag { return this.store.archiveExpenseTag(id); }
+  restoreExpenseTag(id: string): ExpenseTag { return this.store.restoreExpenseTag(id); }
+  mergeExpenseTag(id: string, input: { targetId: string }): ExpenseTag { return this.store.mergeExpenseTag(id, input); }
+  createPaymentMethod(input: { name: string }): PaymentMethod { return this.store.createPaymentMethod(input); }
+  renamePaymentMethod(id: string, input: { name: string }): PaymentMethod { return this.store.renamePaymentMethod(id, input); }
+  archivePaymentMethod(id: string): PaymentMethod { return this.store.archivePaymentMethod(id); }
+  restorePaymentMethod(id: string): PaymentMethod { return this.store.restorePaymentMethod(id); }
+  mergePaymentMethod(id: string, input: { targetId: string }): PaymentMethod { return this.store.mergePaymentMethod(id, input); }
+  getExpenseById(id: string, options: { includeDeleted?: boolean } = {}) {
+    return this.store.getExpenseById(id, options.includeDeleted ?? false);
+  }
+  deleteExpense(id: string) { this.store.deleteExpense(id); }
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
   getScheduleImports() { return []; }
   deleteScheduleImport(id: string) { void id; throw new MockDomainError("SCHEDULE_NOT_FOUND", "导入批次不存在"); }

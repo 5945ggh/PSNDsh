@@ -284,3 +284,56 @@ export type UserDataExport = {
   focusSessions: FocusSession[];
   scheduleBlocks: ScheduleBlock[];
 };
+
+export type ExpenseCurrency = "CNY";
+export type ExpenseOccurrencePrecision = "datetime" | "date";
+export type ExpenseReviewStatus = "pending" | "reviewed";
+export type ExpenseRecognitionStatus = "recognized";
+export type ExpenseSource = "shortcut" | "manual";
+
+export type ExpenseCategory = {
+  id: string;
+  name: string;
+  archivedAt: string | null;
+};
+
+export type ExpenseTag = {
+  id: string;
+  name: string;
+  archivedAt: string | null;
+};
+
+export type PaymentMethod = {
+  id: string;
+  name: string;
+  archivedAt: string | null;
+};
+
+export type Expense = {
+  /** Client-generated UUID. It is unique within a user, not globally. */
+  id: string;
+  amountCents: number;
+  currency: ExpenseCurrency;
+  occurredAt: string | null;
+  occurredOn: string | null;
+  occurredTimezone: string | null;
+  occurrencePrecision: ExpenseOccurrencePrecision;
+  recordedAt: string;
+  captureMessage: string | null;
+  note: string | null;
+  categoryId: string | null;
+  categoryName?: string | null;
+  paymentMethodId: string | null;
+  paymentMethodName?: string | null;
+  tags: ExpenseTag[];
+  reviewStatus: ExpenseReviewStatus;
+  recognitionStatus: ExpenseRecognitionStatus;
+  recoverableCents: number;
+  settled: boolean;
+  source: ExpenseSource;
+  latitude: number | null;
+  longitude: number | null;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
