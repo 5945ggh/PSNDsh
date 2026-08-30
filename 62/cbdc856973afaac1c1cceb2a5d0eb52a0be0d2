@@ -1,0 +1,168 @@
+src/lib/mock/store.ts
+  s_a3fa48e732d913::t_c0696e8ad831d7 709-716,728-730,737-739,745-747,754-756,762-772,776-785,836-840,844-853,905-909,913-922,973-1087,1092-1101,1105-1108,1110,1112-1113,1117-1118,1120-1140
+  s_a3fa48e732d913::t_c2e23a3a6f19fa 67-96
+  s_a3fa48e732d913::t_ed0b098bda10a4 157-160,222-225
+  s_4fabb86f48595f::t_dd10295d83d0a0 717-727,731-736,740-744,748-753,757-761,773-775,786-835,841-843,854-904,910-912,923-972
+  s_a3fa48e732d913::t_1d738bb3545d31 1088-1091,1103-1104
+  s_56ab452e2e1468::t_a8419a3f0101ea 1102,1119
+  s_a3fa48e732d913::t_3cbad0cf922c91 15-18,207
+  s_a3fa48e732d913::t_4c8eaad060ac25 31-34
+  s_56ab452e2e1468::t_a509e3e01d222d 1109,1111,1114-1116
+  s_a3fa48e732d913::t_2c0434be99d74e 161-163
+  s_a3fa48e732d913::t_02b535eac9e165 204-206,219-221
+  s_dc6283a683f871::t_12b137b75d6f85 1141
+src/lib/security/api-key.ts
+  s_b2ef94db0a39d5::t_6ca24f652d1859 38-47,191-201,203-206
+  s_b2ef94db0a39d5::t_045cb6f2ae4f32 27,103,107-108,114,117,125,183,186,188,202,217,232
+  s_b2ef94db0a39d5::t_c4dc03b09e997a 1-26,28-37,48-102,104-106,109-113,115-116,118-124,126-182,184-185,187,189-190,207-216,218-231,233-235
+src/lib/persistence/sqlite-service.test.ts
+  s_b5bc866f628f4e::t_728dc07a931979 811-824,826-874,879-931
+  s_b5bc866f628f4e::t_6354cdb5ee1aa8 875-878
+  s_b2ef94db0a39d5::t_d17617a03a102d 825
+  s_4fabb86f48595f::t_2728c9c4e7085b 1053-1086
+  s_56ab452e2e1468::t_fc8ae45d81d5a0 1037-1052,1087
+src/lib/mock/fixtures.ts
+  s_a3fa48e732d913::t_0e08f45807afa7 9-12,496-497,501-503,507-509,513-623
+  s_4fabb86f48595f::t_24d359516142a4 498-500,504-506,510-512
+src/lib/db/schema.ts
+  s_b2ef94db0a39d5::t_2feb852d46d559 40
+  s_b5bc866f628f4e::t_28edbc503ba14a 247-307,311-334,349-353
+  s_b2ef94db0a39d5::t_f2d7d3f7ccf01b 308
+  s_b2ef94db0a39d5::t_1cbc7e22882e7f 28-39,41-42,338
+  s_b5bc866f628f4e::t_1cdde6a970832c 6,309-310
+  s_b5bc866f628f4e::t_a03efa44c260ba 335
+src/lib/mock/store.test.ts
+  s_d762dd14437546::t_a2f18606088ddf 156,158-167
+  s_d762dd14437546::t_6d3fc43b8be9bc 157
+  s_d762dd14437546::t_320c495ad44023 3
+  s_a3fa48e732d913::t_da254676e1f6f1 170
+  s_a3fa48e732d913::t_ccfe9314344635 146-155,168-169,171-190
+  s_d762dd14437546::t_ea1bbbedae21a1 191-192
+src/lib/application/error.ts
+  s_4fabb86f48595f::t_fe695294952acc 30-32
+  s_b5bc866f628f4e::t_28edbc503ba14a 23-29
+src/lib/application/contract.ts
+  s_b5bc866f628f4e::t_28edbc503ba14a 7-12,15,76-97,99-106,121-127,132-133,138-139,144-151
+  s_4fabb86f48595f::t_6f3e0edcb249fc 107-110,128-131,134-137,140-143
+  s_a3fa48e732d913::t_5f2c6b22648f46 98
+  s_b2ef94db0a39d5::t_72f6db4a0c7f06 111-120
+  s_dc6283a683f871::t_7808dafd633789 152
+src/lib/persistence/sqlite-service.ts
+  s_4fabb86f48595f::t_f5652f67496a0a 558-563,587,589
+  s_4fabb86f48595f::t_bbd15c2f6e967a 2,808-819
+  s_4fabb86f48595f::t_ebfe988844a07a 35
+  s_95a0d2d1fb5c5b::t_90cb69650db0f9 972,981,1052-1053
+  s_4fabb86f48595f::t_8bedac7f529692 331-348,354-361,363-372,380-398
+  s_b2ef94db0a39d5::t_d69ec2ff65b4eb 5,30-32,77,242,256-281
+  s_b2ef94db0a39d5::t_f2d7d3f7ccf01b 951
+  s_4fabb86f48595f::t_acd6e8b99a25b4 718,795,883
+  s_b5bc866f628f4e::t_f86d06d2ed3bfd 7-10,13,26-29,37,53-55,58,93,215-241,311-330,349-353,362,373-379
+  s_56ab452e2e1468::t_c74b1ebb7eb7c2 1001-1003,1006-1011,1017,1020-1022
+  s_56ab452e2e1468::t_2c32d027be1bbe 1004-1005
+  s_b5bc866f628f4e::t_4f28725e94ec1d 621,633
+  s_4fabb86f48595f::t_7798911eff0718 702,779,867
+  s_a3fa48e732d913::t_c5505f5d76feaf 995-998,1028
+  s_56ab452e2e1468::t_e7065ada372cd1 1029-1031
+  s_4fabb86f48595f::t_01ca0db60168dc 666-668,683-701,703-717,719,721-734,736-740,743-745,758-778,780-781,784-794,796,798-807,820-822,824-828,831-833,846-866,868-882,884,886-899,901-903
+  s_4fabb86f48595f::t_073d049c8fe5dc 735,823,900
+  s_4fabb86f48595f::t_cf85294fa78abe 720,797,885
+  s_a3fa48e732d913::t_fe516768b2126b 999-1000
+  s_b5bc866f628f4e::t_eacb675726b139 282,399,545-557,564-586,588,590-620,622-632,634-665,669-682,741-742,746-757,782-783,829-830,834-845,904-950,952-971,973-980,982-994,1012-1016,1018-1019,1023-1027,1032-1051,1054-1062
+  s_dc6283a683f871::t_ab7f655549262a 283,400,1063
+src/lib/mock/service.ts
+  s_a3fa48e732d913::t_411b9a8e98566f 6-8,54,59,64,72
+  s_a3fa48e732d913::t_bcc5b641de509d 52
+  s_d762dd14437546::t_a2f18606088ddf 69-71
+  s_4fabb86f48595f::t_83f2ced42e35d5 49-51,55-58,60-63,65-68
+  s_a3fa48e732d913::t_6b9db87d518b34 47-48,53
+src/lib/security/api-key.test.ts
+  s_b2ef94db0a39d5::t_045cb6f2ae4f32 33-34,42,53-54
+  s_b2ef94db0a39d5::t_6ca24f652d1859 8,21
+  s_b2ef94db0a39d5::t_c4dc03b09e997a 1-7,9-20,22-32,35-41,43-52,55-63
+src/lib/domain/types.ts
+  s_b2ef94db0a39d5::t_f2d7d3f7ccf01b 292
+  s_b5bc866f628f4e::t_28edbc503ba14a 287-291,293-324,326,328-339
+  s_4fabb86f48595f::t_d5ac33a824659a 325,327
+drizzle/0005_expense_capture.sql
+  s_b2ef94db0a39d5::t_f2d7d3f7ccf01b 50
+  s_b5bc866f628f4e::t_28edbc503ba14a 1-49,51-73
+drizzle/0006_api_keys.sql
+  s_b2ef94db0a39d5::t_7bbda2f61afac2 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "62cbdc856973afaac1c1cceb2a5d0eb52a0be0d2",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_4fabb86f48595f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0526a-2ceb-77a3-98d6-503ef2035167",
+        "model": "gpt-5.5"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_56ab452e2e1468": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a043be-9858-7780-9fd9-d5a565fb2abd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_95a0d2d1fb5c5b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04def-814c-73e1-9705-51cf7265be30",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_a3fa48e732d913": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04876-7302-7e63-9253-81ff006033e7",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b2ef94db0a39d5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04865-6a0e-7932-ab98-5b408dc37eb5",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b5bc866f628f4e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04839-9468-7eb0-88e8-403431da4c27",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_d762dd14437546": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a048e3-1888-7b00-bd77-62a47e765f1b",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_dc6283a683f871": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04df2-ac24-7601-932f-21be5de0253a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
