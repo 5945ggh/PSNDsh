@@ -1,0 +1,35 @@
+src/components/expenses/ExpenseWorkspace.tsx
+  s_85635c033fc1c2::t_43f6722122e69c 63,93-94,99-106
+src/app/globals.css
+  s_85635c033fc1c2::t_5d50939711cb55 10-11,104-118,135-143,207-209,245-250
+  s_85635c033fc1c2::t_e9c9b910197d73 251
+src/components/layout/GlobalFocusBar.tsx
+  s_85635c033fc1c2::t_5d50939711cb55 24
+e2e/expenses.spec.ts
+  s_85635c033fc1c2::t_c3b97c480a104b 188-190
+  s_85635c033fc1c2::t_04582394404bba 154
+  s_85635c033fc1c2::t_43f6722122e69c 185-187,191-228,243-244,251,253,258,260
+src/components/layout/AppShell.tsx
+  s_85635c033fc1c2::t_5d50939711cb55 42,45,48-49,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b469b09ddc2f39e634e67a98f19926778b3725e5",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_85635c033fc1c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05323-782f-77f2-9204-a81edcee6cb7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
