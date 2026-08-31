@@ -35,4 +35,4 @@ RUN mkdir -p /app/data && chown -R app:app /app
 USER app
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["node", "node_modules/next/dist/bin/next", "start"]
