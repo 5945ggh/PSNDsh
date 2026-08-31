@@ -7,6 +7,7 @@ export function GET(request: Request) {
     return jsonData(data, {
       headers: {
         "content-disposition": `attachment; filename="personal-dashboard-expenses-export-${date}.json"`,
+        "cache-control": "no-store",
       },
     });
   } catch (error) {
