@@ -1,0 +1,24 @@
+src/components/settings/ExpenseDimensionManager.tsx
+  s_33298f684e71c8::t_de607f431a9cdb 285-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a877d28ea591e436066c228e46bcd5f4b3fb139f",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_33298f684e71c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053a5-8121-78b0-a4f7-72ac3b284a1d",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
