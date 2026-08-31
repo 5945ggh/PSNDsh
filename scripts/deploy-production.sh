@@ -17,7 +17,7 @@ echo "Pulling $IMAGE..."
 "${compose[@]}" pull personal-dashboard
 
 echo "Starting the new image without a local build..."
-"${compose[@]}" up --detach --no-build personal-dashboard
+"${compose[@]}" up --detach --no-build --wait --wait-timeout 120 personal-dashboard
 
 echo "Current service status:"
 "${compose[@]}" ps

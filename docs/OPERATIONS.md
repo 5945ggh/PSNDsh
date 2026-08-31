@@ -70,7 +70,7 @@ docker compose logs --tail=100 personal-dashboard
 仓库包含三条 Actions 工作流：
 
 - `CI` 在 Pull Request 和 `main` 推送上执行依赖安装、lint、TypeScript 检查、Vitest、生产构建，并验证 Dockerfile 可以构建。
-- `Publish container image` 在 `main` 推送和 `v*.*.*` 标签上构建并发布镜像到 GHCR，镜像地址为 `ghcr.io/<GitHub 用户或组织>/<仓库名>`。`main` 额外发布 `latest`，每次发布也会带不可变的提交 SHA 标签。
+- `Publish container image` 在 `main` 推送和 `v*.*.*` 标签上构建并发布镜像到 GHCR，镜像地址会统一转换为小写，例如 `ghcr.io/5945ggh/psndsh`。`main` 额外发布 `latest`，每次发布也会带不可变的提交 SHA 标签。
 - `Deploy production image` 只能手动触发，使用 `production` Environment 的审批和 Secrets，通过密钥 SSH 到服务器后同步 Compose/部署脚本，再拉取指定镜像。它不会在每次合并后自动改线上。
 
 首次使用前，在 GitHub 仓库的 `Settings` 中完成以下设置：
@@ -127,9 +127,15 @@ chmod 600 .env
 DOCKER_SUDO=1 IMAGE=ghcr.io/OWNER/REPOSITORY:sha-<commit> ./scripts/deploy-production.sh
 ```
 
-通过 Actions 部署时，在 `Actions > Deploy production image > Run workflow` 中填写要发布的完整镜像引用。升级推荐填写版本标签或提交 SHA，而不是长期使用 `latest`；回滚时填写上一个已验证的标签再运行即可。脚本先校验 Compose 配置，再执行 `pull` 和 `up --detach --no-build`，不会删除 `personal-dashboard-data` 数据卷。任何升级或恢复操作前都应先完成数据库备份。
+通过 Actions 部署时，在 `Actions > Deploy production image > Run workflow` 中填写要发布的完整镜像引用，例如 `ghcr.io/5945ggh/psndsh:sha-xxxxxxxx`。升级推荐填写版本标签或提交 SHA，而不是长期使用 `latest`；回滚时填写上一个已验证的标签再运行即可。脚本先校验 Compose 配置，再执行 `pull` 和 `up --detach --no-build --wait`，确认健康检查在 120 秒内通过后才结束；不会删除 `personal-dashboard-data` 数据卷。任何升级或恢复操作前都应先完成数据库备份。
+
+生产容器默认限制为 512 MiB 内存（预留 256 MiB、swap 上限 768 MiB）、0.75 CPU 和 128 个进程。若未来观察到长期内存或 CPU 压力，应先调整这些 Compose 限制并验证，再扩大云服务器规格。
 
 当前自动部署只覆盖“镜像发布后通过 SSH 手动批准部署”。没有把阿里云控制台凭据、SSH 私钥或服务器地址写入仓库；后续如需合并即发布，可在保持 `production` Environment 审批和同一 Secrets 的前提下，将部署 workflow 的触发器扩展到 `workflow_run`。
+
+### 注册策略
+
+当前产品只提供 `first-user`、`open`、`closed` 三种环境变量策略，没有管理员账号管理页面或邀请链接。小范围邀请朋友时建议：首次启动使用 `first-user` 创建自己的账号；需要邀请时临时将 `.env` 中的 `REGISTRATION_MODE` 改为 `open` 并重新运行部署脚本；朋友完成注册后改回 `closed`，避免长期开放公网注册。切换策略会重启容器，但不会修改数据库卷。
 
 ## 发布前恢复演练记录
 
