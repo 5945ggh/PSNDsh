@@ -1,0 +1,27 @@
+src/components/settings/ExpenseDimensionManager.tsx
+  s_33298f684e71c8::t_677a7e884d7628 271-292,294-298
+  s_33298f684e71c8::t_6669d69a25b9fe 293
+  s_33298f684e71c8::t_104b26ab3b44c2 229-232,249
+  s_33298f684e71c8::t_05d1f3b27ba8e6 3,82,86,88,93-103,105-106,108-111,127-132,151,154-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e618b388be0ed2d341f0e05a4c4baeae888eaf49",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_33298f684e71c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053a5-8121-78b0-a4f7-72ac3b284a1d",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
