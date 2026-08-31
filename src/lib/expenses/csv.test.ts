@@ -27,4 +27,23 @@ describe("expense CSV export", () => {
     expect(csv).toContain(",餐饮,");
     expect(csv).toContain(",微信,");
   });
+
+  it("neutralizes spreadsheet formula cells", () => {
+    const data = {
+      schemaVersion: "1.1",
+      exportedAt: "2026-08-31T00:00:00.000Z",
+      effectiveTimezone: "Asia/Shanghai",
+      expenses: [{
+        id: "expense-formula", amountCents: 1, currency: "CNY", occurredAt: null, occurredOn: "2026-08-30",
+        occurredTimezone: null, occurrencePrecision: "date", recordedAt: "2026-08-31T00:00:00.000Z",
+        captureMessage: "=HYPERLINK(\"https://example.com\")", note: "+SUM(1,1)", categoryId: null, paymentMethodId: null,
+        tags: [], reviewStatus: "pending", recognitionStatus: "recognized", recoverableCents: 0, settled: false,
+        source: "manual", latitude: null, longitude: null, deletedAt: null, createdAt: "2026-08-31T00:00:00.000Z", updatedAt: "2026-08-31T00:00:00.000Z",
+      }],
+      expenseCategories: [], expenseTags: [], paymentMethods: [],
+    } satisfies ExpenseDataExport;
+    const csv = serializeExpenseCsv(data);
+    expect(csv).toContain("'=HYPERLINK");
+    expect(csv).toContain("'+SUM");
+  });
 });

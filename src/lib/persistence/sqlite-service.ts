@@ -906,6 +906,13 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       tx.update(expenseTags).set({ archivedAt: updatedAt, updatedAt })
         .where(and(eq(expenseTags.id, source.id), eq(expenseTags.userId, this.requireUserId())))
         .run();
+      tx.insert(expenseHistoryRevisions)
+        .values({ userId: this.requireUserId(), revision: 1 })
+        .onConflictDoUpdate({
+          target: expenseHistoryRevisions.userId,
+          set: { revision: sql`${expenseHistoryRevisions.revision} + 1` },
+        })
+        .run();
     });
     return this.toExpenseTag(this.getOwnedExpenseTagIncludingArchived(id));
   }

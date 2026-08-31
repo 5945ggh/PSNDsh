@@ -129,6 +129,8 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
   const [mobileFilterDraft, setMobileFilterDraft] = useState<ExpenseFilterDraft>(emptyExpenseFilterDraft);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [filteredRecords, setFilteredRecords] = useState<Expense[] | null>(null);
+  const [filterError, setFilterError] = useState<string | null>(null);
+  const [filterRetryNonce, setFilterRetryNonce] = useState(0);
   const inlineScrollTop = useRef<number | null>(null);
   const submitInFlightRef = useRef(false);
 
@@ -195,7 +197,10 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
       reviewStatus: searchQuery.reviewStatus || undefined,
     };
     if (!Object.values(query).some(Boolean)) {
-      const reset = window.setTimeout(() => setFilteredRecords(null), 0);
+      const reset = window.setTimeout(() => {
+        setFilteredRecords(null);
+        setFilterError(null);
+      }, 0);
       return () => window.clearTimeout(reset);
     }
     let cancelled = false;
@@ -208,13 +213,16 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
         cursor = page.nextCursor ?? undefined;
         if (!page.hasMore) break;
       } while (!cancelled);
-      if (!cancelled) setFilteredRecords(items);
+      if (!cancelled) {
+        setFilteredRecords(items);
+        setFilterError(null);
+      }
     };
     void loadAllFilteredRecords().catch(() => {
-      if (!cancelled) setFilteredRecords([]);
+      if (!cancelled) setFilterError("筛选结果加载失败，请重试。");
     });
     return () => { cancelled = true; };
-  }, [api, data.expenses, mode, searchQuery]);
+  }, [api, data.expenses, filterRetryNonce, mode, searchQuery]);
 
   const preserveInlineScrollPosition = useCallback(() => {
     if ((mode === "expenses" || isMobile) && typeof window !== "undefined") {
@@ -598,6 +606,12 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
                 </div>
                 <footer className="flex gap-3 border-t border-zinc-200 px-5 py-4 dark:border-zinc-800"><button type="button" onClick={() => setMobileFilterDraft(emptyExpenseFilterDraft())} className="flex-1 rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">重置</button><button type="button" onClick={() => { setSearchQuery(mobileFilterDraft); setMobileFilterOpen(false); }} className="flex-1 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">应用筛选</button></footer>
               </section>
+            </div>
+          )}
+          {filterError && (
+            <div role="alert" className="flex items-center justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+              <span>{filterError}</span>
+              <button type="button" onClick={() => setFilterRetryNonce((value) => value + 1)} className="shrink-0 rounded-md border border-current px-2.5 py-1 text-xs font-medium">重试</button>
             </div>
           )}
           {list}

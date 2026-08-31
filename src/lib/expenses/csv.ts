@@ -8,7 +8,9 @@ const columns = [
 ] as const;
 
 const escapeCsv = (value: unknown) => {
-  const text = value === null || value === undefined ? "" : String(value);
+  const rawText = value === null || value === undefined ? "" : String(value);
+  // Spreadsheet applications may evaluate formula-like cells when a CSV is opened.
+  const text = /^[\t\r\n ]*[=+\-@]/u.test(rawText) ? `'${rawText}` : rawText;
   return /[",\r\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 };
 

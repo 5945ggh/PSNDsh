@@ -1199,4 +1199,21 @@ describe("SqliteApplicationService", () => {
     expect(app.getExpenseTags(true).map((item) => item.id)).toContain(tag.id);
     expect(app.getPaymentMethods(true).map((item) => item.id)).toContain(paymentMethod.id);
   });
+
+  it("invalidates history cursors when merging tags changes record relations", () => {
+    const app = service();
+    const source = app.createExpenseTag({ name: "待合并" });
+    const target = app.createExpenseTag({ name: "目标" });
+    const first = app.captureExpense({ id: "tag-cursor-first", amountCents: 100 }).expense;
+    const second = app.captureExpense({ id: "tag-cursor-second", amountCents: 200 }).expense;
+    app.updateExpense(first.id, { tagIds: [source.id] });
+    app.updateExpense(second.id, { tagIds: [source.id] });
+
+    const page = app.getExpenseHistoryPage(1, undefined, { tagId: source.id });
+    expect(page.nextCursor).toEqual(expect.any(String));
+    app.mergeExpenseTag(source.id, { targetId: target.id });
+
+    expect(() => app.getExpenseHistoryPage(1, page.nextCursor ?? undefined, { tagId: source.id }))
+      .toThrow(/EXPENSE_HISTORY_STALE/);
+  });
 });
