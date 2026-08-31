@@ -75,11 +75,6 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
   const third = await captureExpense(page, apiKey, 4300);
 
   await page.goto("/inbox");
-  page.on("response", async (response) => {
-    if (response.url().includes("/api/v1/expenses")) {
-      console.log("E2E_RESPONSE", response.request().method(), response.url(), response.status(), await response.text().catch(() => ""));
-    }
-  });
   await expect(page.getByTestId("expense-detail-panel").getByText("待整理", { exact: true })).toBeVisible();
   await expect(page.getByTestId("expense-record-list").getByText("未分类", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId(`expense-row-${first.id}`)).toContainText("午饭");
@@ -91,10 +86,10 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
   await firstPanel.getByLabel("支付方式").selectOption(paymentMethod.id);
   await firstPanel.getByLabel(workdayTag.name).check();
   await firstPanel.getByLabel(campusTag.name).check();
-  await firstPanel.getByRole("button", { name: "保存并下一条" }).click();
+  await firstPanel.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(firstPanel).toContainText("车费");
 
-  await firstPanel.getByRole("button", { name: "保留原样并下一条" }).click();
+  await firstPanel.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(firstPanel).toContainText("没有捕获留言。");
   await firstPanel.getByRole("button", { name: "跳过" }).click();
   await expect(firstPanel).toContainText("没有捕获留言。");
@@ -118,7 +113,8 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(0);
   await thirdRow.click();
   const detail = page.getByTestId("expense-detail-panel");
-  await expect(detail).toContainText("未填写备注");
+  await expect(detail.getByRole("button", { name: "备注" })).toContainText("添加备注...");
+  await expect(detail.locator("textarea")).toHaveCount(0);
   await expect(detail.getByRole("button", { name: "保存修改" })).toBeVisible();
 
   await page.route(`**/api/v1/expenses/${third.id}`, async (route) => {
@@ -139,6 +135,7 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
     });
   });
 
+  await detail.getByRole("button", { name: "备注" }).click();
   await detail.getByLabel("备注").fill("晚饭整理");
   await detail.getByRole("button", { name: "保存修改" }).click();
   await expect(detail.getByLabel("备注")).toHaveValue("晚饭整理");
@@ -149,7 +146,7 @@ test("inbox workflow keeps capture facts, preserves unclassified records, and le
   await expect(page.getByTestId(`expense-row-${third.id}`)).toContainText("待整理");
 });
 
-test("expenses overview expands one inline detail row and keeps pagination stable", async ({ page }) => {
+test("expenses overview browses older history continuously and keeps inline detail stable", async ({ page }) => {
   const username = unique("expense-overview");
   await page.setViewportSize({ width: 1440, height: 900 });
   await registerUser(page, username);
@@ -162,10 +159,11 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   await createTag(page, "午休");
   await createTag(page, "外出");
 
-  const records = Array.from({ length: 26 }, (_, index) => ({
+  const records = Array.from({ length: 51 }, (_, index) => ({
     id: randomUUID(),
     amount: 1000 + index * 10,
     captureMessage: `记录 ${index + 1}`,
+    occurredAt: `2026-01-01T00:00:${String(index).padStart(2, "0")}+08:00`,
   }));
 
   for (const record of records) {
@@ -175,12 +173,19 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
         id: record.id,
         amount_cents: record.amount,
         capture_message: record.captureMessage,
+        occurred_at: record.occurredAt,
       },
     });
     expect(response.status()).toBeGreaterThanOrEqual(200);
     expect(response.status()).toBeLessThan(300);
   }
 
+  const historyRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "GET" && request.url().includes("/api/v1/expenses?")) {
+      historyRequests.push(request.url());
+    }
+  });
   await page.goto("/expenses");
   const topBar = page.getByTestId("global-top-bar");
   const sidebar = page.getByTestId("global-sidebar");
@@ -221,17 +226,21 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   expect(shellGeometry.mainScrollHeight).toBeGreaterThan(shellGeometry.mainClientHeight);
   expect(shellGeometry.windowScrollY).toBe(0);
 
+  await expect(page.getByRole("button", { name: "下一页" })).toHaveCount(0);
+  await expect(page.getByText(/第 \d+ \/ \d+ 页/)).toHaveCount(0);
+  await expect(page.getByTestId(`expense-row-${records[50].id}`)).toBeVisible();
+  await expect(page.getByTestId(`expense-row-${records[0].id}`)).toHaveCount(0);
+
   await mainContent.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
   await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(sidebar.getByRole("link", { name: "首页" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "下一页" })).toBeVisible();
   await expect(page.getByRole("button", { name: "保存修改" })).toHaveCount(0);
-  await expect(page.getByTestId(`expense-row-${records[25].id}`)).toBeVisible();
-  await expect(page.getByTestId(`expense-row-${records[0].id}`)).toHaveCount(0);
+  await expect(page.getByTestId(`expense-row-${records[0].id}`)).toBeVisible();
+  await expect.poll(() => historyRequests.some((url) => url.includes("before="))).toBe(true);
 
-  const latestRow = page.getByTestId(`expense-row-${records[25].id}`);
+  const latestRow = page.getByTestId(`expense-row-${records[50].id}`);
   const list = page.getByTestId("expense-record-list");
   const listWidth = await list.evaluate((element) => element.getBoundingClientRect().width);
   const latestRowButton = latestRow.locator(":scope > button");
@@ -239,6 +248,20 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   await expect(latestRow.getByTestId("expense-detail-panel")).toContainText("保存修改");
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(1);
   await expect(latestRow.getByTestId("expense-detail-panel")).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").getByText("更多信息", { exact: true })).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").locator("details")).not.toHaveAttribute("open", "");
+  await expect(latestRow.getByTestId("expense-detail-panel").getByRole("button", { name: "关闭详情" })).toHaveCount(0);
+  const compactDetailGeometry = await latestRow.getByTestId("expense-detail-panel").evaluate((element) => ({
+    height: element.getBoundingClientRect().height,
+    viewportHeight: window.innerHeight,
+  }));
+  expect(compactDetailGeometry.viewportHeight).toBe(900);
+  expect(compactDetailGeometry.height).toBeLessThan(500);
+  await expect(latestRow.getByTestId("expense-detail-panel").getByLabel("金额")).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").getByLabel("发生时间")).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").getByLabel("分类")).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").getByLabel("支付方式")).toBeVisible();
+  await expect(latestRow.getByTestId("expense-detail-panel").getByRole("button", { name: "保存修改" })).toBeVisible();
   await expect.poll(async () => list.evaluate((element) => element.getBoundingClientRect().width)).toBe(listWidth);
   await expect.poll(() => topBar.evaluate((element) => element.getBoundingClientRect().top)).toBe(0);
   await expect.poll(() => sidebar.evaluate((element) => element.getBoundingClientRect().top)).toBe(56);
@@ -260,16 +283,68 @@ test("expenses overview expands one inline detail row and keeps pagination stabl
   await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBe(scrollTopBeforeCollapse);
   await expect(page.getByTestId("expense-detail-panel")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "下一页" }).click();
-  await expect(page.getByTestId("expense-detail-panel")).toHaveCount(0);
-  await expect(page.getByTestId(`expense-row-${records[25].id}`)).toHaveCount(0);
-  await expect(page.getByTestId(`expense-row-${records[0].id}`)).toBeVisible();
-  await expect(page.getByText("第 2 / 2 页")).toBeVisible();
-
   await page.goto("/expenses");
   await expect(page.getByTestId(`expense-row-${records[0].id}`)).toHaveCount(0);
-  await expect(page.getByTestId(`expense-row-${records[25].id}`)).toBeVisible();
-  await expect(page.getByText("第 1 / 2 页")).toBeVisible();
+  await expect(page.getByTestId(`expense-row-${records[50].id}`)).toBeVisible();
+  await expect(page.getByText(/第 \d+ \/ \d+ 页/)).toHaveCount(0);
+});
+
+test("expenses overview pins the active natural-day section header to the main scroll container", async ({ page }) => {
+  const username = unique("expense-sticky-history");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await registerUser(page, username);
+
+  const apiKey = await createApiKey(page, "历史浏览");
+  const records = [
+    ...Array.from({ length: 12 }, (_, index) => ({
+      date: "2026-08-31",
+      time: `${String(11 - Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "30" : "00"}`,
+      label: `较新记录 ${index + 1}`,
+    })),
+    ...Array.from({ length: 12 }, (_, index) => ({
+      date: "2026-08-30",
+      time: `${String(11 - Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "30" : "00"}`,
+      label: `较早记录 ${index + 1}`,
+    })),
+  ];
+
+  for (const record of records) {
+    const response = await page.request.post("/api/v1/expenses/capture", {
+      headers: { authorization: `Bearer ${apiKey}` },
+      data: {
+        id: randomUUID(),
+        amount_cents: 1000,
+        occurred_at: `${record.date}T${record.time}:00+08:00`,
+        capture_message: record.label,
+      },
+    });
+    expect(response.status()).toBe(201);
+  }
+
+  await page.goto("/expenses");
+  const mainContent = page.locator("#main-content");
+  const newerGroup = page.getByTestId("expense-date-group-2026-08-31");
+  const olderGroup = page.getByTestId("expense-date-group-2026-08-30");
+  const newerHeader = newerGroup.locator(":scope > div");
+  const olderHeader = olderGroup.locator(":scope > div");
+
+  await expect(newerHeader).toContainText("8 月 31 日");
+  await expect(newerHeader).toContainText("12 笔");
+  await expect(olderHeader).toContainText("8 月 30 日");
+  await expect(olderHeader).toContainText("12 笔");
+  await expect(newerHeader.evaluate((element) => getComputedStyle(element).position)).resolves.toBe("sticky");
+  await expect(newerHeader.evaluate((element) => getComputedStyle(element).top)).resolves.toBe("0px");
+
+  await mainContent.evaluate((element) => {
+    element.scrollTop = 500;
+  });
+  await expect.poll(() => newerHeader.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(56);
+
+  await mainContent.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect.poll(() => olderHeader.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(56);
+  await expect.poll(() => newerHeader.evaluate((element) => Math.round(element.getBoundingClientRect().bottom))).toBeLessThan(56);
 });
 
 test("mobile inbox actions remain clickable and keep navigation stable", async ({ page }) => {
@@ -282,10 +357,10 @@ test("mobile inbox actions remain clickable and keep navigation stable", async (
 
   await page.goto("/inbox");
   const panel = page.getByTestId("expense-detail-panel");
-  await expect(panel.getByRole("button", { name: "保存并下一条" })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "保留原样并下一条" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "保存修改" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "保存并标记已整理" })).toBeVisible();
   await expect(panel.getByRole("button", { name: "跳过" })).toBeVisible();
 
-  await panel.getByRole("button", { name: "保存并下一条" }).click();
+  await panel.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(page.getByTestId("expense-record-list")).toContainText("Inbox 已清空");
 });

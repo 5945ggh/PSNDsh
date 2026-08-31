@@ -29,6 +29,9 @@ import {
 } from "@/lib/domain/types";
 import { parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import { z } from "zod";
+import type { ExpenseHistoryPage } from "@/lib/expenses/history";
+
+export type { ExpenseHistoryPage } from "@/lib/expenses/history";
 
 const optionalProfileText = z.string().trim().max(80).nullable().optional();
 
@@ -144,6 +147,7 @@ export interface ExpenseApplicationService {
 
   captureExpense(input: CaptureExpenseInput): CaptureExpenseResult;
   getExpenses(): Expense[];
+  getExpenseHistoryPage(limit?: number, before?: string): ExpenseHistoryPage;
   getInboxExpenses(): Expense[];
   getExpenseById(id: string, options?: { includeDeleted?: boolean }): Expense | undefined;
   updateExpense(id: string, input: UpdateExpenseInput): Expense;

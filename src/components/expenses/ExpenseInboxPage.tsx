@@ -469,22 +469,22 @@ export const ExpenseInboxPage: React.FC = () => {
               <div className="grid gap-2 md:grid-cols-3">
                 <button
                   type="button"
-                  onClick={() => void submitExpense(true)}
+                  onClick={() => void submitExpense(false)}
                   disabled={pendingMutations > 0}
                   className="inline-flex items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
                 >
                   <Save className="h-4 w-4" aria-hidden="true" />
-                  <span>{pendingMutations > 0 ? "保存中..." : "保存并下一条"}</span>
+                  <span>{pendingMutations > 0 ? "保存中..." : "保存修改"}</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => void submitExpense(false)}
+                  onClick={() => void submitExpense(true)}
                   disabled={pendingMutations > 0}
                   className="inline-flex items-center justify-center gap-2 rounded-md border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-950/40"
                 >
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  <span>保留原样并下一条</span>
+                  <span>保存并标记已整理</span>
                 </button>
 
                 <button

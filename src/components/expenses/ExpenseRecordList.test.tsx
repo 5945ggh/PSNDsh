@@ -132,4 +132,30 @@ describe("ExpenseRecordList", () => {
     expect(html).toContain("8 月 29 日—8 月 30 日");
     expect(html).toContain("第 1 / 2 页 · 共 42 条");
   });
+
+  it("uses a continuous loading footer instead of page navigation for history", () => {
+    const html = renderToStaticMarkup(
+      <ExpenseRecordList
+        dataTestId="expense-record-list"
+        title="全部记录"
+        expenses={expenses}
+        selectedId={null}
+        timezone="Asia/Shanghai"
+        emptyLabel="无记录"
+        onSelect={() => undefined}
+        totalCount={42}
+        hasMore
+        onLoadMore={() => undefined}
+        categoryNames={new Map()}
+        paymentMethodNames={new Map()}
+        groupByDate
+        summaryExpenses={expenses}
+      />,
+    );
+
+    expect(html).toContain("加载更多");
+    expect(html).not.toContain("上一页");
+    expect(html).not.toContain("下一页");
+    expect(html).not.toContain("第 1 / 2 页");
+  });
 });

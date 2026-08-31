@@ -74,8 +74,8 @@ describe("ExpenseRecordForm", () => {
 
     expect(html).toContain("午饭");
     expect(html).toContain("未知/未填写");
-    expect(html).toContain("保存并下一条");
-    expect(html).toContain("保留原样并下一条");
+    expect(html).toContain("保存修改");
+    expect(html).toContain("保存并标记已整理");
     expect(html).toContain("跳过");
     expect(html).toContain("复制为备注");
   });
@@ -104,7 +104,37 @@ describe("ExpenseRecordForm", () => {
     );
 
     expect(html).toContain("保存修改");
-    expect(html).not.toContain("保存并下一条");
+    expect(html).not.toContain("保存并标记已整理");
+  });
+
+  it("keeps the all-records detail compact until advanced information is requested", () => {
+    const record = expense({ note: null });
+    const html = renderToStaticMarkup(
+      <ExpenseRecordForm
+        expense={record}
+        draft={seedExpenseDraft(record)}
+        categories={categories}
+        tags={tags}
+        paymentMethods={paymentMethods}
+        timezone="Asia/Shanghai"
+        mode="expenses"
+        queuePosition={1}
+        queueLength={4}
+        pending={false}
+        errorMessage={null}
+        statusMessage={null}
+        onDraftChange={() => undefined}
+        onCopyCaptureMessage={() => undefined}
+        onSelectPrevious={() => undefined}
+        onSelectNext={() => undefined}
+        onPrimaryAction={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("更多信息");
+    expect(html).toContain("添加备注...");
+    expect(html).toContain('aria-label="备注"');
+    expect(html).not.toContain("<textarea");
+    expect(html).not.toContain("捕获留言</p>");
   });
 });
-

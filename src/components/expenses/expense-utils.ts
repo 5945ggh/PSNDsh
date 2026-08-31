@@ -8,6 +8,7 @@ import {
   formatDateKeyInTimezone,
   formatTimeInTimezone,
 } from "@/lib/time/timezone";
+export { sortExpensesForHistory } from "@/lib/expenses/history";
 
 export type ExpenseDraft = {
   amountCents: number;
@@ -61,11 +62,11 @@ export type ExpenseDateGroup = {
 
 /** Returns the natural-day key used to build chronological history sections. */
 export const expenseDateGroupKey = (
-  expense: Pick<Expense, "occurredAt" | "occurredOn" | "occurrencePrecision" | "recordedAt">,
+  expense: Pick<Expense, "occurredAt" | "occurredOn" | "occurrencePrecision">,
   timezone = DEFAULT_TIMEZONE,
 ) => {
   if (expense.occurrencePrecision === "date" && expense.occurredOn) return expense.occurredOn;
-  const source = expense.occurredAt ?? expense.recordedAt;
+  const source = expense.occurredAt;
   return source ? formatDateKeyInTimezone(source, timezone) : "unknown";
 };
 
@@ -168,14 +169,14 @@ export const expenseReviewLabel = (reviewStatus: Expense["reviewStatus"]) =>
   reviewStatus === "reviewed" ? "已整理" : "待整理";
 
 export const expenseOccurrenceLabel = (
-  expense: Expense,
+  expense: Pick<Expense, "occurredAt" | "occurredOn" | "occurrencePrecision" | "occurredTimezone">,
   fallbackTimezone = DEFAULT_TIMEZONE,
 ) => {
   if (expense.occurrencePrecision === "date") {
     return expense.occurredOn ?? "发生日期未知";
   }
 
-  const source = expense.occurredAt ?? expense.recordedAt;
+  const source = expense.occurredAt;
   if (!source) return "发生时间未知";
   const timezone = expense.occurredTimezone ?? fallbackTimezone;
   return `${formatDateKeyInTimezone(source, timezone)} ${formatTimeInTimezone(source, timezone)}`;
@@ -185,8 +186,7 @@ export const expenseRecordedLabel = (
   expense: Expense,
   fallbackTimezone = DEFAULT_TIMEZONE,
 ) => {
-  const timezone = expense.occurredTimezone ?? fallbackTimezone;
-  return `记录于 ${formatDateKeyInTimezone(expense.recordedAt, timezone)} ${formatTimeInTimezone(expense.recordedAt, timezone)}`;
+  return `记录于 ${formatDateKeyInTimezone(expense.recordedAt, fallbackTimezone)} ${formatTimeInTimezone(expense.recordedAt, fallbackTimezone)}`;
 };
 
 export const expenseQueueCounts = (expenses: Expense[]) => ({

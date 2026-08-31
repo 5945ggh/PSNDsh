@@ -6,6 +6,7 @@ import {
   getExpensePageCount,
   getExpensePageIndex,
   getExpensePageSlice,
+  getExpenseKeyboardDirection,
   getExpenseWorkspaceInitialSelection,
   updateSnapshotWithExpense,
 } from "./ExpenseWorkspace";
@@ -51,6 +52,8 @@ describe("updateSnapshotWithExpense", () => {
       dashboard: null,
       statistics: {},
       expenses: [current, next],
+      expensesNextCursor: null,
+      expensesHasMore: false,
       inboxExpenses: [current, next],
       expenseCategories: [],
       expenseTags: [],
@@ -66,6 +69,14 @@ describe("updateSnapshotWithExpense", () => {
 });
 
 describe("expense workspace paging", () => {
+  it("maps desktop arrow keys to previous and next records", () => {
+    expect(getExpenseKeyboardDirection("ArrowLeft")).toBe(-1);
+    expect(getExpenseKeyboardDirection("ArrowRight")).toBe(1);
+    expect(getExpenseKeyboardDirection("ArrowUp")).toBe(0);
+    expect(getExpenseKeyboardDirection("ArrowDown")).toBe(0);
+    expect(getExpenseKeyboardDirection("Enter")).toBe(0);
+  });
+
   it("starts expenses mode with no selection and inbox mode with the first record", () => {
     const first = expense("first", "pending");
     const second = expense("second", "pending");

@@ -311,12 +311,26 @@ export const expenses = sqliteTable(
     deletedAt: text("deleted_at"),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
+    // Persisted from the effective timezone so SQLite can use the same keyset
+    // ordering as the history UI without loading and sorting the full history.
+    historyDateKey: text("history_date_key"),
+    historyOccurredAtMs: integer("history_occurred_at_ms"),
+    historyFallbackMs: integer("history_fallback_ms"),
   },
   (table) => [
     uniqueIndex("expenses_user_client_id_unique").on(table.userId, table.id),
     index("expenses_user_active_recorded_idx").on(table.userId, table.deletedAt, table.recordedAt),
+    index("expenses_user_history_keyset_idx").on(table.userId, table.deletedAt, table.historyDateKey, table.historyOccurredAtMs, table.historyFallbackMs, table.id),
     index("expenses_user_inbox_idx").on(table.userId, table.reviewStatus, table.deletedAt, table.recordedAt),
   ]
+);
+
+export const expenseHistoryRevisions = sqliteTable(
+  "expense_history_revisions",
+  {
+    userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(0),
+  }
 );
 
 export const expenseRecordTags = sqliteTable(

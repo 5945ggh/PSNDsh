@@ -16,6 +16,6 @@ test("Inbox keeps uncategorized captures visible until an explicit action", asyn
   await expect(page.getByRole("heading", { name: "¥8.80" })).toBeVisible();
   await page.getByRole("button", { name: "跳过" }).click();
   await expect(page.getByRole("heading", { name: "¥8.80" })).toBeVisible();
-  await page.getByRole("button", { name: "保留原样并下一条" }).click();
+  await page.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(page.getByRole("heading", { name: "¥8.80" })).not.toBeVisible();
 });

@@ -7,6 +7,7 @@ import {
   StatisticsScale,
   UpdateEntryInput,
 } from "@/lib/application/contract";
+import type { ExpenseHistoryPage } from "@/lib/expenses/history";
 import {
   AuthSession,
   Capabilities,
@@ -138,6 +139,7 @@ export interface ApiAdapter {
   ): Promise<StatisticsPayload>;
   getCalendarPayload(from?: string, to?: string): Promise<CalendarPayload>;
   getExpenses(): Promise<Expense[]>;
+  getExpenseHistoryPage(limit?: number, before?: string): Promise<ExpenseHistoryPage>;
   getInboxExpenses(): Promise<Expense[]>;
   getExpenseCategories(includeArchived?: boolean): Promise<ExpenseCategory[]>;
   getExpenseTags(includeArchived?: boolean): Promise<ExpenseTag[]>;
@@ -474,6 +476,11 @@ export class PersistentApiAdapter implements ApiAdapter {
   }
 
   getExpenses() { return this.request<Expense[]>("/api/v1/expenses"); }
+  getExpenseHistoryPage(limit = 25, before?: string) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (before) params.set("before", before);
+    return this.request<ExpenseHistoryPage>(`/api/v1/expenses?${params}`);
+  }
   getInboxExpenses() { return this.request<Expense[]>("/api/v1/expenses/inbox"); }
   getExpenseCategories(includeArchived = false) {
     const query = includeArchived ? "?includeArchived=1" : "";

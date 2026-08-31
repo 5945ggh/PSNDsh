@@ -45,6 +45,7 @@ export class MockApplicationService implements ApplicationService {
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
   getExpenses() { return this.store.getExpenses(); }
+  getExpenseHistoryPage(limit?: number, before?: string) { return this.store.getExpenseHistoryPage(limit, before); }
   getInboxExpenses() { return this.store.getInboxExpenses(); }
   getExpenseCategories(includeArchived = false) { return this.store.getExpenseCategories(includeArchived); }
   getExpenseTags(includeArchived = false) { return this.store.getExpenseTags(includeArchived); }

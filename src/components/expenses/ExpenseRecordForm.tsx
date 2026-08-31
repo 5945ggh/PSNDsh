@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Copy,
+  ChevronDown,
   Save,
   SkipForward,
 } from "lucide-react";
@@ -69,6 +70,9 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
   onSecondaryAction,
   onSkip,
 }) => {
+  const isCompactHistory = mode === "expenses";
+  const [expandedNoteId, setExpandedNoteId] = React.useState<string | null>(null);
+
   if (!expense) {
     return (
       <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -89,18 +93,27 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
     draft.paymentMethodId === "" ||
     paymentMethods.some((method) => method.id === draft.paymentMethodId);
 
+  const noteExpanded =
+    !isCompactHistory || Boolean(draft.note.trim()) || expandedNoteId === expense.id;
+
   return (
     <section
       aria-labelledby="expense-detail-heading"
-      className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      className={`space-y-3 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${
+        isCompactHistory ? "p-4" : "p-5"
+      }`}
       data-testid={dataTestId}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-2">
+      <div
+        className={`flex items-start justify-between gap-3 ${
+          isCompactHistory ? "flex-nowrap" : "flex-wrap"
+        }`}
+      >
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <h2
               id="expense-detail-heading"
-              className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+              className={`${isCompactHistory ? "text-base" : "text-lg"} font-semibold tracking-tight text-zinc-900 dark:text-zinc-100`}
             >
               {expenseAmountLabel(expense)}
             </h2>
@@ -118,24 +131,48 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             </span>
           </div>
 
-          {(expense.note?.trim() || !expense.captureMessage?.trim()) && (
+          {!isCompactHistory && (expense.note?.trim() || !expense.captureMessage?.trim()) && (
             <p className="text-sm text-zinc-700 dark:text-zinc-300">
               {expensePrimaryText(expense)}
             </p>
           )}
-          <p className="text-xs text-zinc-500">
-            {expenseOccurrenceLabel(expense, timezone)} · {expenseRecordedLabel(expense, timezone)}
-          </p>
+          {isCompactHistory ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <span>{expenseOccurrenceLabel(expense, timezone)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{expenseRecordedLabel(expense, timezone)}</span>
+              <span aria-hidden="true">·</span>
+              <span>
+                {expense.captureMessage?.trim()
+                  ? `捕获：${expense.captureMessage.trim()}`
+                  : "无捕获留言"}
+              </span>
+              {expense.captureMessage?.trim() && (
+                <button
+                  type="button"
+                  onClick={onCopyCaptureMessage}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>复制为备注</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-zinc-500">
+              {expenseOccurrenceLabel(expense, timezone)} · {expenseRecordedLabel(expense, timezone)}
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onSelectPrevious}
             disabled={queueLength <= 1 || pending}
             aria-label="上一条记录"
             title="上一条记录"
-            className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
+            className={`${isCompactHistory ? "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0" : actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -145,35 +182,142 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             disabled={queueLength <= 1 || pending}
             aria-label="下一条记录"
             title="下一条记录"
-            className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
+            className={`${isCompactHistory ? "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0" : actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/20 dark:text-zinc-300">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">捕获留言</p>
-            <p className="leading-6">
-              {expense.captureMessage?.trim() || "没有捕获留言。"}
-            </p>
+      {!isCompactHistory && (
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/20 dark:text-zinc-300">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">捕获留言</p>
+              <p className="leading-6">
+                {expense.captureMessage?.trim() || "没有捕获留言。"}
+              </p>
+            </div>
+
+            {expense.captureMessage?.trim() && (
+              <button
+                type="button"
+                onClick={onCopyCaptureMessage}
+                className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
+              >
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                <span>复制为备注</span>
+              </button>
+            )}
           </div>
-
-          {expense.captureMessage?.trim() && (
-            <button
-              type="button"
-              onClick={onCopyCaptureMessage}
-              className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
-            >
-              <Copy className="h-4 w-4" aria-hidden="true" />
-              <span>复制为备注</span>
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
+      {isCompactHistory ? (
+        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 lg:grid-cols-4">
+          <label className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">金额</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={(draft.amountCents / 100).toFixed(2)}
+              onChange={(event) => {
+                const amount = Number.parseFloat(event.target.value);
+                onDraftChange({
+                  ...draft,
+                  amountCents: Number.isFinite(amount) ? Math.max(0, Math.round(amount * 100)) : 0,
+                });
+              }}
+              className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+            />
+          </label>
+
+          {draft.occurrencePrecision === "date" ? (
+            <label className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">发生日期</span>
+              <input
+                type="date"
+                value={draft.occurredOn}
+                onChange={(event) => onDraftChange({ ...draft, occurredOn: event.target.value })}
+                className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+              />
+            </label>
+          ) : (
+            <label className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">发生时间</span>
+              <input
+                type="datetime-local"
+                value={draft.occurredAt}
+                onChange={(event) => onDraftChange({ ...draft, occurredAt: event.target.value })}
+                className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+              />
+            </label>
+          )}
+
+          <label className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">分类</span>
+            <select
+              value={draft.categoryId}
+              onChange={(event) => onDraftChange({ ...draft, categoryId: event.target.value })}
+              className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+            >
+              <option value="">未分类</option>
+              {!currentCategoryExists && expense.categoryId && (
+                <option value={expense.categoryId}>当前分类已归档</option>
+              )}
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">支付方式</span>
+            <select
+              value={draft.paymentMethodId}
+              onChange={(event) => onDraftChange({ ...draft, paymentMethodId: event.target.value })}
+              className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+            >
+              <option value="">未知/未填写</option>
+              {!currentPaymentMethodExists && expense.paymentMethodId && (
+                <option value={expense.paymentMethodId}>当前支付方式已归档</option>
+              )}
+              {paymentMethods.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {method.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="col-span-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-300 lg:col-span-4">
+            <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">备注</span>
+            {noteExpanded ? (
+              <textarea
+                autoFocus={!draft.note.trim() && expandedNoteId === expense.id}
+                aria-label="备注"
+                value={draft.note}
+                onChange={(event) => onDraftChange({ ...draft, note: event.target.value })}
+                rows={3}
+                placeholder="添加备注..."
+                className="min-h-[4.5rem] w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm leading-5 outline-none transition-colors placeholder:text-zinc-400 focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30 dark:placeholder:text-zinc-500"
+              />
+            ) : (
+              <button
+                type="button"
+                aria-label="备注"
+                onClick={() => setExpandedNoteId(expense.id)}
+                className="min-h-9 w-full rounded-md border border-dashed border-zinc-200 px-2.5 py-1.5 text-left text-sm text-zinc-400 transition-colors hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:text-zinc-500 dark:hover:border-zinc-600 dark:hover:bg-zinc-950/30"
+              >
+                添加备注...
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-4 sm:grid-cols-2 md:col-span-2">
           <label className="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
@@ -298,8 +442,9 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
           />
         </label>
       </div>
+      )}
 
-      <fieldset className="space-y-2">
+      {!isCompactHistory && <fieldset className="space-y-2">
         <legend className="text-xs uppercase tracking-[0.18em] text-zinc-400">标签</legend>
         {tags.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-3 text-sm text-zinc-500 dark:border-zinc-800">
@@ -337,40 +482,163 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             })}
           </div>
         )}
-      </fieldset>
+      </fieldset>}
 
-      <div className="flex flex-wrap items-center gap-3">
-        {mode === "inbox" ? (
-          <>
+      {!isCompactHistory && (
+        <div className="flex flex-wrap items-center gap-3">
+          {mode === "inbox" ? (
+            <>
+              <button
+                type="button"
+                onClick={onPrimaryAction}
+                disabled={pending}
+                className={`${actionClass} bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white`}
+              >
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                <span>保存修改</span>
+              </button>
+              <button
+                type="button"
+                onClick={onSecondaryAction}
+                disabled={pending}
+                className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
+              >
+                <Save className="h-4 w-4" aria-hidden="true" />
+                <span>保存并标记已整理</span>
+              </button>
+              <button
+                type="button"
+                onClick={onSkip}
+                disabled={pending}
+                className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
+              >
+                <SkipForward className="h-4 w-4" aria-hidden="true" />
+                <span>跳过</span>
+              </button>
+            </>
+          ) : (
             <button
               type="button"
               onClick={onPrimaryAction}
               disabled={pending}
               className={`${actionClass} bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white`}
             >
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              <span>保存并下一条</span>
-            </button>
-            <button
-              type="button"
-              onClick={onSecondaryAction}
-              disabled={pending}
-              className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
-            >
               <Save className="h-4 w-4" aria-hidden="true" />
-              <span>保留原样并下一条</span>
+              <span>保存修改</span>
             </button>
-            <button
-              type="button"
-              onClick={onSkip}
-              disabled={pending}
-              className={`${actionClass} border border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:bg-zinc-800`}
-            >
-              <SkipForward className="h-4 w-4" aria-hidden="true" />
-              <span>跳过</span>
-            </button>
-          </>
-        ) : (
+          )}
+        </div>
+      )}
+
+      {isCompactHistory ? (
+        <details className="group rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm text-zinc-700 outline-none transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:text-zinc-300 dark:hover:bg-zinc-800/50 [&::-webkit-details-marker]:hidden">
+            <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+            <span className="font-medium">更多信息</span>
+            <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+              {draft.tagIds.length > 0
+                ? `${draft.tagIds.length} 个标签 · 发生精度和原始捕获信息`
+                : "发生精度、标签和原始捕获信息"}
+            </span>
+          </summary>
+
+          <div className="space-y-3 border-t border-zinc-200 px-3 py-3 dark:border-zinc-800">
+            <label className="block max-w-xs space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">发生精度</span>
+              <select
+                value={draft.occurrencePrecision}
+                onChange={(event) => {
+                  const occurrencePrecision = event.target.value as "datetime" | "date";
+                  onDraftChange({
+                    ...draft,
+                    occurrencePrecision,
+                    ...(occurrencePrecision === "date"
+                      ? {
+                          occurredOn: draft.occurredOn || draft.occurredAt.slice(0, 10) || expense.occurredOn || "",
+                        }
+                      : {
+                          occurredAt:
+                            draft.occurredAt ||
+                            expense.occurredAt?.slice(0, 16) ||
+                            (draft.occurredOn ? `${draft.occurredOn}T00:00` : ""),
+                        }),
+                  });
+                }}
+                className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2.5 text-sm outline-none transition-colors focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-950/30"
+              >
+                <option value="datetime">日期 + 时间</option>
+                <option value="date">只有日期</option>
+              </select>
+            </label>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium text-zinc-500 dark:text-zinc-400">标签</legend>
+              {tags.length === 0 ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">暂无可选标签。</p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {tags.map((tag) => {
+                    const checked = draft.tagIds.includes(tag.id);
+                    return (
+                      <label
+                        key={tag.id}
+                        className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+                          checked
+                            ? "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-200"
+                            : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/20 dark:text-zinc-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) =>
+                            onDraftChange({
+                              ...draft,
+                              tagIds: event.target.checked
+                                ? [...draft.tagIds, tag.id]
+                                : draft.tagIds.filter((id) => id !== tag.id),
+                            })
+                          }
+                          className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{tag.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </fieldset>
+
+            <div className="grid gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800/80 dark:text-zinc-400 sm:grid-cols-2">
+              <p>
+                来源：{expense.source === "shortcut" ? "快捷捕获" : "手动记录"}
+              </p>
+              <p>
+                识别状态：{expense.recognitionStatus === "recognized" ? "已识别" : expense.recognitionStatus}
+              </p>
+              <p>记录时间：{expenseRecordedLabel(expense, timezone)}</p>
+              <p>发生时区：{expense.occurredTimezone ?? timezone}</p>
+              <div className="sm:col-span-2">
+                <p className="mb-1 font-medium text-zinc-600 dark:text-zinc-300">原始捕获信息</p>
+                <p className="break-words">{expense.captureMessage?.trim() || "没有捕获留言。"}</p>
+              </div>
+            </div>
+          </div>
+        </details>
+      ) : (
+        <div className="space-y-1 text-xs text-zinc-500">
+          <p>
+            分类：{expenseCategoryLabel(expense, categories)} · 支付方式：
+            {expensePaymentMethodLabel(expense, paymentMethods)}
+          </p>
+          <p>
+            当前整理状态：{expenseReviewLabel(expense.reviewStatus)}。
+          </p>
+        </div>
+      )}
+
+      {isCompactHistory && (
+        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={onPrimaryAction}
@@ -380,18 +648,8 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             <Save className="h-4 w-4" aria-hidden="true" />
             <span>保存修改</span>
           </button>
-        )}
-      </div>
-
-      <div className="space-y-1 text-xs text-zinc-500">
-        <p>
-          分类：{expenseCategoryLabel(expense, categories)} · 支付方式：
-          {expensePaymentMethodLabel(expense, paymentMethods)}
-        </p>
-        <p>
-          当前整理状态：{expenseReviewLabel(expense.reviewStatus)}。
-        </p>
-      </div>
+        </div>
+      )}
 
       {statusMessage && (
         <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">

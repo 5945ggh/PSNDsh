@@ -10,7 +10,8 @@ import React, {
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
-import { ApiAdapter, isUnauthorizedError } from "@/lib/api/client";
+import { ApiAdapter, ApiClientError, isUnauthorizedError } from "@/lib/api/client";
+import { sortExpensesForHistory } from "@/lib/expenses/history";
 import {
   createApiAdapter,
   DataTransport,
@@ -52,6 +53,8 @@ export type DataSnapshot = {
   dashboard: DashboardPayload | null;
   statistics: Partial<Record<"day" | "week" | "month", StatisticsPayload>>;
   expenses: Expense[];
+  expensesNextCursor: string | null;
+  expensesHasMore: boolean;
   inboxExpenses: Expense[];
   expenseCategories: ExpenseCategory[];
   expenseTags: ExpenseTag[];
@@ -81,6 +84,7 @@ export type DataContextType = {
   pendingMutations: number;
   version: number;
   refresh: (options?: RefreshOptions) => Promise<void>;
+  loadMoreExpenses: () => Promise<void>;
   mutate: <T>(
     operation: () => Promise<T>,
     options?: MutationOptions<T>
@@ -106,6 +110,8 @@ const emptyData = (): DataSnapshot => ({
   dashboard: null,
   statistics: {},
   expenses: [],
+  expensesNextCursor: null,
+  expensesHasMore: false,
   inboxExpenses: [],
   expenseCategories: [],
   expenseTags: [],
@@ -134,7 +140,7 @@ const readAuthenticatedData = async (
     scheduleBlocks,
     dashboard,
     weekStatistics,
-    expenses,
+    expenseHistoryPage,
     inboxExpenses,
     expenseCategories,
     expenseTags,
@@ -150,12 +156,22 @@ const readAuthenticatedData = async (
     resources.has("weekStatistics")
       ? api.getStatisticsPayload("week")
       : previous.statistics.week,
-    resources.has("expenses") ? api.getExpenses() : previous.expenses,
+    resources.has("expenses") ? api.getExpenseHistoryPage(25) : null,
     resources.has("inboxExpenses") ? api.getInboxExpenses() : previous.inboxExpenses,
     resources.has("expenseDimensions") ? api.getExpenseCategories() : previous.expenseCategories,
     resources.has("expenseDimensions") ? api.getExpenseTags() : previous.expenseTags,
     resources.has("expenseDimensions") ? api.getPaymentMethods() : previous.paymentMethods,
   ]);
+
+  // A first-page response represents one exact server snapshot. Replacing the
+  // previously loaded tail prevents a refreshed cursor from bridging revisions.
+  const expenses = expenseHistoryPage ? expenseHistoryPage.items : previous.expenses;
+  const expensesNextCursor = expenseHistoryPage
+    ? expenseHistoryPage.nextCursor
+    : previous.expensesNextCursor;
+  const expensesHasMore = expenseHistoryPage
+    ? expenseHistoryPage.hasMore
+    : previous.expensesHasMore;
 
   return {
     capabilities,
@@ -170,6 +186,8 @@ const readAuthenticatedData = async (
       ? { ...previous.statistics, week: weekStatistics }
       : previous.statistics,
     expenses,
+    expensesNextCursor,
+    expensesHasMore,
     inboxExpenses,
     expenseCategories,
     expenseTags,
@@ -202,6 +220,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     userId: null,
     resources: new Set(),
   });
+  const loadingExpensesRef = useRef(false);
 
   const refresh = useCallback(async ({ background = false }: RefreshOptions = {}) => {
     const requestId = ++requestVersion.current;
@@ -247,6 +266,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!background) setStatus("error");
     }
   }, [api, pathname]);
+
+  const loadMoreExpenses = useCallback(async () => {
+    if (loadingExpensesRef.current || !snapshotRef.current.expensesHasMore) return;
+    const cursor = snapshotRef.current.expensesNextCursor;
+    if (!cursor) return;
+    const requestId = requestVersion.current;
+    const userId = snapshotRef.current.session.user?.id ?? null;
+    loadingExpensesRef.current = true;
+    try {
+      const page = await api.getExpenseHistoryPage(25, cursor);
+      if (
+        requestVersion.current !== requestId ||
+        snapshotRef.current.session.user?.id !== userId ||
+        snapshotRef.current.expensesNextCursor !== cursor
+      ) return;
+      setData((current) => {
+        const timezone = current.capabilities?.effectiveTimezone ?? "Asia/Shanghai";
+        const expenses = sortExpensesForHistory(
+          Array.from(
+            new Map([...current.expenses, ...page.items].map((expense) => [expense.id, expense] as const)).values(),
+          ),
+          timezone,
+        );
+        const next = {
+          ...current,
+          expenses,
+          expensesNextCursor: page.nextCursor,
+          expensesHasMore: page.hasMore,
+        };
+        snapshotRef.current = next;
+        return next;
+      });
+      setVersion((current) => current + 1);
+    } catch (requestError) {
+      if (requestError instanceof ApiClientError && requestError.code === "EXPENSE_HISTORY_STALE") {
+        await refresh();
+        return;
+      }
+      throw requestError;
+    } finally {
+      loadingExpensesRef.current = false;
+    }
+  }, [api, refresh]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -341,6 +403,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       version,
       refresh,
       mutate,
+      loadMoreExpenses,
       clearError: () => setError(null),
       scenario,
       setScenario,
@@ -350,6 +413,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       data,
       error,
       mutate,
+      loadMoreExpenses,
       pendingMutations,
       refresh,
       scenario,

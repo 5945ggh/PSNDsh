@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Inbox, Receipt, X } from "lucide-react";
+import { Inbox, Receipt } from "lucide-react";
 import { useData, type DataSnapshot } from "@/context/MockContext";
 import type { Expense } from "@/lib/domain/types";
 import { ExpenseRecordForm } from "./ExpenseRecordForm";
@@ -11,6 +11,7 @@ import {
   buildExpenseUpdateInput,
   copyCaptureMessageToDraft,
   seedExpenseDraft,
+  sortExpensesForHistory,
   type ExpenseDraft,
 } from "./expense-utils";
 
@@ -26,6 +27,12 @@ export const getExpensePageIndex = (index: number, pageSize = EXPENSE_PAGE_SIZE)
 
 export const getExpensePageSlice = <T,>(items: T[], pageIndex: number, pageSize = EXPENSE_PAGE_SIZE) =>
   items.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+
+export const getExpenseKeyboardDirection = (key: string): -1 | 0 | 1 => {
+  if (key === "ArrowLeft") return -1;
+  if (key === "ArrowRight") return 1;
+  return 0;
+};
 
 export const getExpenseWorkspaceInitialSelection = (mode: ExpenseWorkspaceMode, records: Expense[]) =>
   mode === "inbox" ? records[0]?.id ?? null : null;
@@ -47,7 +54,7 @@ export const updateSnapshotWithExpense = (snapshot: DataSnapshot, expense: Expen
 };
 
 export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mode }) => {
-  const { api, data, mutate, pendingMutations } = useData();
+  const { api, data, mutate, pendingMutations, loadMoreExpenses } = useData();
   const records = mode === "inbox" ? data.inboxExpenses : data.expenses;
   const timezone = data.capabilities?.effectiveTimezone ?? "Asia/Shanghai";
   const [selectedId, setSelectedId] = useState<string | null>(() =>
@@ -60,7 +67,10 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const inlineScrollTop = useRef<number | null>(null);
+  const submitInFlightRef = useRef(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1023px)");
@@ -70,13 +80,25 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
     return () => mediaQuery.removeEventListener("change", updateViewport);
   }, []);
 
+  useEffect(() => {
+    // Loading feedback belongs to the history view instance, not the shared workspace shell.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadMoreError(null);
+  }, [mode]);
+
   const pageCount = getExpensePageCount(records.length);
   const visiblePageIndex = Math.min(pageIndex, pageCount - 1);
-  const pageRecords = useMemo(() => getExpensePageSlice(records, visiblePageIndex), [records, visiblePageIndex]);
-  const selectedRecord = records.find((item) => item.id === selectedId) ?? null;
-  const current = mode === "inbox" ? selectedRecord ?? records[0] ?? null : selectedRecord;
+  const orderedRecords = useMemo(
+    () => (mode === "expenses" ? sortExpensesForHistory(records, timezone) : records),
+    [mode, records, timezone],
+  );
+  const pageRecords = mode === "expenses"
+    ? orderedRecords
+    : getExpensePageSlice(orderedRecords, visiblePageIndex);
+  const selectedRecord = orderedRecords.find((item) => item.id === selectedId) ?? null;
+  const current = mode === "inbox" ? selectedRecord ?? orderedRecords[0] ?? null : selectedRecord;
   const usesInlineDetail = mode === "expenses" || isMobile;
-  const currentIndex = current ? records.findIndex((item) => item.id === current.id) : -1;
+  const currentIndex = current ? orderedRecords.findIndex((item) => item.id === current.id) : -1;
   const currentDraft = current && draftRecordId === current.id ? draft : seedExpenseDraft(current);
   const pending = pendingMutations > 0 || isSubmitting;
   const categories = data.expenseCategories;
@@ -108,9 +130,10 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
 
   const selectRecord = useCallback(
     (id: string) => {
-      const index = records.findIndex((item) => item.id === id);
+      if (submitInFlightRef.current) return;
+      const index = orderedRecords.findIndex((item) => item.id === id);
       if (index < 0) return;
-      const nextRecord = records[index];
+      const nextRecord = orderedRecords[index];
       preserveInlineScrollPosition();
       setSelectedId(id);
       setDraftRecordId(id);
@@ -119,11 +142,12 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
       setErrorMessage(null);
       setStatusMessage(null);
     },
-    [preserveInlineScrollPosition, records],
+    [orderedRecords, preserveInlineScrollPosition],
   );
 
   const toggleRecord = useCallback(
     (id: string) => {
+      if (submitInFlightRef.current) return;
       if ((mode === "expenses" || isMobile) && id === selectedId) {
         preserveInlineScrollPosition();
         setSelectedId(null);
@@ -149,24 +173,41 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
 
   const moveSelection = useCallback(
     (delta: number) => {
-      if (!current || records.length === 0) return;
-      const index = records.findIndex((item) => item.id === current.id);
-      const nextIndex = Math.max(0, Math.min(records.length - 1, index + delta));
-      const nextRecord = records[nextIndex];
+      if (submitInFlightRef.current) return;
+      if (!current || orderedRecords.length === 0) return;
+      const index = orderedRecords.findIndex((item) => item.id === current.id);
+      const nextIndex = Math.max(0, Math.min(orderedRecords.length - 1, index + delta));
+      const nextRecord = orderedRecords[nextIndex];
       if (nextRecord) selectRecord(nextRecord.id);
     },
-    [current, records, selectRecord],
+    [current, orderedRecords, selectRecord],
   );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!current || submitInFlightRef.current || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const direction = getExpenseKeyboardDirection(event.key);
+      if (direction === 0) return;
+      event.preventDefault();
+      moveSelection(direction);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [current, moveSelection]);
 
   const chooseNextInboxRecord = useCallback(() => {
     if (!current) return null;
-    const index = records.findIndex((item) => item.id === current.id);
-    return records[index + 1] ?? records[index - 1] ?? null;
-  }, [current, records]);
+    const index = orderedRecords.findIndex((item) => item.id === current.id);
+    return orderedRecords[index + 1] ?? orderedRecords[index - 1] ?? null;
+  }, [current, orderedRecords]);
 
   const submitCurrent = useCallback(
-    async (keepOriginal = false) => {
+    async (completeAfterSave = false) => {
       if (!current) return;
+      if (submitInFlightRef.current) return;
+      submitInFlightRef.current = true;
       const nextInboxRecord = mode === "inbox" ? chooseNextInboxRecord() : null;
       preserveInlineScrollPosition();
       setIsSubmitting(true);
@@ -174,10 +215,11 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
 
       try {
         const input =
-          keepOriginal
-            ? { reviewStatus: "reviewed" as const }
-            : mode === "inbox"
-              ? { ...buildExpenseUpdateInput(currentDraft, "reviewed"), reviewStatus: "reviewed" as const }
+          mode === "inbox"
+            ? {
+                ...buildExpenseUpdateInput(currentDraft, completeAfterSave ? "reviewed" : "pending"),
+                reviewStatus: completeAfterSave ? ("reviewed" as const) : ("pending" as const),
+              }
               : buildExpenseUpdateInput(currentDraft);
 
         await mutate(
@@ -187,7 +229,7 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
           },
         );
 
-        if (mode === "inbox") {
+        if (mode === "inbox" && completeAfterSave) {
           setSelectedId(nextInboxRecord?.id ?? null);
           setDraftRecordId(nextInboxRecord?.id ?? null);
           setDraft(seedExpenseDraft(nextInboxRecord));
@@ -202,9 +244,9 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
         preserveInlineScrollPosition();
         setStatusMessage(
           mode === "inbox"
-            ? keepOriginal
-              ? "已保留原样并进入下一条。"
-              : "已保存并进入下一条。"
+            ? completeAfterSave
+              ? "已保存并标记为已整理，进入下一条。"
+              : "已保存更改，仍保留在待整理。"
             : "已保存修改。",
         );
       } catch (error) {
@@ -213,6 +255,7 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
       } finally {
         preserveInlineScrollPosition();
         setIsSubmitting(false);
+        submitInFlightRef.current = false;
       }
     },
     [api, chooseNextInboxRecord, current, currentDraft, mode, mutate, preserveInlineScrollPosition, records],
@@ -231,15 +274,28 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
         return;
       }
 
-      const nextRecord = records[clamped * EXPENSE_PAGE_SIZE] ?? null;
+      const nextRecord = orderedRecords[clamped * EXPENSE_PAGE_SIZE] ?? null;
       setSelectedId(nextRecord?.id ?? null);
       setDraftRecordId(nextRecord?.id ?? null);
       setDraft(seedExpenseDraft(nextRecord));
       setErrorMessage(null);
       setStatusMessage(null);
     },
-    [isMobile, mode, pageCount, preserveInlineScrollPosition, records],
+    [isMobile, mode, orderedRecords, pageCount, preserveInlineScrollPosition],
   );
+
+  const handleLoadMore = useCallback(async () => {
+    if (mode !== "expenses" || isLoadingMore || !data.expensesHasMore) return;
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      await loadMoreExpenses();
+    } catch (error) {
+      setLoadMoreError(error instanceof Error ? error.message : "加载更早记录失败");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [data.expensesHasMore, isLoadingMore, loadMoreExpenses, mode]);
 
   const list = (
     <ExpenseRecordList
@@ -251,13 +307,18 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
       emptyLabel={mode === "inbox" ? "Inbox 已清空，新的捕获会自动出现在这里。" : "当前账号还没有开销记录。"}
       onSelect={toggleRecord}
       totalCount={records.length}
-      pageIndex={visiblePageIndex}
-      pageCount={pageCount}
-      onPageChange={handlePageChange}
+      totalCountLabel={mode === "expenses" ? `已加载 ${records.length} 条` : undefined}
+      pageIndex={mode === "inbox" ? visiblePageIndex : undefined}
+      pageCount={mode === "inbox" ? pageCount : undefined}
+      onPageChange={mode === "inbox" ? handlePageChange : undefined}
+      hasMore={mode === "expenses" ? data.expensesHasMore : undefined}
+      loadingMore={mode === "expenses" ? isLoadingMore : undefined}
+      loadMoreError={mode === "expenses" ? loadMoreError : undefined}
+      onLoadMore={mode === "expenses" ? handleLoadMore : undefined}
       categoryNames={categoryNames}
       paymentMethodNames={paymentMethodNames}
       groupByDate={mode === "expenses"}
-      summaryExpenses={mode === "expenses" ? records : undefined}
+      summaryExpenses={mode === "expenses" ? orderedRecords : undefined}
       renderExpanded={usesInlineDetail ? () => renderDetailPanel() : undefined}
     />
   );
@@ -265,23 +326,6 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
   function renderDetailPanel(dataTestId = "expense-detail-panel") {
     return current ? (
     <section className="relative">
-      {mode === "expenses" && (
-        <button
-          type="button"
-          onClick={() => {
-            preserveInlineScrollPosition();
-            setSelectedId(null);
-            setDraftRecordId(null);
-            setErrorMessage(null);
-            setStatusMessage(null);
-          }}
-          aria-label="关闭详情"
-          title="关闭详情"
-          className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
-      )}
       <ExpenseRecordForm
         expense={current}
         draft={currentDraft}

@@ -29,7 +29,8 @@ export type ApplicationErrorCode =
   | "EXPENSE_TAG_NOT_FOUND"
   | "PAYMENT_METHOD_NOT_FOUND"
   | "EXPENSE_DIMENSION_NAME_TAKEN"
-  | "EXPENSE_DIMENSION_CONFLICT";
+  | "EXPENSE_DIMENSION_CONFLICT"
+  | "EXPENSE_HISTORY_STALE";
 
 export class ApplicationError extends Error {
   constructor(

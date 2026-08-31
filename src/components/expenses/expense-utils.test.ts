@@ -9,6 +9,7 @@ import {
   formatExpenseDateRangeLabel,
   groupExpensesByDate,
   seedExpenseDraft,
+  sortExpensesForHistory,
 } from "./expense-utils";
 
 const sampleExpense = (overrides: Partial<Expense> = {}): Expense =>
@@ -109,5 +110,41 @@ describe("expense-utils", () => {
   it("formats a visible date range for page-level browsing", () => {
     expect(formatExpenseDateRangeLabel("2026-08-24", "2026-08-30")).toBe("8 月 24 日—8 月 30 日");
     expect(formatExpenseDateRangeLabel("2026-08-30", "2026-08-30")).toBe("8 月 30 日 · 周日");
+  });
+
+  it("sorts history by occurrence and falls back to edits for date-only records", () => {
+    const records = [
+      sampleExpense({
+        id: "exact-earlier",
+        occurredAt: "2026-08-29T23:00:00+08:00",
+        updatedAt: "2026-08-31T10:00:00+08:00",
+      }),
+      sampleExpense({
+        id: "date-only-later-edit",
+        occurredAt: null,
+        occurredOn: "2026-08-30",
+        occurrencePrecision: "date",
+        updatedAt: "2026-08-31T11:00:00+08:00",
+      }),
+      sampleExpense({
+        id: "exact-later",
+        occurredAt: "2026-08-30T12:00:00+08:00",
+        updatedAt: "2026-08-30T12:05:00+08:00",
+      }),
+      sampleExpense({
+        id: "date-only-earlier-edit",
+        occurredAt: null,
+        occurredOn: "2026-08-30",
+        occurrencePrecision: "date",
+        updatedAt: "2026-08-30T12:00:00+08:00",
+      }),
+    ];
+
+    expect(sortExpensesForHistory(records).map((record) => record.id)).toEqual([
+      "exact-later",
+      "date-only-later-edit",
+      "date-only-earlier-edit",
+      "exact-earlier",
+    ]);
   });
 });

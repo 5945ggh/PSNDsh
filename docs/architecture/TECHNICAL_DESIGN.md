@@ -64,6 +64,7 @@ Browser
 | `statistics` | 时间边界切分、直接投入与递归聚合 |
 | `dashboard` | 首页聚合查询，不拥有核心数据 |
 | `ambient` | 本地名句内容包；天气暂为不可用状态 |
+| `expenses` | 快捷捕获、Inbox 整理、历史分页和账目维度管理 |
 | `data-management` | JSON 导出、数据库备份、校验与恢复 |
 
 ## 5. 数据模型
@@ -78,6 +79,13 @@ User
   +-- WeekPlan -- WeekPlanEntry -- Entry
   +-- FocusSession -- FocusSegment -- optional Entry
   +-- ScheduleBlock
+  +-- Expense (category/payment method/tag relations)
+
+Expense
+  +-- ExpenseCategory
+  +-- PaymentMethod
+  +-- ExpenseTag (through ExpenseRecordTag)
+  +-- ExpenseHistoryRevision (per-user pagination revision)
 ```
 
 历史关系：
@@ -85,6 +93,8 @@ User
 - 条目默认归档或软删除；专注历史不能被条目删除级联移除。
 - 条目改名、移动或状态变化后，历史页面显示当前元数据。
 - 首版不保存完整对象版本历史。
+- 账目历史使用 `history_date_key`、`history_occurred_at_ms` 和 `history_fallback_ms` 持久化可比较排序键；自然日键按稳定的 `effectiveTimezone` 生成。
+- `expense_history_revisions` 按用户记录历史流版本。账目写入、更新或删除会递增版本；带旧 revision 的续页请求返回 `EXPENSE_HISTORY_STALE`。
 
 ## 6. 领域不变量
 
@@ -122,6 +132,12 @@ User
 | `/api/v1/api-keys` | 已登录网页 session 下创建、列出与撤销快捷捕获 API key |
 | `/api/v1/api-keys/:id` | 已登录网页 session 下再次查看某个 API key |
 | `/api/v1/expenses/capture` | 仅接受 Bearer API key 的最小开销捕获；不使用 cookie session 或 CSRF 同源校验；`id` 可省略，服务端会生成 UUID |
+| `/api/v1/expenses` | 当前账号账目全量兼容读取；带 `limit` 或 `before` 时使用服务端 cursor 历史分页 |
+| `/api/v1/expenses/:id` | 当前账号账目读取、编辑和软删除 |
+| `/api/v1/expenses/inbox` | 当前账号待整理账目 |
+| `/api/v1/expenses/categories` | 分类创建、改名、归档、恢复与合并 |
+| `/api/v1/expenses/tags` | 标签创建、改名、归档、恢复与合并 |
+| `/api/v1/expenses/payment-methods` | 支付方式创建、改名、归档、恢复与合并 |
 
 快捷捕获 key 是独立于网页登录 session 的受限凭据。每个 key 由不含用户信息的公开定位符和高熵 secret 组成；服务端仅保存 secret 的 scrypt 哈希和由 `AUTH_SECRET` 派生密钥加密的副本。Bearer key 只被 `/api/v1/expenses/capture` 显式接受，不能代表网页 session 访问其他接口。`AUTH_SECRET` 轮换前必须先轮换已有 API key；当前实现未提供加密密钥环，因此旧 key 的加密副本在 secret 变更后不能再次查看。捕获请求提供 `id` 时按该 UUID 做幂等重试；省略或留空 `id` 时由服务端生成新 UUID，因此网络重试可能产生重复记录。
 
@@ -136,6 +152,8 @@ User
 - 统计页先读取周统计，日/月由页面按需请求。
 - 设置页可读取需要展示的计数资源。
 - 日历页使用 `/api/v1/calendar?from=&to=` 的范围查询，不依赖全局全量 `focusSessions` 或 `scheduleBlocks`。
+- 账目页首屏只读取历史首页；接近底部时携带 `before` cursor 加载更早记录。持久化服务先查询 `limit + 1` 条主记录，再按当前页批量加载分类、支付方式和标签，禁止用全量历史读取实现分页。
+- 游标失效时 Provider 丢弃旧的已加载尾页并重新获取首屏，不能把不同 revision 的分页结果拼接在一起。
 
 新增页面或 Provider mutation 时，先更新 `src/context/data-load-plan.ts` 及其测试。
 

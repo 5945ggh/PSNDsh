@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { ChevronLeft, ChevronRight, Receipt } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, LoaderCircle, Receipt } from "lucide-react";
 import type { Expense } from "@/lib/domain/types";
 import {
   expenseAmountLabel,
@@ -26,9 +26,14 @@ type ExpenseRecordListProps = {
   emptyLabel: string;
   onSelect: (id: string) => void;
   totalCount: number;
-  pageIndex: number;
-  pageCount: number;
-  onPageChange: (pageIndex: number) => void;
+  totalCountLabel?: string;
+  pageIndex?: number;
+  pageCount?: number;
+  onPageChange?: (pageIndex: number) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  loadMoreError?: string | null;
+  onLoadMore?: () => void;
   categoryNames: ReadonlyMap<string, string>;
   paymentMethodNames: ReadonlyMap<string, string>;
   groupByDate?: boolean;
@@ -79,19 +84,40 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
   emptyLabel,
   onSelect,
   totalCount,
-  pageIndex,
-  pageCount,
+  totalCountLabel,
+  pageIndex = 0,
+  pageCount = 1,
   onPageChange,
+  hasMore = false,
+  loadingMore = false,
+  loadMoreError = null,
+  onLoadMore,
   categoryNames,
   paymentMethodNames,
   groupByDate = false,
   summaryExpenses,
   renderExpanded,
 }) => {
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const canGoPrevious = pageIndex > 0;
   const canGoNext = pageIndex < pageCount - 1;
   const dateGroups = groupByDate ? groupExpensesByDate(expenses, timezone, summaryExpenses) : null;
   const pageRangeLabel = groupByDate && expenses.length > 0 ? getExpensePageRangeLabel(expenses, timezone) : null;
+
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || loadingMore || loadMoreError) return;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === "undefined") return;
+    const root = document.getElementById("main-content");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { root, rootMargin: "0px 0px 480px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreError, loadingMore, onLoadMore]);
 
   const renderExpenseRow = (expense: Expense) => {
     const { visibleTags, hiddenCount } = previewExpenseTags(expense);
@@ -165,7 +191,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
   const renderDateGroup = (group: ExpenseDateGroup, index: number) => (
     <li key={group.key} data-testid={`expense-date-group-${group.key}`}>
       <div
-        className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 bg-zinc-50/40 px-4 py-3 dark:bg-zinc-950/20 ${
+        className={`sticky top-0 z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-zinc-200/80 bg-zinc-50 px-4 py-3 shadow-[0_1px_3px_rgba(24,24,27,0.06)] dark:border-zinc-800 dark:bg-zinc-900 ${
           index > 0 ? "border-t border-zinc-200/80 dark:border-zinc-800/80" : ""
         }`}
       >
@@ -190,7 +216,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
 
   return (
     <section
-      className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       data-testid={dataTestId}
       aria-labelledby={dataTestId ? `${dataTestId}-heading` : undefined}
     >
@@ -205,7 +231,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
           </h2>
         </div>
         <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-          {totalCount} 条
+          {totalCountLabel ?? `${totalCount} 条`}
         </span>
       </div>
 
@@ -224,7 +250,43 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
         </ul>
       )}
 
-      {pageCount > 1 && (
+      {onLoadMore && expenses.length > 0 && (
+        <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <div ref={loadMoreSentinelRef} data-testid="expense-load-more-sentinel" aria-hidden="true" />
+          <div className="flex min-h-8 items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+            {loadingMore ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span role="status">加载更早记录...</span>
+              </>
+            ) : loadMoreError ? (
+              <>
+                <span role="alert">{loadMoreError}</span>
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  className="font-medium text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  重试加载
+                </button>
+              </>
+            ) : hasMore ? (
+              <button
+                type="button"
+                onClick={onLoadMore}
+                className="rounded-md px-2 py-1 font-medium text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/40"
+              >
+                加载更多
+              </button>
+            ) : (
+              <span>已经看到最早的记录</span>
+            )}
+          </div>
+          <div aria-hidden="true" className="h-1" />
+        </div>
+      )}
+
+      {!onLoadMore && pageCount > 1 && (
         <nav
           className="flex items-center justify-between gap-3 border-t border-zinc-200 px-4 py-3 dark:border-zinc-800"
           aria-label={`${title}分页`}
@@ -240,7 +302,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onPageChange(pageIndex - 1)}
+              onClick={() => onPageChange?.(pageIndex - 1)}
               disabled={!canGoPrevious}
               aria-label="上一页"
               title="上一页"
@@ -250,7 +312,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onPageChange(pageIndex + 1)}
+              onClick={() => onPageChange?.(pageIndex + 1)}
               disabled={!canGoNext}
               aria-label="下一页"
               title="下一页"

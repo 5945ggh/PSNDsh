@@ -26,6 +26,7 @@ export class MockApiAdapter {
   moveEntry(id: string, parentId: string | null) { return this.service.moveEntry(id, parentId); }
   deleteEntry(id: string) { return this.service.deleteEntry(id); }
   getExpenses() { return this.service.getExpenses(); }
+  getExpenseHistoryPage(limit?: number, before?: string) { return this.service.getExpenseHistoryPage(limit, before); }
   getInboxExpenses() { return this.service.getInboxExpenses(); }
   getExpenseCategories(includeArchived?: boolean) { return this.service.getExpenseCategories(includeArchived); }
   getExpenseTags(includeArchived?: boolean) { return this.service.getExpenseTags(includeArchived); }

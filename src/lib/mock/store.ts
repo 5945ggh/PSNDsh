@@ -18,6 +18,7 @@ import {
   PaymentMethod,
 } from "@/lib/domain/types";
 import type { ScenarioPreset } from "@/lib/mock/types";
+import { decodeExpenseHistoryCursor, getExpenseHistoryPage, sortExpensesForHistory } from "@/lib/expenses/history";
 import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import {
   MOCK_USER,
@@ -161,6 +162,7 @@ export class MockDataStore {
   private expenseCategories: ExpenseCategory[] = [...MOCK_EXPENSE_CATEGORIES];
   private expenseTags: ExpenseTag[] = [...MOCK_EXPENSE_TAGS];
   private paymentMethods: PaymentMethod[] = [...MOCK_PAYMENT_METHODS];
+  private expenseHistoryRevision = 0;
   private listeners: Array<() => void> = [];
   private credentials = new Map<string, { user: UserProfile; password: string }>([
     [MOCK_USER.username, { user: MOCK_USER, password: "password123" }],
@@ -179,6 +181,10 @@ export class MockDataStore {
 
   private notify() {
     this.listeners.forEach((l) => l());
+  }
+
+  private invalidateExpenseHistory() {
+    this.expenseHistoryRevision += 1;
   }
 
   public getScenario(): ScenarioPreset {
@@ -831,6 +837,7 @@ export class MockDataStore {
       }
     }
     source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
     this.notify();
     return { ...source };
   }
@@ -900,6 +907,7 @@ export class MockDataStore {
       expense.tags = Array.from(deduped.values());
     }
     source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
     this.notify();
     return { ...source };
   }
@@ -968,6 +976,7 @@ export class MockDataStore {
       }
     }
     source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
     this.notify();
     return { ...source };
   }
@@ -1061,19 +1070,43 @@ export class MockDataStore {
       updatedAt: recordedAt,
     };
     this.expenses.unshift(expense);
+    this.invalidateExpenseHistory();
     this.notify();
     return { created: true, expense: cloneExpense(expense) };
   }
 
   public getExpenses(): Expense[] {
-    return this.expenses
+    return sortExpensesForHistory(
+      this.expenses
       .filter((expense) => expense.deletedAt === null)
-      .map((expense) => cloneExpense(expense))
-      .sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt));
+      .map((expense) => cloneExpense(expense)),
+      this.getCapabilities().effectiveTimezone,
+    );
+  }
+
+  public getExpenseHistoryPage(limit = 25, before?: string) {
+    const revision = String(this.expenseHistoryRevision);
+    if (before) {
+      const cursor = decodeExpenseHistoryCursor(before);
+      if (!cursor) throw new MockDomainError("REQUEST_INVALID", "开销历史游标无效");
+      if (cursor.revision !== revision) {
+        throw new MockDomainError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
+      }
+    }
+    return getExpenseHistoryPage(
+      this.expenses.filter((expense) => expense.deletedAt === null).map((expense) => cloneExpense(expense)),
+      this.getCapabilities().effectiveTimezone,
+      limit,
+      before,
+      revision,
+    );
   }
 
   public getInboxExpenses(): Expense[] {
-    return this.getExpenses().filter((expense) => expense.reviewStatus === "pending");
+    return this.expenses
+      .filter((expense) => expense.deletedAt === null && expense.reviewStatus === "pending")
+      .map((expense) => cloneExpense(expense))
+      .sort((left, right) => Date.parse(right.recordedAt) - Date.parse(left.recordedAt));
   }
 
   public getExpenseById(id: string, includeDeleted = false): Expense | undefined {
@@ -1128,6 +1161,7 @@ export class MockDataStore {
         ? current.tags.map((tag) => ({ ...tag }))
         : tagIds.map((tagId) => ({ ...this.getExpenseTagById(tagId) }));
     current.updatedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
     this.notify();
     return cloneExpense(current);
   }
@@ -1136,6 +1170,7 @@ export class MockDataStore {
     const current = this.getExpenseRow(id);
     current.deletedAt = new Date().toISOString();
     current.updatedAt = current.deletedAt;
+    this.invalidateExpenseHistory();
     this.notify();
   }
 

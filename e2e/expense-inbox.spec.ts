@@ -97,17 +97,17 @@ test("inbox supports save, keep as is, skip, and error recovery", async ({ page 
   await page.getByLabel("支付方式").selectOption(paymentMethod.id);
   await page.getByLabel("备注").fill("午餐");
   await page.getByLabel("校园").check();
-  await page.getByRole("button", { name: "保存并下一条" }).click();
+  await page.getByRole("button", { name: "保存修改" }).click();
   await expect(page.getByText("保存失败")).toBeVisible();
   await expect(page.getByLabel("金额")).toHaveValue("15.80");
 
-  await page.getByRole("button", { name: "保存并下一条" }).click();
+  await page.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(detailPanel).toContainText("奶茶");
   await expect(page.getByTestId("expense-record-list")).toContainText("公交");
   await expect(page.getByRole("button", { name: /午饭/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: /奶茶/ }).first().click();
-  await page.getByRole("button", { name: "保留原样并下一条" }).click();
+  await page.getByRole("button", { name: "保存并标记已整理" }).click();
   await expect(detailPanel).toContainText("公交");
   await expect(page.getByRole("button", { name: /奶茶/ })).toHaveCount(0);
 

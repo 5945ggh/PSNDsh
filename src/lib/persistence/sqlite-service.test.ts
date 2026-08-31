@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { ApplicationError } from "@/lib/application/error";
 import { QUOTATION_CATALOG_VERSION } from "@/lib/ambient/quotations";
 import { openDatabase } from "@/lib/db";
-import { entries, focusSegments, users, weekPlans } from "@/lib/db/schema";
+import { entries, expenses, focusSegments, users, weekPlans } from "@/lib/db/schema";
+import { sortExpensesForHistory } from "@/lib/expenses/history";
 import { SqliteApplicationService } from "./sqlite-service";
 
 const USER_A = "user-a";
@@ -890,6 +891,67 @@ describe("SqliteApplicationService", () => {
       deletedAt: expect.any(String),
     }));
     expect(() => app.captureExpense({ id: "expense-deleted", amountCents: 888 })).toThrow(/EXPENSE_DELETED/);
+  });
+
+  it("pages mixed occurrence precisions with the effective-timezone history key", () => {
+    const app = new SqliteApplicationService(handle.db, {
+      userId: USER_A,
+      clock: () => currentTime,
+      effectiveTimezone: "America/New_York",
+    });
+    const capture = (id: string, occurredAt: string | null, occurredOn: string | null) => {
+      const result = app.captureExpense({
+        id,
+        amountCents: 100,
+        ...(occurredAt ? { occurredAt, occurrencePrecision: "datetime" as const } : {
+          occurredOn: occurredOn!,
+          occurrencePrecision: "date" as const,
+        }),
+      });
+      currentTime = new Date(currentTime.getTime() + 1_000);
+      return result.expense;
+    };
+
+    const captured = [
+      capture("datetime-jun-28", "2026-06-29T02:00:00.000Z", null),
+      capture("date-jun-29-early", null, "2026-06-29"),
+      capture("datetime-jun-29", "2026-06-29T15:00:00.000Z", null),
+      capture("date-jun-29-late", null, "2026-06-29"),
+      capture("datetime-jun-30", "2026-06-30T01:00:00.000Z", null),
+      capture("date-jun-28", null, "2026-06-28"),
+    ];
+    const expectedIds = sortExpensesForHistory(captured, "America/New_York").map((expense) => expense.id);
+
+    const first = app.getExpenseHistoryPage(2);
+    const second = app.getExpenseHistoryPage(2, first.nextCursor ?? undefined);
+    const third = app.getExpenseHistoryPage(2, second.nextCursor ?? undefined);
+
+    expect([...first.items, ...second.items, ...third.items].map((expense) => expense.id)).toEqual(expectedIds);
+    expect(new Set([...first.items, ...second.items, ...third.items].map((expense) => expense.id))).toHaveLength(captured.length);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(second.nextCursor).toEqual(expect.any(String));
+    expect(third).toMatchObject({ hasMore: false, nextCursor: null });
+    expect(handle.db.select().from(expenses).all()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ historyDateKey: "2026-06-29", historyOccurredAtMs: expect.any(Number) }),
+      expect.objectContaining({ historyDateKey: "2026-06-29", historyOccurredAtMs: 0 }),
+    ]));
+  });
+
+  it("rejects a continuation cursor after an unloaded history record changes", () => {
+    const app = service();
+    app.captureExpense({ id: "history-newest", amountCents: 100, occurredAt: "2026-06-28T10:00:00.000Z" });
+    app.captureExpense({ id: "history-middle", amountCents: 100, occurredAt: "2026-06-27T10:00:00.000Z" });
+    app.captureExpense({ id: "history-unloaded", amountCents: 100, occurredAt: "2026-06-26T10:00:00.000Z" });
+
+    const first = app.getExpenseHistoryPage(2);
+    app.updateExpense("history-unloaded", { occurredAt: "2026-06-29T10:00:00.000Z" });
+
+    try {
+      app.getExpenseHistoryPage(2, first.nextCursor ?? undefined);
+      throw new Error("expected stale history cursor");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "EXPENSE_HISTORY_STALE" } satisfies Partial<ApplicationError>);
+    }
   });
 
   it("preserves occurrence facts separately from recorded time and supports independent inbox organization", () => {

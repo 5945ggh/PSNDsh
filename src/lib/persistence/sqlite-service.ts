@@ -5,6 +5,7 @@ import {
   apiKeys,
   entries,
   expenseCategories,
+  expenseHistoryRevisions,
   expenseRecordTags,
   expenses,
   expenseTags,
@@ -75,6 +76,12 @@ import {
 } from "@/lib/domain/types";
 import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import { generateApiKey, revealApiKey } from "@/lib/security/api-key";
+import {
+  createExpenseHistoryCursor,
+  decodeExpenseHistoryCursor,
+  expenseHistorySortKey,
+  sortExpensesForHistory,
+} from "@/lib/expenses/history";
 
 const DEFAULT_TIMEZONE = "Asia/Shanghai";
 const DEFAULT_USER_ID = "usr_demo";
@@ -91,6 +98,11 @@ type FocusSegmentRow = typeof focusSegments.$inferSelect;
 type ScheduleRow = typeof scheduleBlocks.$inferSelect;
 type ScheduleTemplateRow = typeof scheduleTemplates.$inferSelect;
 type ExpenseRow = typeof expenses.$inferSelect;
+
+type ExpenseHistoryKeyRow = Pick<
+  ExpenseRow,
+  "rowId" | "id" | "occurredAt" | "occurredOn" | "occurrencePrecision" | "recordedAt" | "createdAt" | "updatedAt"
+>;
 
 const nowIso = (clock: () => Date) => clock().toISOString();
 
@@ -601,6 +613,67 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
     };
   }
 
+  private toExpenses(rows: ExpenseRow[]): Expense[] {
+    if (rows.length === 0) return [];
+    const categoryIds = rows.map((r) => r.categoryId).filter((v): v is string => Boolean(v));
+    const paymentIds = rows.map((r) => r.paymentMethodId).filter((v): v is string => Boolean(v));
+    const rowIds = rows.map((r) => r.rowId);
+    const categories = new Map((categoryIds.length ? this.db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).where(inArray(expenseCategories.id, categoryIds)).all() : []).map((r) => [r.id, r.name]));
+    const payments = new Map((paymentIds.length ? this.db.select({ id: paymentMethods.id, name: paymentMethods.name }).from(paymentMethods).where(inArray(paymentMethods.id, paymentIds)).all() : []).map((r) => [r.id, r.name]));
+    const tags = new Map<string, ExpenseTag[]>();
+    if (rowIds.length) {
+      this.db.select({ rowId: expenseRecordTags.expenseRowId, id: expenseTags.id, name: expenseTags.name, archivedAt: expenseTags.archivedAt })
+        .from(expenseRecordTags).innerJoin(expenseTags, eq(expenseRecordTags.tagId, expenseTags.id))
+        .where(inArray(expenseRecordTags.expenseRowId, rowIds)).orderBy(asc(expenseTags.name)).all()
+        .forEach((tag) => tags.set(tag.rowId, [...(tags.get(tag.rowId) ?? []), { id: tag.id, name: tag.name, archivedAt: tag.archivedAt }]));
+    }
+    return rows.map((row) => ({ ...this.toExpenseBase(row), categoryName: row.categoryId ? categories.get(row.categoryId) ?? null : null, paymentMethodName: row.paymentMethodId ? payments.get(row.paymentMethodId) ?? null : null, tags: tags.get(row.rowId) ?? [] }));
+  }
+
+  private toExpenseBase(row: ExpenseRow): Omit<Expense, "categoryName" | "paymentMethodName" | "tags"> {
+    return { id: row.id, amountCents: row.amountCents, currency: row.currency, occurredAt: row.occurredAt, occurredOn: row.occurredOn, occurredTimezone: row.occurredTimezone, occurrencePrecision: row.occurrencePrecision, recordedAt: row.recordedAt, captureMessage: row.captureMessage, note: row.note, categoryId: row.categoryId, paymentMethodId: row.paymentMethodId, reviewStatus: row.reviewStatus, recognitionStatus: row.recognitionStatus, recoverableCents: row.recoverableCents, settled: row.settled, source: row.source, latitude: row.latitude, longitude: row.longitude, deletedAt: row.deletedAt, createdAt: row.createdAt, updatedAt: row.updatedAt };
+  }
+
+  private historyKey(row: ExpenseHistoryKeyRow) {
+    return expenseHistorySortKey(row, this.timezone);
+  }
+
+  /**
+   * 0007 cannot derive arbitrary IANA calendar dates in SQLite. Backfill only
+   * legacy rows, without hydrating their dimensions; new writes always persist
+   * these keys before they can appear in a paged query.
+   */
+  private ensureExpenseHistoryKeys(userId: string) {
+    const batchSize = 250;
+    for (;;) {
+      const legacyRows = this.db.select({
+        rowId: expenses.rowId,
+        id: expenses.id,
+        occurredAt: expenses.occurredAt,
+        occurredOn: expenses.occurredOn,
+        occurrencePrecision: expenses.occurrencePrecision,
+        recordedAt: expenses.recordedAt,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+      }).from(expenses).where(and(
+        eq(expenses.userId, userId),
+        isNull(expenses.deletedAt),
+        isNull(expenses.historyDateKey),
+      )).limit(batchSize).all() as ExpenseHistoryKeyRow[];
+      if (legacyRows.length === 0) return;
+      this.db.transaction((tx) => {
+        for (const row of legacyRows) {
+          const key = this.historyKey(row);
+          tx.update(expenses).set({
+            historyDateKey: key.dateKey,
+            historyOccurredAtMs: key.occurredAtMs,
+            historyFallbackMs: key.fallbackMs,
+          }).where(eq(expenses.rowId, row.rowId)).run();
+        }
+      });
+    }
+  }
+
   private resolveCaptureOccurrence(input: CaptureExpenseInput, recordedAt: string) {
     const hasOccurredAt = input.occurredAt !== undefined;
     const hasOccurredOn = input.occurredOn !== undefined;
@@ -727,8 +800,13 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
     }
     const updatedAt = nowIso(this.clock);
+    const dateOnlyFallbackMs = Date.parse(updatedAt);
     this.db.transaction((tx) => {
-      tx.update(expenses).set({ categoryId: target.id, updatedAt })
+      tx.update(expenses).set({
+        categoryId: target.id,
+        updatedAt,
+        historyFallbackMs: sql<number>`CASE WHEN ${expenses.occurrencePrecision} = 'date' THEN ${dateOnlyFallbackMs} ELSE ${expenses.historyFallbackMs} END`,
+      })
         .where(and(eq(expenses.userId, this.requireUserId()), eq(expenses.categoryId, source.id)))
         .run();
       tx.update(expenseCategories).set({ archivedAt: updatedAt, updatedAt })
@@ -892,8 +970,13 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
     }
     const updatedAt = nowIso(this.clock);
+    const dateOnlyFallbackMs = Date.parse(updatedAt);
     this.db.transaction((tx) => {
-      tx.update(expenses).set({ paymentMethodId: target.id, updatedAt })
+      tx.update(expenses).set({
+        paymentMethodId: target.id,
+        updatedAt,
+        historyFallbackMs: sql<number>`CASE WHEN ${expenses.occurrencePrecision} = 'date' THEN ${dateOnlyFallbackMs} ELSE ${expenses.historyFallbackMs} END`,
+      })
         .where(and(eq(expenses.userId, this.requireUserId()), eq(expenses.paymentMethodId, source.id)))
         .run();
       tx.update(paymentMethods).set({ archivedAt: updatedAt, updatedAt })
@@ -955,17 +1038,71 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       createdAt: recordedAt,
       updatedAt: recordedAt,
     };
+    const historyKey = this.historyKey(row as ExpenseHistoryKeyRow);
+    row.historyDateKey = historyKey.dateKey;
+    row.historyOccurredAtMs = historyKey.occurredAtMs;
+    row.historyFallbackMs = historyKey.fallbackMs;
     this.db.insert(expenses).values(row).run();
     const created = this.db.select().from(expenses).where(eq(expenses.rowId, row.rowId)).get() as ExpenseRow;
     return { expense: this.toExpense(created), created: true };
   }
 
   getExpenses(): Expense[] {
-    return this.db.select().from(expenses)
+    const result = this.db.select().from(expenses)
       .where(and(eq(expenses.userId, this.requireUserId()), isNull(expenses.deletedAt)))
-      .orderBy(desc(expenses.recordedAt))
       .all()
       .map((row) => this.toExpense(row));
+    return sortExpensesForHistory(result, this.timezone);
+  }
+
+  getExpenseHistoryPage(limit = 25, before?: string) {
+    const bounded = Math.min(100, Math.max(1, Math.floor(limit)));
+    const userId = this.requireUserId();
+    this.ensureExpenseHistoryKeys(userId);
+    const predicates = [eq(expenses.userId, userId), isNull(expenses.deletedAt)];
+    let cursor = null;
+    if (before) {
+      cursor = decodeExpenseHistoryCursor(before);
+      if (!cursor) throw new ApplicationError("REQUEST_INVALID", "开销历史游标无效");
+      predicates.push(sql`(
+        ${expenses.historyDateKey} < ${cursor.dateKey}
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} < ${cursor.occurredAtMs})
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} = ${cursor.occurredAtMs} AND ${expenses.historyFallbackMs} < ${cursor.fallbackMs})
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} = ${cursor.occurredAtMs} AND ${expenses.historyFallbackMs} = ${cursor.fallbackMs} AND ${expenses.id} > ${cursor.id})
+      )`);
+    }
+    const result = this.db.transaction((tx) => {
+      const revision = String(
+        tx.select({ value: expenseHistoryRevisions.revision })
+          .from(expenseHistoryRevisions)
+          .where(eq(expenseHistoryRevisions.userId, userId))
+          .get()?.value ?? 0,
+      );
+      if (cursor && cursor.revision !== revision) {
+        throw new ApplicationError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
+      }
+      const rows = tx.select().from(expenses)
+        .where(and(...predicates))
+        .orderBy(
+          desc(expenses.historyDateKey),
+          desc(expenses.historyOccurredAtMs),
+          desc(expenses.historyFallbackMs),
+          asc(expenses.id),
+        )
+        .limit(bounded + 1)
+        .all() as ExpenseRow[];
+      return { revision, rows };
+    });
+    const pageRows = result.rows.slice(0, bounded);
+    const items = this.toExpenses(pageRows);
+    const hasMore = result.rows.length > bounded;
+    return {
+      items,
+      hasMore,
+      nextCursor: hasMore
+        ? createExpenseHistoryCursor(items[items.length - 1]!, this.timezone, result.revision)
+        : null,
+    };
   }
 
   getInboxExpenses(): Expense[] {
@@ -1023,6 +1160,13 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
     }
 
     const updatedAt = nowIso(this.clock);
+    const historyKey = this.historyKey({
+      ...current,
+      occurredAt: nextOccurredAt,
+      occurredOn: nextOccurredOn,
+      occurrencePrecision: nextPrecision,
+      updatedAt,
+    });
     this.db.transaction((tx) => {
       tx.update(expenses).set({
         amountCents: input.amountCents,
@@ -1036,6 +1180,9 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
         recoverableCents: input.recoverableCents,
         settled: input.settled,
         updatedAt,
+        historyDateKey: historyKey.dateKey,
+        historyOccurredAtMs: historyKey.occurredAtMs,
+        historyFallbackMs: historyKey.fallbackMs,
       }).where(and(eq(expenses.rowId, current.rowId), eq(expenses.userId, this.requireUserId()), isNull(expenses.deletedAt))).run();
       if (tagIds !== undefined) {
         tx.delete(expenseRecordTags).where(eq(expenseRecordTags.expenseRowId, current.rowId)).run();

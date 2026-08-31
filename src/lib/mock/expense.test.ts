@@ -55,6 +55,16 @@ describe("mock expense inbox contract", () => {
     expect(app.getInboxExpenses().every((expense) => expense.reviewStatus === "pending")).toBe(true);
   });
 
+  it("rejects a stale history continuation after an expense mutation", () => {
+    const app = new MockApplicationService(new MockDataStore());
+    const first = app.getExpenseHistoryPage(1);
+
+    app.captureExpense({ id: "expense-stales-history", amountCents: 900 });
+
+    expect(() => app.getExpenseHistoryPage(1, first.nextCursor ?? undefined))
+      .toThrow(/EXPENSE_HISTORY_STALE/);
+  });
+
   it("permits empty payment methods during review updates", () => {
     const app = new MockApplicationService(new MockDataStore());
     const expense = app.captureExpense({ id: "expense-empty-payment", amountCents: 900 }).expense;

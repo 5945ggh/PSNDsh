@@ -107,6 +107,9 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
     return asPromise(() => this.mock.getCalendarPayload(...args));
   }
   getExpenses() { return asPromise(() => this.mock.getExpenses()); }
+  getExpenseHistoryPage(...args: Parameters<MockApiAdapter["getExpenseHistoryPage"]>) {
+    return asPromise(() => this.mock.getExpenseHistoryPage(...args));
+  }
   getInboxExpenses() { return asPromise(() => this.mock.getInboxExpenses()); }
   getExpenseCategories(...args: Parameters<MockApiAdapter["getExpenseCategories"]>) { return asPromise(() => this.mock.getExpenseCategories(...args)); }
   getExpenseTags(...args: Parameters<MockApiAdapter["getExpenseTags"]>) { return asPromise(() => this.mock.getExpenseTags(...args)); }
