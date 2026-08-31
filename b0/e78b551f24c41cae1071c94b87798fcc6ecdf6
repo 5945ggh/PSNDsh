@@ -1,0 +1,22 @@
+Dockerfile
+  s_b5b14ba2e73b70::t_c280c1311f196d 4,8,16,38
+  s_b5b14ba2e73b70::t_818c7dbfc8e20e 12
+.github/workflows/ci.yml
+  s_b5b14ba2e73b70::t_c280c1311f196d 40,43,46,49,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b0e78b551f24c41cae1071c94b87798fcc6ecdf6",
+  "prompts": {},
+  "sessions": {
+    "s_b5b14ba2e73b70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b7-9f17-7bc3-bb01-a651b3ebe42a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
