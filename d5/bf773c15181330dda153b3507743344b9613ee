@@ -1,0 +1,21 @@
+src/app/api/v1/expenses/export/route.test.ts
+  s_4e6f23fe192a6b::t_bc58c40f6994c5 1-46
+src/app/api/v1/expenses/export/route.ts
+  s_4e6f23fe192a6b::t_bc58c40f6994c5 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5bf773c15181330dda153b3507743344b9613ee",
+  "prompts": {},
+  "sessions": {
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
