@@ -1,0 +1,30 @@
+src/lib/expenses/csv.test.ts
+  s_4e6f23fe192a6b::t_ece1cdeb877420 30-48
+src/lib/persistence/sqlite-service.ts
+  s_4e6f23fe192a6b::t_ece1cdeb877420 909-915
+src/lib/persistence/sqlite-service.test.ts
+  s_4e6f23fe192a6b::t_ece1cdeb877420 1202-1218
+src/lib/expenses/csv.ts
+  s_4e6f23fe192a6b::t_ece1cdeb877420 11-13
+src/components/expenses/ExpenseWorkspace.tsx
+  s_4e6f23fe192a6b::t_ece1cdeb877420 132-133,225,611-612,614
+  s_4e6f23fe192a6b::t_f13661c0266e22 222,613
+  s_4e6f23fe192a6b::t_e4a0605874d246 200-203,216-219
+  s_4e6f23fe192a6b::t_070aeb7dbd75c3 615-616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5f7bcb06cb82ca2c0e2d93da47872ea0eb799da9",
+  "prompts": {},
+  "sessions": {
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
