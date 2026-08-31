@@ -34,7 +34,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-应用数据写入 `personal-dashboard-data` volume，不能依赖容器临时层。停止、更新或恢复数据库前先执行 `corepack pnpm exec docker compose down`；完整的备份与恢复步骤见 [SQLite 备份与恢复](OPERATIONS.md)。生产环境应将 `PUBLIC_ORIGIN` 设置为最终 HTTPS origin，并通过反向代理提供 TLS。
+应用数据写入 `personal-dashboard-data` volume，不能依赖容器临时层。停止、更新或恢复数据库前先执行 `docker compose down`；完整的备份与恢复步骤见 [SQLite 备份与恢复](OPERATIONS.md)。生产环境应将 `PUBLIC_ORIGIN` 设置为最终 HTTPS origin，并通过反向代理提供 TLS。服务器无法执行构建时，使用根目录的 `docker-compose.production.yml` 和 `scripts/deploy-production.sh`：它们只拉取 GitHub Actions 发布到 GHCR 的镜像，不需要服务器安装 Node.js 或 pnpm。完整的 GitHub 仓库设置、GHCR 权限、SSH Secrets 和升级/回滚命令见 [运维文档](OPERATIONS.md) 中的“GitHub Actions 与无构建服务器部署”。
 
 ## 当前目录职责
 

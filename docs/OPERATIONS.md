@@ -65,6 +65,57 @@ docker compose logs --tail=100 personal-dashboard
 
 发布前确认容器状态为 `healthy`，数据卷名为 `personal-dashboard-data`，并且应用以非 root 用户运行。`AUTH_SECRET` 不写入仓库；SQLite 数据库和备份均包含密码哈希及业务数据，必须限制宿主机权限并加密保存。
 
+## GitHub Actions 与无构建服务器部署
+
+仓库包含三条 Actions 工作流：
+
+- `CI` 在 Pull Request 和 `main` 推送上执行依赖安装、lint、TypeScript 检查、Vitest、生产构建，并验证 Dockerfile 可以构建。
+- `Publish container image` 在 `main` 推送和 `v*.*.*` 标签上构建并发布镜像到 GHCR，镜像地址为 `ghcr.io/<GitHub 用户或组织>/<仓库名>`。`main` 额外发布 `latest`，每次发布也会带不可变的提交 SHA 标签。
+- `Deploy production image` 只能手动触发，使用 `production` Environment 的审批和 Secrets，通过密钥 SSH 到服务器后同步 Compose/部署脚本，再拉取指定镜像。它不会在每次合并后自动改线上。
+
+首次使用前，在 GitHub 仓库的 `Settings` 中完成以下设置：
+
+1. `Actions > General > Workflow permissions` 至少允许工作流读取仓库内容；发布工作流通过 `GITHUB_TOKEN` 写入 Packages。
+2. `Packages` 中将对应 GHCR 包设置为私有或公开。私有包需要在服务器保存一个只读的 GitHub fine-grained PAT，权限仅需 `read:packages`。
+3. 创建 `production` Environment；如果希望上线前人工确认，在该 Environment 的 Required reviewers 中加入自己。
+4. 为默认分支启用分支保护，要求 `CI / verify` 和 `CI / container` 通过后才能合并；发布和部署工作流不应作为合并前置条件。
+
+在 `production` Environment 中添加以下 Secrets：
+
+| Secret | 内容 |
+|---|---|
+| `DEPLOY_HOST` | 阿里云轻量服务器的稳定公网 IP 或部署用域名 |
+| `DEPLOY_USER` | 服务器上的非 root 部署用户 |
+| `DEPLOY_PATH` | 例如 `/opt/personal-dashboard`，该目录和其中的 `.env` 需预先存在；workflow 会创建/更新 `scripts/` 子目录 |
+| `DEPLOY_SSH_KEY` | 本机用于连接服务器的私钥全文；对应公钥已写入服务器用户的 `authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | 在可信网络执行 `ssh-keyscan -H <服务器 IP 或域名>` 后人工核对得到的整行 host key，禁止在 workflow 中关闭 host key 校验 |
+
+服务器不需要 Node.js、pnpm 或源码。创建一个仅服务器可读的 `/opt/personal-dashboard/.env`：
+
+```dotenv
+IMAGE=ghcr.io/OWNER/REPOSITORY:latest
+AUTH_SECRET=用 openssl rand -base64 32 生成的高熵值
+PUBLIC_ORIGIN=https://dashboard.example.com
+APP_BIND_ADDRESS=127.0.0.1
+APP_PORT=3000
+REGISTRATION_MODE=first-user
+APP_TIMEZONE=Asia/Shanghai
+```
+
+如果 GHCR 包为私有，先在服务器执行一次 `docker login ghcr.io`，用户名使用 GitHub 用户名，密码使用只授予 `read:packages` 的 PAT。确保反向代理把 HTTPS 请求转发到 `127.0.0.1:3000`，DNS 指向这台服务器，并且公网安全组不必开放 3000 端口（只开放 SSH 和 HTTPS 所需端口）。
+
+也可以在服务器手动执行同一部署流程：
+
+```bash
+cd /opt/personal-dashboard
+chmod 600 .env
+IMAGE=ghcr.io/OWNER/REPOSITORY:latest ./scripts/deploy-production.sh
+```
+
+通过 Actions 部署时，在 `Actions > Deploy production image > Run workflow` 中填写要发布的完整镜像引用。升级推荐填写版本标签或提交 SHA，而不是长期使用 `latest`；回滚时填写上一个已验证的标签再运行即可。脚本先校验 Compose 配置，再执行 `pull` 和 `up --detach --no-build`，不会删除 `personal-dashboard-data` 数据卷。任何升级或恢复操作前都应先完成数据库备份。
+
+当前自动部署只覆盖“镜像发布后通过 SSH 手动批准部署”。没有把阿里云控制台凭据、SSH 私钥或服务器地址写入仓库；后续如需合并即发布，可在保持 `production` Environment 审批和同一 Secrets 的前提下，将部署 workflow 的触发器扩展到 `workflow_run`。
+
 ## 发布前恢复演练记录
 
 每次更换应用版本至少执行一次以下流程，并保留命令输出或运维记录：
