@@ -1,0 +1,56 @@
+drizzle/0008_expense_dimension_icons.sql
+  s_33298f684e71c8::t_b9e58a61163693 1-3
+src/lib/application/contract.ts
+  s_33298f684e71c8::t_20442416137442 30,109
+src/lib/db/schema.ts
+  s_33298f684e71c8::t_6fd29873180684 267,281
+  s_33298f684e71c8::t_b9e58a61163693 253
+src/components/expenses/expense-icons.tsx
+  s_33298f684e71c8::t_b9e58a61163693 1-32
+src/components/expenses/ExpenseRecordList.tsx
+  s_33298f684e71c8::t_fbd76f17cd61df 5-6,40-41,100-101,146-148,158,160
+src/lib/domain/types.ts
+  s_33298f684e71c8::t_b9e58a61163693 294-298
+  s_33298f684e71c8::t_e2429cae902a92 302,309,316
+src/components/expenses/ExpenseWorkspace.tsx
+  s_33298f684e71c8::t_e102e6e5001783 320-321
+src/lib/persistence/sqlite-service.ts
+  s_33298f684e71c8::t_f274104253c47a 765,847,935
+  s_33298f684e71c8::t_21717ef9461623 558,562,566
+  s_33298f684e71c8::t_70aab8d3f5fe6c 727,732
+src/app/api/v1/expenses/_dimension-route.ts
+  s_33298f684e71c8::t_3b4139965b92e0 3-8,11
+src/components/settings/ExpenseDimensionManager.tsx
+  s_33298f684e71c8::t_d0c167ab4345ba 7,81,99,105,111,117,270-273
+  s_33298f684e71c8::t_995803e7056e35 4,83-85,157-182,290-297,299-308
+src/lib/mock/store.ts
+  s_33298f684e71c8::t_24ad48ae4a3ad5 794,864,935
+  s_33298f684e71c8::t_db9f1384a133b2 776,782,846,852,917
+  s_33298f684e71c8::t_ba548e27da437c 923
+  s_33298f684e71c8::t_4613bf0de0eb9c 803,873,944
+src/lib/api/client.ts
+  s_33298f684e71c8::t_ab0446d08262ff 498,513,528
+  s_33298f684e71c8::t_debc7b01cef0dc 501,516,531
+  s_33298f684e71c8::t_6e8f9aaf05bc52 36,148-149,153-154,158-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2fc724a87983830201dda2fe453ae52fc4cee3c0",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_33298f684e71c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053a5-8121-78b0-a4f7-72ac3b284a1d",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
