@@ -1,0 +1,95 @@
+src/context/MockContext.tsx
+  s_c7fb2a628fef7e::t_49d46d07437aef 161-163
+src/app/(dashboard)/settings/page.tsx
+  s_b030a56ac9c6d0::t_aab83f43827a34 267
+  s_b030a56ac9c6d0::t_f757be37d26e1e 257,262,277,286-292
+  s_b030a56ac9c6d0::t_adc91ba67c507f 293
+src/components/settings/ExpenseDimensionManager.test.tsx
+  s_c7fb2a628fef7e::t_c0b99d4ba31b21 46,50
+  s_c7fb2a628fef7e::t_9000e94a02d6d3 47-49
+  s_c7fb2a628fef7e::t_01a27f3d7306dc 11,45,55-59
+  s_c7fb2a628fef7e::t_ab83948b5f6865 44
+  s_c7fb2a628fef7e::t_b24391e689bc01 60-61
+src/components/settings/ExpenseDimensionManager.tsx
+  s_c7fb2a628fef7e::t_d9e0e17aec9efa 4,101-102,104,114-116,155,162-163,192-195,202-205,207-209,211-225,227,231-232,234-237
+  s_c7fb2a628fef7e::t_18fdbcce1386ef 206,226
+  s_c7fb2a628fef7e::t_47b5b742fd8753 109,126,233,313
+  s_c7fb2a628fef7e::t_3615aac8081c40 191,197,210
+  s_c7fb2a628fef7e::t_15bc35a5b33359 315-320,324,419
+  s_c7fb2a628fef7e::t_f7aff8a08cbfee 103
+  s_c7fb2a628fef7e::t_55371249881178 321-323,325,348,366,411-418,420
+  s_33298f684e71c8::t_feff0bc63f4ebb 397
+  s_c7fb2a628fef7e::t_4fe4b24d378e9e 13-15,17-36,295,349-365
+  s_c7fb2a628fef7e::t_84f95821520b78 196,198-201,228-230
+  s_c7fb2a628fef7e::t_28ac739c273e11 3,12,16
+  s_33298f684e71c8::t_8827752aa2bd2b 398-399
+  s_c7fb2a628fef7e::t_247b153b4dc2fd 105
+  s_c7fb2a628fef7e::t_03e09475d4e2ce 238
+  s_c7fb2a628fef7e::t_9c68f477e2bce7 367
+  s_c7fb2a628fef7e::t_67afba82d54773 421
+src/context/data-load-plan.ts
+  s_c7fb2a628fef7e::t_47b5b742fd8753 35
+src/components/expenses/ExpenseRecordForm.tsx
+  s_c7fb2a628fef7e::t_196b84082361a7 530-539
+  s_c7fb2a628fef7e::t_e4e623b8428890 46,73,663-672
+src/context/data-load-plan.test.ts
+  s_c7fb2a628fef7e::t_47b5b742fd8753 49
+src/components/expenses/ExpenseWorkspace.tsx
+  s_b030a56ac9c6d0::t_c611e91c7cb727 173-176
+  s_b030a56ac9c6d0::t_b9a6472aee4269 545-551
+  s_b030a56ac9c6d0::t_ddeeffa0691ac0 580
+  s_b030a56ac9c6d0::t_ca74b7c9fdc575 446-447,543,552,603-604
+  s_b030a56ac9c6d0::t_c4d1fd65f66311 194
+  s_b030a56ac9c6d0::t_e94379b477ba44 186-193,195-196,201,216
+  s_c7fb2a628fef7e::t_5902c73e992de2 106-110,370-399,493
+  s_b030a56ac9c6d0::t_87da5f3245d353 131,149-150,153-154
+  s_4e6f23fe192a6b::t_b8e724d1348203 202-215,217
+  s_b030a56ac9c6d0::t_427065e2fdbff5 5,19-68
+  s_b030a56ac9c6d0::t_0d6e65d8498003 177-184,577,581
+  s_b030a56ac9c6d0::t_a3e04de0960761 128-130
+  s_b030a56ac9c6d0::t_5779549909ecf1 197-200
+  s_b030a56ac9c6d0::t_02c4ef4ea6bfca 544,553-576,578-579,582-602
+  s_c7fb2a628fef7e::t_9e547de43529c9 111
+  s_b030a56ac9c6d0::t_e35e1a22725832 185
+  s_c7fb2a628fef7e::t_b6ec7f69f18052 400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "12d71f52759dd98612d637a3463c7d51197e4a33",
+  "prompts": {},
+  "sessions": {
+    "s_33298f684e71c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a053a5-8121-78b0-a4f7-72ac3b284a1d",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b030a56ac9c6d0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05689-7de2-7291-a6d6-a227b30ba7ea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_c7fb2a628fef7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05654-5486-7680-acba-69e531550fd8",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
