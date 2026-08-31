@@ -86,30 +86,45 @@ docker compose logs --tail=100 personal-dashboard
 |---|---|
 | `DEPLOY_HOST` | 阿里云轻量服务器的稳定公网 IP 或部署用域名 |
 | `DEPLOY_USER` | 服务器上的非 root 部署用户 |
-| `DEPLOY_PATH` | 例如 `/opt/personal-dashboard`，该目录和其中的 `.env` 需预先存在；workflow 会创建/更新 `scripts/` 子目录 |
+| `DEPLOY_PATH` | `/srv/personal-dashboard`；该目录和其中的 `.env` 需预先存在，workflow 会创建/更新 `scripts/` 子目录 |
 | `DEPLOY_SSH_KEY` | 本机用于连接服务器的私钥全文；对应公钥已写入服务器用户的 `authorized_keys` |
 | `DEPLOY_KNOWN_HOSTS` | 在可信网络执行 `ssh-keyscan -H <服务器 IP 或域名>` 后人工核对得到的整行 host key，禁止在 workflow 中关闭 host key 校验 |
 
-服务器不需要 Node.js、pnpm 或源码。创建一个仅服务器可读的 `/opt/personal-dashboard/.env`：
+服务器不需要 Node.js、pnpm 或源码。首次初始化部署目录时，用服务器上的 `admin` 用户执行：
+
+```bash
+sudo mkdir -p /srv/personal-dashboard/scripts
+sudo chown -R admin:admin /srv/personal-dashboard
+```
+
+然后创建一个仅服务器可读的 `/srv/personal-dashboard/.env`：
 
 ```dotenv
-IMAGE=ghcr.io/OWNER/REPOSITORY:latest
+IMAGE=ghcr.io/OWNER/REPOSITORY:sha-<commit>
 AUTH_SECRET=用 openssl rand -base64 32 生成的高熵值
-PUBLIC_ORIGIN=https://dashboard.example.com
+PUBLIC_ORIGIN=https://dsh.shuifangboys.icu
 APP_BIND_ADDRESS=127.0.0.1
-APP_PORT=3000
+APP_PORT=3001
 REGISTRATION_MODE=first-user
 APP_TIMEZONE=Asia/Shanghai
 ```
 
-如果 GHCR 包为私有，先在服务器执行一次 `docker login ghcr.io`，用户名使用 GitHub 用户名，密码使用只授予 `read:packages` 的 PAT。确保反向代理把 HTTPS 请求转发到 `127.0.0.1:3000`，DNS 指向这台服务器，并且公网安全组不必开放 3000 端口（只开放 SSH 和 HTTPS 所需端口）。
+如果 GHCR 包为私有，先在服务器执行一次 `sudo docker login ghcr.io`，用户名使用 GitHub 用户名，密码使用只授予 `read:packages` 的 PAT。当前 `admin` 用户没有加入 `docker` 组，但有免密码 sudo，因此 workflow 和下面的手动命令会显式传入 `DOCKER_SUDO=1`；如果以后将部署用户加入 docker 组，可改为 `DOCKER_SUDO=0`。确保 DNS 的 A 记录 `dsh.shuifangboys.icu` 指向这台服务器，并让 Caddy 把 HTTPS 请求转发到 `127.0.0.1:3001`；公网安全组不必开放 3001 端口（只开放 SSH 和 HTTPS 所需端口）。
+
+Caddy 配置可以使用以下站点块（证书由现有 Caddy 自动申请/续期）：
+
+```text
+dsh.shuifangboys.icu {
+    reverse_proxy 127.0.0.1:3001
+}
+```
 
 也可以在服务器手动执行同一部署流程：
 
 ```bash
-cd /opt/personal-dashboard
+cd /srv/personal-dashboard
 chmod 600 .env
-IMAGE=ghcr.io/OWNER/REPOSITORY:latest ./scripts/deploy-production.sh
+DOCKER_SUDO=1 IMAGE=ghcr.io/OWNER/REPOSITORY:sha-<commit> ./scripts/deploy-production.sh
 ```
 
 通过 Actions 部署时，在 `Actions > Deploy production image > Run workflow` 中填写要发布的完整镜像引用。升级推荐填写版本标签或提交 SHA，而不是长期使用 `latest`；回滚时填写上一个已验证的标签再运行即可。脚本先校验 Compose 配置，再执行 `pull` 和 `up --detach --no-build`，不会删除 `personal-dashboard-data` 数据卷。任何升级或恢复操作前都应先完成数据库备份。

@@ -4,7 +4,11 @@ set -euo pipefail
 compose_file="${COMPOSE_FILE:-docker-compose.production.yml}"
 : "${IMAGE:?set IMAGE, for example ghcr.io/owner/repository:latest}"
 
-compose=(docker compose --file "$compose_file")
+if [[ "${DOCKER_SUDO:-0}" == "1" ]]; then
+  compose=(sudo docker compose --file "$compose_file")
+else
+  compose=(docker compose --file "$compose_file")
+fi
 
 echo "Validating production Compose configuration..."
 "${compose[@]}" config --quiet
