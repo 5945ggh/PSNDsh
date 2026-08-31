@@ -1,0 +1,36 @@
+docker-compose.production.yml
+  s_b5b14ba2e73b70::t_8d07ba560c95eb 1-6,8-24
+  s_b5b14ba2e73b70::t_10cbc8f5f567c2 7
+  s_b5b14ba2e73b70::t_8d5270b8ad5a61 25
+docs/OPERATIONS.md
+  s_b5b14ba2e73b70::t_10cbc8f5f567c2 68-88,90-118
+  s_b5b14ba2e73b70::t_3aafcc387793c5 89
+docs/SETUP.md
+  s_b5b14ba2e73b70::t_c6ca523618cb30 37
+.github/workflows/publish-image.yml
+  s_b5b14ba2e73b70::t_8d07ba560c95eb 1-50
+.github/workflows/deploy-production.yml
+  s_b5b14ba2e73b70::t_2cabc0ff20764a 1-40,49-56
+  s_b5b14ba2e73b70::t_19d7afcab79a67 41-48
+scripts/deploy-production.sh
+  s_b5b14ba2e73b70::t_8d07ba560c95eb 1-19
+.github/workflows/ci.yml
+  s_b5b14ba2e73b70::t_8d07ba560c95eb 1-27,33-76
+  s_b5b14ba2e73b70::t_a8fe4fbad079df 28-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "56a6122d7a7b9c89e2b3ff696550390f56e8c494",
+  "prompts": {},
+  "sessions": {
+    "s_b5b14ba2e73b70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b7-9f17-7bc3-bb01-a651b3ebe42a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
