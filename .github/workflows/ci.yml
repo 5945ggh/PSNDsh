@@ -19,7 +19,6 @@ jobs:
     env:
       DATABASE_URL: file:./data/ci.db
       AUTH_SECRET: ci-only-secret
-      PUBLIC_ORIGIN: http://localhost:3000
       APP_TIMEZONE: Asia/Shanghai
     steps:
       - name: Check out repository
