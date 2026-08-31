@@ -37,17 +37,17 @@ test("expense fields use sibling tabs and one full-width management panel", asyn
   await expect(paymentMethodTab).toHaveAttribute("aria-selected", "false");
   await expect(tagTab).toHaveAttribute("aria-selected", "false");
   await expect(panel).toContainText("餐饮");
-  await expect(panel.getByLabel("新建分类")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "新建分类" })).toBeVisible();
   await expect(page.locator('[class*="xl:grid-cols-3"]')).toHaveCount(0);
 
   await paymentMethodTab.click();
   await expect(paymentMethodTab).toHaveAttribute("aria-selected", "true");
   await expect(panel).toContainText("微信支付");
-  await expect(panel.getByLabel("新建支付方式")).toBeVisible();
-  await expect(panel.getByLabel("新建分类")).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "新建支付方式" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "新建分类" })).toHaveCount(0);
 
   await tagTab.click();
   await expect(tagTab).toHaveAttribute("aria-selected", "true");
   await expect(panel).toContainText("工作日");
-  await expect(panel.getByLabel("新建标签")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "新建标签" })).toBeVisible();
 });

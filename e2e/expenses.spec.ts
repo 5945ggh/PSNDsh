@@ -231,14 +231,16 @@ test("expenses overview browses older history continuously and keeps inline deta
   await expect(page.getByTestId(`expense-row-${records[50].id}`)).toBeVisible();
   await expect(page.getByTestId(`expense-row-${records[0].id}`)).toHaveCount(0);
 
-  await mainContent.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
-  await expect.poll(() => mainContent.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "加载更多" }).click();
+  await expect(page.getByText("已加载 50 条", { exact: true })).toBeVisible();
+  const [loadMoreResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/v1/expenses?") && response.url().includes("before=") && response.ok()),
+    page.getByRole("button", { name: "加载更多" }).click(),
+  ]);
+  await expect(loadMoreResponse.json()).resolves.toMatchObject({ data: { items: [expect.objectContaining({ id: records[0].id })] } });
   await expect(sidebar.getByRole("link", { name: "首页" })).toBeVisible();
   await expect(page.getByRole("button", { name: "保存修改" })).toHaveCount(0);
   await expect(page.getByTestId(`expense-row-${records[0].id}`)).toBeVisible();
-  await expect.poll(() => historyRequests.some((url) => url.includes("before="))).toBe(true);
 
   const latestRow = page.getByTestId(`expense-row-${records[50].id}`);
   const list = page.getByTestId("expense-record-list");

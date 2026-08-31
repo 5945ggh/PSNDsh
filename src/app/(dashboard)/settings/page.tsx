@@ -58,7 +58,7 @@ export default function SettingsPage() {
 
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>("profile");
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(getSectionFromHash);
 
   useEffect(() => {
     const syncFromHash = () => {

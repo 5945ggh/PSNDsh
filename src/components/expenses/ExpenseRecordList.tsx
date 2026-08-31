@@ -258,7 +258,7 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
 
       {onLoadMore && expenses.length > 0 && (
         <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-          <div ref={loadMoreSentinelRef} data-testid="expense-load-more-sentinel" aria-hidden="true" />
+          <div ref={loadMoreSentinelRef} data-testid="expense-load-more-sentinel" className="h-px" aria-hidden="true" />
           <div className="flex min-h-8 items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
             {loadingMore ? (
               <>
