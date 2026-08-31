@@ -19,6 +19,8 @@ import {
 } from "@/lib/domain/types";
 import type { ScenarioPreset } from "@/lib/mock/types";
 import { decodeExpenseHistoryCursor, getExpenseHistoryPage, sortExpensesForHistory } from "@/lib/expenses/history";
+import type { ExpenseHistoryQuery } from "@/lib/application/contract";
+import { formatDateKeyInTimezone } from "@/lib/time/timezone";
 import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import {
   MOCK_USER,
@@ -85,7 +87,11 @@ const assertDateTime = (value: string, message: string) => {
 };
 
 const assertDateKey = (value: string, message: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new MockDomainError("REQUEST_INVALID", message);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
     throw new MockDomainError("REQUEST_INVALID", message);
   }
 };
@@ -1087,8 +1093,21 @@ export class MockDataStore {
     );
   }
 
-  public getExpenseHistoryPage(limit = 25, before?: string) {
-    const revision = String(this.expenseHistoryRevision);
+  public getAllExpensesForExport(): Expense[] {
+    return this.expenses.map((expense) => cloneExpense(expense));
+  }
+
+  public getExpenseHistoryPage(limit = 25, before?: string, query: ExpenseHistoryQuery = {}) {
+    const normalizedQuery = query.q?.trim().toLocaleLowerCase();
+    const revision = `${this.expenseHistoryRevision}:${JSON.stringify({
+      q: normalizedQuery ?? null,
+      from: query.from ?? null,
+      to: query.to ?? null,
+      categoryId: query.categoryId ?? null,
+      paymentMethodId: query.paymentMethodId ?? null,
+      tagId: query.tagId ?? null,
+      reviewStatus: query.reviewStatus ?? null,
+    })}`;
     if (before) {
       const cursor = decodeExpenseHistoryCursor(before);
       if (!cursor) throw new MockDomainError("REQUEST_INVALID", "开销历史游标无效");
@@ -1096,8 +1115,20 @@ export class MockDataStore {
         throw new MockDomainError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
       }
     }
+    const filtered = this.expenses.filter((expense) => {
+      if (expense.deletedAt !== null) return false;
+      if (normalizedQuery && ![expense.note, expense.captureMessage].some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))) return false;
+      const historyDateKey = expense.occurredOn ?? (expense.occurredAt ? formatDateKeyInTimezone(expense.occurredAt, this.getCapabilities().effectiveTimezone) : "");
+      if (query.from && historyDateKey < query.from) return false;
+      if (query.to && historyDateKey > query.to) return false;
+      if (query.categoryId && expense.categoryId !== query.categoryId) return false;
+      if (query.paymentMethodId && expense.paymentMethodId !== query.paymentMethodId) return false;
+      if (query.tagId && !expense.tags.some((tag) => tag.id === query.tagId)) return false;
+      if (query.reviewStatus && expense.reviewStatus !== query.reviewStatus) return false;
+      return true;
+    });
     return getExpenseHistoryPage(
-      this.expenses.filter((expense) => expense.deletedAt === null).map((expense) => cloneExpense(expense)),
+      filtered.map((expense) => cloneExpense(expense)),
       this.getCapabilities().effectiveTimezone,
       limit,
       before,

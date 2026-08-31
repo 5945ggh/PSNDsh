@@ -69,4 +69,22 @@ describe("expense category routes", () => {
     ]));
     expect(service.getExpenseById(expense.id)).toMatchObject({ categoryId: target.id });
   });
+
+  it("rejects dimension writes without a same-origin signal", async () => {
+    const { getRuntimeDatabase } = await import("@/lib/db");
+    const { users } = await import("@/lib/db/schema");
+    const { createSessionToken, SESSION_COOKIE } = await import("@/lib/api/http");
+    const { POST } = await import("./route");
+    const now = "2026-08-28T00:00:00.000Z";
+    const db = getRuntimeDatabase();
+    db.insert(users).values({ id: "user-a", username: "user-a", passwordHash: null, nickname: null, profileEmail: null, createdAt: now, updatedAt: now }).run();
+    const cookie = `${SESSION_COOKIE}=${createSessionToken("user-a")}`;
+    const response = await POST(new Request("http://localhost/api/v1/expenses/categories", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ name: "不应创建" }),
+    }));
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("CSRF_INVALID");
+  });
 });

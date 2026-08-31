@@ -128,11 +128,13 @@ Expense
 | `/api/v1/calendar` | 给定范围内的日程与专注联合只读数据 |
 | `/api/v1/statistics` | 日、周、月和条目子树统计 |
 | `/api/v1/dashboard` | 首页聚合 DTO |
-| `/api/v1/export` | 当前账号结构化 JSON 导出 |
+| `/api/v1/export` | 当前账号结构化 JSON 导出，`schemaVersion=1.1`，包含账目及分类/标签/支付方式字典；软删除账目和归档字典仅在导出中保留 |
+| `/api/v1/expenses/export` | 账目域独立 JSON 导出，字段与主导出中的账目域一致 |
+| `/api/v1/expenses/export/csv` | 账目域独立 CSV 导出，使用稳定列顺序并按 RFC 4180 转义文本 |
 | `/api/v1/api-keys` | 已登录网页 session 下创建、列出与撤销快捷捕获 API key |
 | `/api/v1/api-keys/:id` | 已登录网页 session 下再次查看某个 API key |
 | `/api/v1/expenses/capture` | 仅接受 Bearer API key 的最小开销捕获；不使用 cookie session 或 CSRF 同源校验；`id` 可省略，服务端会生成 UUID |
-| `/api/v1/expenses` | 当前账号账目全量兼容读取；带 `limit` 或 `before` 时使用服务端 cursor 历史分页 |
+| `/api/v1/expenses` | 当前账号账目读取；支持服务端 `q`（备注/捕获消息，不区分大小写）、`from`/`to`（发生日期，含边界）、`categoryId`、`paymentMethodId`、`tagId`、`reviewStatus` 筛选；带 `limit` 或 `before` 时使用服务端 cursor 历史分页 |
 | `/api/v1/expenses/:id` | 当前账号账目读取、编辑和软删除 |
 | `/api/v1/expenses/inbox` | 当前账号待整理账目 |
 | `/api/v1/expenses/categories` | 分类创建、改名、归档、恢复与合并 |
@@ -180,6 +182,7 @@ Expense
 ## 10. 导出、备份与恢复
 
 - `/api/v1/export` 只导出当前账号非敏感业务数据，不包含密码哈希、会话、服务端密钥和外部缓存。
+- 导出 `schemaVersion=1.1`；账目导出包含账目与维度字典及标签关系，不包含数据库内部 `rowId` 和历史分页索引。软删除账目用于数据可携带性，仅出现在导出，不出现在历史读取接口。
 - SQLite 备份必须使用一致性快照或 SQLite backup API，不能在活跃写入时直接复制未知状态文件。
 - 恢复以相同应用版本的空实例为默认目标；`--replace` 必须显式确认。
 - `db:backup`、`db:verify`、`db:restore` 负责命令行灾备流程。

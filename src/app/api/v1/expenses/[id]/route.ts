@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { assertSameOrigin, jsonData, jsonError, readJson, serviceForRequest } from "@/lib/api/http";
+import { assertSameOrigin, jsonData, jsonError, noContent, readJson, serviceForRequest } from "@/lib/api/http";
 import { ApplicationError } from "@/lib/application/error";
 
 const updateInput = z.object({
@@ -28,5 +28,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     assertSameOrigin(request);
     return jsonData(serviceForRequest(request).updateExpense((await context.params).id, updateInput.parse(await readJson(request))));
+  } catch (error) { return jsonError(error); }
+}
+
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    assertSameOrigin(request);
+    serviceForRequest(request).deleteExpense((await context.params).id);
+    return noContent();
   } catch (error) { return jsonError(error); }
 }

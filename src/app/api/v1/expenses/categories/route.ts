@@ -1,4 +1,4 @@
-import { jsonData, jsonError, readJson, serviceForRequest } from "@/lib/api/http";
+import { assertSameOrigin, jsonData, jsonError, readJson, serviceForRequest } from "@/lib/api/http";
 import { dimensionCreateSchema, readIncludeArchived } from "../_dimension-route";
 
 export function GET(request: Request) {
@@ -11,6 +11,7 @@ export function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
     return jsonData(serviceForRequest(request).createExpenseCategory(dimensionCreateSchema.parse(await readJson(request))), { status: 201 });
   } catch (error) {
     return jsonError(error);

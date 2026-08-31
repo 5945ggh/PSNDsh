@@ -37,6 +37,7 @@ import {
   RegisterInput,
   UpdateExpenseInput,
   UpdateEntryInput,
+  ExpenseHistoryQuery,
 } from "@/lib/application/contract";
 import { ApplicationError } from "@/lib/application/error";
 import { selectSeasonalQuotation } from "@/lib/ambient/quotations";
@@ -52,6 +53,7 @@ import {
   DashboardPayload,
   Entry,
   Expense,
+  ExpenseDataExport,
   ExpenseCategory,
   ExpenseTag,
   FocusSegment,
@@ -240,7 +242,11 @@ const assertDateTime = (value: string, message: string) => {
 };
 
 const assertDateKey = (value: string, message: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ApplicationError("REQUEST_INVALID", message);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
     throw new ApplicationError("REQUEST_INVALID", message);
   }
 };
@@ -1055,11 +1061,23 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
     return sortExpensesForHistory(result, this.timezone);
   }
 
-  getExpenseHistoryPage(limit = 25, before?: string) {
+  getExpenseHistoryPage(limit = 25, before?: string, query: ExpenseHistoryQuery = {}) {
     const bounded = Math.min(100, Math.max(1, Math.floor(limit)));
     const userId = this.requireUserId();
     this.ensureExpenseHistoryKeys(userId);
     const predicates = [eq(expenses.userId, userId), isNull(expenses.deletedAt)];
+    const normalizedQuery = query.q?.trim().toLocaleLowerCase();
+    if (normalizedQuery) predicates.push(sql`(lower(coalesce(${expenses.note}, '')) like ${`%${normalizedQuery}%`} OR lower(coalesce(${expenses.captureMessage}, '')) like ${`%${normalizedQuery}%`})`);
+    if (query.from) predicates.push(sql`${expenses.historyDateKey} >= ${query.from}`);
+    if (query.to) predicates.push(sql`${expenses.historyDateKey} <= ${query.to}`);
+    if (query.categoryId) predicates.push(eq(expenses.categoryId, query.categoryId));
+    if (query.paymentMethodId) predicates.push(eq(expenses.paymentMethodId, query.paymentMethodId));
+    if (query.reviewStatus) predicates.push(eq(expenses.reviewStatus, query.reviewStatus));
+    if (query.tagId) {
+      const taggedRows = this.db.select({ rowId: expenseRecordTags.expenseRowId }).from(expenseRecordTags).where(eq(expenseRecordTags.tagId, query.tagId)).all();
+      const rowIds = taggedRows.map((row) => row.rowId);
+      predicates.push(rowIds.length > 0 ? inArray(expenses.rowId, rowIds) : sql`1 = 0`);
+    }
     let cursor = null;
     if (before) {
       cursor = decodeExpenseHistoryCursor(before);
@@ -1072,12 +1090,21 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       )`);
     }
     const result = this.db.transaction((tx) => {
-      const revision = String(
+      const dataRevision = String(
         tx.select({ value: expenseHistoryRevisions.revision })
           .from(expenseHistoryRevisions)
           .where(eq(expenseHistoryRevisions.userId, userId))
           .get()?.value ?? 0,
       );
+      const revision = `${dataRevision}:${JSON.stringify({
+        q: normalizedQuery ?? null,
+        from: query.from ?? null,
+        to: query.to ?? null,
+        categoryId: query.categoryId ?? null,
+        paymentMethodId: query.paymentMethodId ?? null,
+        tagId: query.tagId ?? null,
+        reviewStatus: query.reviewStatus ?? null,
+      })}`;
       if (cursor && cursor.revision !== revision) {
         throw new ApplicationError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
       }
@@ -2127,8 +2154,14 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       .all();
 
     const entriesForExport = this.toEntries(allEntryRows, this.getDirectFocusSecondsByEntry(userId));
+    const expenseRows = this.db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.userId, userId))
+      .orderBy(asc(expenses.createdAt), asc(expenses.id))
+      .all() as ExpenseRow[];
     return {
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       exportedAt: nowIso(this.clock),
       effectiveTimezone: this.timezone,
       profile: this.toUser(this.getUserRow()!),
@@ -2152,6 +2185,23 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       })),
       focusSessions: this.getFocusSessions(),
       scheduleBlocks: this.getScheduleBlocks(),
+      expenses: this.toExpenses(expenseRows),
+      expenseCategories: this.getExpenseCategories(true),
+      expenseTags: this.getExpenseTags(true),
+      paymentMethods: this.getPaymentMethods(true),
+    };
+  }
+
+  exportExpenseData(): ExpenseDataExport {
+    const data = this.exportUserData();
+    return {
+      schemaVersion: data.schemaVersion,
+      exportedAt: data.exportedAt,
+      effectiveTimezone: data.effectiveTimezone,
+      expenses: data.expenses,
+      expenseCategories: data.expenseCategories,
+      expenseTags: data.expenseTags,
+      paymentMethods: data.paymentMethods,
     };
   }
 

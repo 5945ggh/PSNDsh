@@ -275,7 +275,7 @@ export type StatisticsPayload = {
 };
 
 export type UserDataExport = {
-  schemaVersion: "1.0";
+  schemaVersion: "1.1";
   exportedAt: string;
   effectiveTimezone: string;
   profile: UserProfile;
@@ -283,7 +283,15 @@ export type UserDataExport = {
   weekPlans: WeekPlan[];
   focusSessions: FocusSession[];
   scheduleBlocks: ScheduleBlock[];
+  /** Expense records, including soft-deleted records for complete data portability. */
+  expenses: Expense[];
+  /** Dimension dictionaries include archived definitions referenced by historical records. */
+  expenseCategories: ExpenseCategory[];
+  expenseTags: ExpenseTag[];
+  paymentMethods: PaymentMethod[];
 };
+
+export type ExpenseDataExport = Pick<UserDataExport, "schemaVersion" | "exportedAt" | "effectiveTimezone" | "expenses" | "expenseCategories" | "expenseTags" | "paymentMethods">;
 
 export type ExpenseCurrency = "CNY";
 export type ExpenseOccurrencePrecision = "datetime" | "date";

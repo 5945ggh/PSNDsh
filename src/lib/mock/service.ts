@@ -4,6 +4,7 @@ import {
   FocusSegment,
   FocusSession,
   ExpenseCategory,
+  ExpenseDataExport,
   ExpenseTag,
   PaymentMethod,
   ScheduleBlockInput,
@@ -45,7 +46,7 @@ export class MockApplicationService implements ApplicationService {
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
   getExpenses() { return this.store.getExpenses(); }
-  getExpenseHistoryPage(limit?: number, before?: string) { return this.store.getExpenseHistoryPage(limit, before); }
+  getExpenseHistoryPage(...args: Parameters<MockDataStore["getExpenseHistoryPage"]>) { return this.store.getExpenseHistoryPage(...args); }
   getInboxExpenses() { return this.store.getInboxExpenses(); }
   getExpenseCategories(includeArchived = false) { return this.store.getExpenseCategories(includeArchived); }
   getExpenseTags(includeArchived = false) { return this.store.getExpenseTags(includeArchived); }
@@ -92,7 +93,7 @@ export class MockApplicationService implements ApplicationService {
     const profile = this.getUser();
     if (!profile) throw new MockDomainError("UNAUTHORIZED", "当前没有登录用户");
     return {
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       exportedAt: new Date().toISOString(),
       effectiveTimezone: this.getCapabilities().effectiveTimezone,
       profile,
@@ -100,6 +101,23 @@ export class MockApplicationService implements ApplicationService {
       weekPlans: [this.getWeekPlan()],
       focusSessions: this.getFocusSessions(),
       scheduleBlocks: this.getScheduleBlocks(),
+      expenses: this.store.getAllExpensesForExport(),
+      expenseCategories: this.getExpenseCategories(true),
+      expenseTags: this.getExpenseTags(true),
+      paymentMethods: this.getPaymentMethods(true),
+    };
+  }
+
+  exportExpenseData(): ExpenseDataExport {
+    const data = this.exportUserData();
+    return {
+      schemaVersion: data.schemaVersion,
+      exportedAt: data.exportedAt,
+      effectiveTimezone: data.effectiveTimezone,
+      expenses: data.expenses,
+      expenseCategories: data.expenseCategories,
+      expenseTags: data.expenseTags,
+      paymentMethods: data.paymentMethods,
     };
   }
 

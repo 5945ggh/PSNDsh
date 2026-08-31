@@ -5,9 +5,11 @@ import {
   DashboardPayload,
   Entry,
   Expense,
+  ExpenseDataExport,
   ExpenseCategory,
   ExpenseCurrency,
   ExpenseOccurrencePrecision,
+  ExpenseReviewStatus,
   ExpenseSource,
   ExpenseTag,
   FocusSegment,
@@ -104,6 +106,16 @@ export type UpdateExpenseInput = Partial<Pick<
   tagIds?: string[];
 };
 
+export type ExpenseHistoryQuery = {
+  q?: string;
+  from?: string;
+  to?: string;
+  categoryId?: string;
+  paymentMethodId?: string;
+  tagId?: string;
+  reviewStatus?: ExpenseReviewStatus;
+};
+
 export type CreateExpenseDimensionInput = {
   name: string;
   iconKey?: ExpenseIconKey | null;
@@ -149,7 +161,7 @@ export interface ExpenseApplicationService {
 
   captureExpense(input: CaptureExpenseInput): CaptureExpenseResult;
   getExpenses(): Expense[];
-  getExpenseHistoryPage(limit?: number, before?: string): ExpenseHistoryPage;
+  getExpenseHistoryPage(limit?: number, before?: string, query?: ExpenseHistoryQuery): ExpenseHistoryPage;
   getInboxExpenses(): Expense[];
   getExpenseById(id: string, options?: { includeDeleted?: boolean }): Expense | undefined;
   updateExpense(id: string, input: UpdateExpenseInput): Expense;
@@ -219,4 +231,5 @@ export interface ApplicationService {
   getDashboardPayload(): DashboardPayload;
   getStatisticsPayload(scale?: StatisticsScale, weekStart?: string): StatisticsPayload;
   exportUserData(): UserDataExport;
+  exportExpenseData(): ExpenseDataExport;
 }

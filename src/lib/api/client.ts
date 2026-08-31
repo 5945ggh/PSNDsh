@@ -8,6 +8,7 @@ import {
   UpdateEntryInput,
 } from "@/lib/application/contract";
 import type { ExpenseHistoryPage } from "@/lib/expenses/history";
+import type { ExpenseHistoryQuery } from "@/lib/application/contract";
 import {
   AuthSession,
   Capabilities,
@@ -140,7 +141,7 @@ export interface ApiAdapter {
   ): Promise<StatisticsPayload>;
   getCalendarPayload(from?: string, to?: string): Promise<CalendarPayload>;
   getExpenses(): Promise<Expense[]>;
-  getExpenseHistoryPage(limit?: number, before?: string): Promise<ExpenseHistoryPage>;
+  getExpenseHistoryPage(limit?: number, before?: string, query?: ExpenseHistoryQuery): Promise<ExpenseHistoryPage>;
   getInboxExpenses(): Promise<Expense[]>;
   getExpenseCategories(includeArchived?: boolean): Promise<ExpenseCategory[]>;
   getExpenseTags(includeArchived?: boolean): Promise<ExpenseTag[]>;
@@ -161,6 +162,7 @@ export interface ApiAdapter {
   restorePaymentMethod(id: string): Promise<PaymentMethod>;
   mergePaymentMethod(id: string, input: MergeExpenseDimensionInput): Promise<PaymentMethod>;
   updateExpense(id: string, input: { amountCents?: number; occurredAt?: string | null; occurredOn?: string | null; occurrencePrecision?: "datetime" | "date"; note?: string | null; categoryId?: string | null; paymentMethodId?: string | null; reviewStatus?: "pending" | "reviewed"; tagIds?: string[]; recoverableCents?: number; settled?: boolean }): Promise<Expense>;
+  deleteExpense(id: string): Promise<void>;
   captureExpense(input: { id: string; amountCents: number; captureMessage?: string | null }, apiKey?: string): Promise<Expense>;
 }
 
@@ -477,9 +479,16 @@ export class PersistentApiAdapter implements ApiAdapter {
   }
 
   getExpenses() { return this.request<Expense[]>("/api/v1/expenses"); }
-  getExpenseHistoryPage(limit = 25, before?: string) {
+  getExpenseHistoryPage(limit = 25, before?: string, query?: ExpenseHistoryQuery) {
     const params = new URLSearchParams({ limit: String(limit) });
     if (before) params.set("before", before);
+    if (query?.q?.trim()) params.set("q", query.q.trim());
+    if (query?.from) params.set("from", query.from);
+    if (query?.to) params.set("to", query.to);
+    if (query?.categoryId) params.set("categoryId", query.categoryId);
+    if (query?.paymentMethodId) params.set("paymentMethodId", query.paymentMethodId);
+    if (query?.tagId) params.set("tagId", query.tagId);
+    if (query?.reviewStatus) params.set("reviewStatus", query.reviewStatus);
     return this.request<ExpenseHistoryPage>(`/api/v1/expenses?${params}`);
   }
   getInboxExpenses() { return this.request<Expense[]>("/api/v1/expenses/inbox"); }
@@ -542,6 +551,9 @@ export class PersistentApiAdapter implements ApiAdapter {
   }
   updateExpense(id: string, input: { amountCents?: number; occurredAt?: string | null; occurredOn?: string | null; occurrencePrecision?: "datetime" | "date"; note?: string | null; categoryId?: string | null; paymentMethodId?: string | null; reviewStatus?: "pending" | "reviewed"; tagIds?: string[]; recoverableCents?: number; settled?: boolean }) {
     return this.request<Expense>(`/api/v1/expenses/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
+  }
+  deleteExpense(id: string) {
+    return this.request<void>(`/api/v1/expenses/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
   captureExpense(input: { id: string; amountCents: number; captureMessage?: string | null }, apiKey = "") {
     return this.request<Expense>("/api/v1/expenses/capture", { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ id: input.id, amount_cents: input.amountCents, capture_message: input.captureMessage }) });

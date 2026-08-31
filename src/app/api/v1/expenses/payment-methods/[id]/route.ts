@@ -3,6 +3,7 @@ import { dimensionCreateSchema } from "../../_dimension-route";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    assertSameOrigin(request);
     const { id } = await context.params;
     return jsonData(serviceForRequest(request).renamePaymentMethod(id, dimensionCreateSchema.parse(await readJson(request))));
   } catch (error) {

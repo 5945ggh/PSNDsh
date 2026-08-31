@@ -130,6 +130,7 @@ class AsyncMockApiAdapter implements ApiAdapter, MockApiFeatures {
   restorePaymentMethod(...args: Parameters<MockApiAdapter["restorePaymentMethod"]>) { return asPromise(() => this.mock.restorePaymentMethod(...args)); }
   mergePaymentMethod(...args: Parameters<MockApiAdapter["mergePaymentMethod"]>) { return asPromise(() => this.mock.mergePaymentMethod(...args)); }
   updateExpense(...args: Parameters<MockApiAdapter["updateExpense"]>) { return asPromise(() => this.mock.updateExpense(...args)); }
+  deleteExpense(...args: Parameters<MockApiAdapter["deleteExpense"]>) { return asPromise(() => this.mock.deleteExpense(...args)); }
   captureExpense(...args: Parameters<MockApiAdapter["captureExpense"]>) { return asPromise(() => this.mock.captureExpense(...args).expense); }
 }
 

@@ -844,6 +844,13 @@ describe("SqliteApplicationService", () => {
     expect(() => app.captureExpense({ id: "expense-fraction", amountCents: 1.5 })).toThrow(/EXPENSE_INVALID_AMOUNT/);
   });
 
+  it("rejects impossible calendar dates for expense occurrence", () => {
+    const app = service();
+
+    expect(() => app.captureExpense({ id: "expense-invalid-date", amountCents: 100, occurredOn: "2026-02-30" }))
+      .toThrow(/REQUEST_INVALID/);
+  });
+
   it("returns the existing expense for an idempotent retry and reports conflicting UUID fields", () => {
     const app = service();
     const first = app.captureExpense({ id: "expense-retry", amountCents: 2_500 });
@@ -954,6 +961,19 @@ describe("SqliteApplicationService", () => {
     }
   });
 
+  it("applies expense history search and dimension/date filters in persistence", () => {
+    const app = service();
+    const category = app.createExpenseCategory({ name: "餐饮" });
+    const paymentMethod = app.createPaymentMethod({ name: "微信" });
+    const tag = app.createExpenseTag({ name: "工作" });
+    const first = app.captureExpense({ id: "filter-first", amountCents: 100, occurredOn: "2026-06-20", captureMessage: "午餐" }).expense;
+    app.updateExpense(first.id, { categoryId: category.id, paymentMethodId: paymentMethod.id, tagIds: [tag.id], reviewStatus: "reviewed" });
+    app.captureExpense({ id: "filter-second", amountCents: 200, occurredOn: "2026-06-25", captureMessage: "交通" });
+
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "午餐", categoryId: category.id, paymentMethodId: paymentMethod.id, tagId: tag.id, reviewStatus: "reviewed", from: "2026-06-20", to: "2026-06-20" }).items.map((item) => item.id)).toEqual([first.id]);
+    expect(app.getExpenseHistoryPage(25, undefined, { from: "2026-06-21" }).items.map((item) => item.id)).toEqual(["filter-second"]);
+  });
+
   it("preserves occurrence facts separately from recorded time and supports independent inbox organization", () => {
     const app = service();
     const category = app.createExpenseCategory({ name: "餐饮" });
@@ -1030,12 +1050,30 @@ describe("SqliteApplicationService", () => {
       colorKey: "blue",
       recurrence: null,
     });
+    const category = appA.createExpenseCategory({ name: "餐饮", iconKey: "utensils" });
+    const archivedCategory = appA.createExpenseCategory({ name: "已归档分类" });
+    appA.archiveExpenseCategory(archivedCategory.id);
+    const tag = appA.createExpenseTag({ name: "工作日", iconKey: "tag" });
+    const paymentMethod = appA.createPaymentMethod({ name: "微信支付", iconKey: "smartphone" });
+    const expense = appA.captureExpense({
+      id: "expense-export-a",
+      amountCents: 1250,
+      occurredOn: "2026-06-25",
+      captureMessage: "午餐",
+    }).expense;
+    const updatedExpense = appA.updateExpense(expense.id, {
+      categoryId: category.id,
+      paymentMethodId: paymentMethod.id,
+      tagIds: [tag.id],
+      reviewStatus: "reviewed",
+    });
+    appA.deleteExpense(updatedExpense.id);
     const entryB = appB.addEntry({ parentId: null, title: "不能导出的条目", description: null, completionMode: "completable", dueAt: null });
 
     const exported = appA.exportUserData();
     const serialized = JSON.stringify(exported);
     expect(exported).toMatchObject({
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       effectiveTimezone: "Asia/Shanghai",
       profile: { id: USER_A },
     });
@@ -1047,6 +1085,20 @@ describe("SqliteApplicationService", () => {
     }));
     expect(exported.focusSessions).toHaveLength(1);
     expect(exported.scheduleBlocks).toHaveLength(1);
+    expect(exported.expenses).toHaveLength(1);
+    expect(exported.expenses[0]).toMatchObject({
+      id: expense.id,
+      deletedAt: expect.any(String),
+      categoryId: category.id,
+      paymentMethodId: paymentMethod.id,
+      tags: [{ id: tag.id, name: tag.name }],
+    });
+    expect(exported.expenseCategories).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: category.id, name: category.name, archivedAt: null }),
+      expect.objectContaining({ id: archivedCategory.id, name: archivedCategory.name, archivedAt: expect.any(String) }),
+    ]));
+    expect(exported.expenseTags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
+    expect(exported.paymentMethods).toEqual([expect.objectContaining({ id: paymentMethod.id, name: paymentMethod.name })]);
     expect(serialized).not.toContain("passwordHash");
     expect(serialized).not.toContain("sessionToken");
   });

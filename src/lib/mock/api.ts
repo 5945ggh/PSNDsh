@@ -1,6 +1,6 @@
 import { mockStore } from "./store";
 import { MockApplicationService } from "./service";
-import { LoginInput, RegisterInput } from "@/lib/application/contract";
+import { LoginInput, RegisterInput, ExpenseHistoryQuery } from "@/lib/application/contract";
 
 /**
  * Client-side stand-in for the documented same-origin JSON API. Components use
@@ -26,7 +26,7 @@ export class MockApiAdapter {
   moveEntry(id: string, parentId: string | null) { return this.service.moveEntry(id, parentId); }
   deleteEntry(id: string) { return this.service.deleteEntry(id); }
   getExpenses() { return this.service.getExpenses(); }
-  getExpenseHistoryPage(limit?: number, before?: string) { return this.service.getExpenseHistoryPage(limit, before); }
+  getExpenseHistoryPage(limit?: number, before?: string, query?: ExpenseHistoryQuery) { return this.service.getExpenseHistoryPage(limit, before, query); }
   getInboxExpenses() { return this.service.getInboxExpenses(); }
   getExpenseCategories(includeArchived?: boolean) { return this.service.getExpenseCategories(includeArchived); }
   getExpenseTags(includeArchived?: boolean) { return this.service.getExpenseTags(includeArchived); }
