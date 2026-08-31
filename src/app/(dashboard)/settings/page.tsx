@@ -254,17 +254,17 @@ export default function SettingsPage() {
               <SectionFrame
                 id="data-export"
                 title="数据与导出"
-                description="查看当前导出包含的数据范围，并下载本账号 JSON 导出。"
+                description="查看当前导出包含的数据范围，并下载本账号 JSON 或账目 CSV 导出。"
                 icon={Database}
               >
                 <div className="space-y-4">
                   <p className="max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                    导出包含当前账号资料、条目、周计划、日程、专注会话和片段，不含密码、会话和服务端密钥。
+                    JSON 导出包含当前账号资料、条目、周计划、日程、专注会话和片段，以及账目与账目字典；CSV 导出只包含账目域。不含密码、会话和服务端密钥。
                   </p>
 
                   <pre className="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[11px] leading-5 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
                     {`{
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "exportedAt": "2026-06-26T10:00:00Z",
   "profile": { "username": "${user?.username}" },
   "entriesCount": ${data.entries.length},
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                   </pre>
 
                   {!isMockTransport && (
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => window.location.assign("/api/v1/export")}
@@ -282,6 +282,14 @@ export default function SettingsPage() {
                       >
                         <Download className="h-3.5 w-3.5" aria-hidden="true" />
                         <span>下载 JSON 导出</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.location.assign("/api/v1/expenses/export/csv")}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>下载账目 CSV</span>
                       </button>
                     </div>
                   )}

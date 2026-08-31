@@ -32,7 +32,7 @@ export const resourcesForPathname = (pathname: string): DataResource[] => {
   else if (pathname === "/inbox") resources.push("inboxExpenses", "expenseDimensions");
   else if (pathname === "/expenses") resources.push("expenses", "expenseDimensions");
   else if (pathname === "/settings") {
-    resources.push("focusSessions", "scheduleBlocks", "expenseDimensions");
+    resources.push("focusSessions", "scheduleBlocks", "expenses", "expenseDimensions");
   }
 
   return resources;

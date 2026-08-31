@@ -158,9 +158,9 @@ const readAuthenticatedData = async (
       : previous.statistics.week,
     resources.has("expenses") ? api.getExpenseHistoryPage(25) : null,
     resources.has("inboxExpenses") ? api.getInboxExpenses() : previous.inboxExpenses,
-    resources.has("expenseDimensions") ? api.getExpenseCategories() : previous.expenseCategories,
-    resources.has("expenseDimensions") ? api.getExpenseTags() : previous.expenseTags,
-    resources.has("expenseDimensions") ? api.getPaymentMethods() : previous.paymentMethods,
+    resources.has("expenseDimensions") ? api.getExpenseCategories(pathname.startsWith("/settings")) : previous.expenseCategories,
+    resources.has("expenseDimensions") ? api.getExpenseTags(pathname.startsWith("/settings")) : previous.expenseTags,
+    resources.has("expenseDimensions") ? api.getPaymentMethods(pathname.startsWith("/settings")) : previous.paymentMethods,
   ]);
 
   // A first-page response represents one exact server snapshot. Replacing the

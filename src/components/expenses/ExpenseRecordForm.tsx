@@ -43,6 +43,7 @@ type ExpenseRecordFormProps = {
   onPrimaryAction: () => void;
   onSecondaryAction?: () => void;
   onSkip?: () => void;
+  onDelete?: () => void;
 };
 
 const actionClass =
@@ -69,6 +70,7 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
   onPrimaryAction,
   onSecondaryAction,
   onSkip,
+  onDelete,
 }) => {
   const isCompactHistory = mode === "expenses";
   const [expandedNoteId, setExpandedNoteId] = React.useState<string | null>(null);
@@ -525,6 +527,16 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             >
               <Save className="h-4 w-4" aria-hidden="true" />
               <span>保存修改</span>
+              </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={pending}
+              className={`${actionClass} border border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50 dark:border-rose-900/60 dark:bg-zinc-900 dark:text-rose-300 dark:hover:bg-rose-950/30`}
+            >
+              <span>删除记录</span>
             </button>
           )}
         </div>
@@ -648,6 +660,16 @@ export const ExpenseRecordForm: React.FC<ExpenseRecordFormProps> = ({
             <Save className="h-4 w-4" aria-hidden="true" />
             <span>保存修改</span>
           </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={pending}
+              className={`${actionClass} border border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50 dark:border-rose-900/60 dark:bg-zinc-900 dark:text-rose-300 dark:hover:bg-rose-950/30`}
+            >
+              <span>删除记录</span>
+            </button>
+          )}
         </div>
       )}
 

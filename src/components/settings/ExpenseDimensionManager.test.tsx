@@ -8,6 +8,7 @@ import {
   addTag,
   ExpenseDimensionManager,
   EXPENSE_DIMENSION_TABS,
+  countDimensionUsage,
 } from "./ExpenseDimensionManager";
 
 const snapshot = {
@@ -40,8 +41,22 @@ describe("ExpenseDimensionManager", () => {
     expect(html).toContain("支付方式");
     expect(html).toContain("标签");
     expect(html).toContain("餐饮");
+    expect(html).toContain("已归档");
+    expect(html).toContain("归档");
+    expect(html).toContain("字段视图");
+    expect(html).toContain('role="tooltip"');
+    expect(html).toContain("编辑餐饮");
+    expect(html).toContain("归档餐饮");
+    expect(html).not.toContain('>显示</span>');
     expect(html).not.toContain("xl:grid-cols-3");
     expect(html).not.toContain("账目字段管理");
+  });
+
+  it("counts loaded history and inbox records once per expense", () => {
+    const expense = { id: "expense-1", categoryId: "cat-food", paymentMethodId: null, tags: [{ id: "tag-work" }] };
+    const result = countDimensionUsage({ ...snapshot, expenses: [expense], inboxExpenses: [expense] } as unknown as DataSnapshot, "category", "cat-food");
+    expect(result).toBe(1);
+    expect(countDimensionUsage({ ...snapshot, expenses: [expense], inboxExpenses: [] } as unknown as DataSnapshot, "tag", "tag-work")).toBe(1);
   });
 
   it("keeps the three tabs as the single source for field metadata", () => {

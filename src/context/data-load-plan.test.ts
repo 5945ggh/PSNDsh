@@ -46,6 +46,7 @@ describe("resourcesForPathname", () => {
       "activeFocus",
       "focusSessions",
       "scheduleBlocks",
+      "expenses",
       "expenseDimensions",
     ]);
   });

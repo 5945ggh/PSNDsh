@@ -1,13 +1,38 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { Check, CreditCard, Hash, LoaderCircle, Pencil, Plus, Tags, X, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type FC, type FormEvent, type ReactNode } from "react";
+import { Archive, Check, CreditCard, Hash, LoaderCircle, Merge, Pencil, Plus, RotateCcw, Tags, X, type LucideIcon } from "lucide-react";
 import { useData, type DataSnapshot } from "@/context/MockContext";
 import type { ExpenseCategory, ExpenseTag, PaymentMethod } from "@/lib/domain/types";
 import { EXPENSE_ICON_OPTIONS, getExpenseIcon } from "@/components/expenses/expense-icons";
 
 type DimensionItem = ExpenseCategory | ExpenseTag | PaymentMethod;
 export type ExpenseDimensionKind = "category" | "paymentMethod" | "tag";
+
+const DimensionActionButton: FC<{
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}> = ({ label, onClick, disabled, children }) => (
+  <span className="group/action relative inline-flex">
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800"
+    >
+      {children}
+    </button>
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute right-0 top-full z-40 mt-1 hidden whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1.5 text-[11px] font-normal text-white shadow-lg group-hover/action:block group-focus-within/action:block dark:bg-zinc-700"
+    >
+      {label}
+    </span>
+  </span>
+);
 
 export const EXPENSE_DIMENSION_TABS: ReadonlyArray<{
   id: ExpenseDimensionKind;
@@ -73,13 +98,22 @@ export const addPaymentMethod = (snapshot: DataSnapshot, paymentMethod: PaymentM
   paymentMethods: sortByName(upsertById(snapshot.paymentMethods, paymentMethod)),
 });
 
+export const countDimensionUsage = (snapshot: DataSnapshot, kind: ExpenseDimensionKind, id: string) => {
+  const expenses = new Map([...snapshot.expenses, ...snapshot.inboxExpenses].map((expense) => [expense.id, expense]));
+  return [...expenses.values()].filter((expense) => kind === "category" ? expense.categoryId === id : kind === "paymentMethod" ? expense.paymentMethodId === id : expense.tags.some((tag) => tag.id === id)).length;
+};
+
 export function ExpenseDimensionManager() {
   const { api, data, mutate, pendingMutations } = useData();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingIconKey, setEditingIconKey] = useState<DimensionItem["iconKey"]>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [mergeSource, setMergeSource] = useState<DimensionItem | null>(null);
+  const [mergeTargetId, setMergeTargetId] = useState("");
+  const [viewFilter, setViewFilter] = useState<"active" | "all" | "archived">("active");
 
   const [activeDimension, setActiveDimension] = useState<ExpenseDimensionKind>("category");
 
@@ -89,6 +123,7 @@ export function ExpenseDimensionManager() {
     if (!value) return;
 
     setError(null);
+    setSuccess(null);
     try {
       const update = { name: value, iconKey: editingIconKey };
       if (dialogMode === "create" && activeDimension === "category") {
@@ -117,13 +152,15 @@ export function ExpenseDimensionManager() {
   const isSubmitting = pendingMutations > 0;
   const activeTab = EXPENSE_DIMENSION_TABS.find((tab) => tab.id === activeDimension) ?? EXPENSE_DIMENSION_TABS[0];
   const ActiveIcon = activeTab.icon;
-  const activeItems: DimensionItem[] =
+  const allItems: DimensionItem[] =
     activeDimension === "category"
       ? data.expenseCategories
       : activeDimension === "paymentMethod"
         ? data.paymentMethods
         : data.expenseTags;
   const activeToneClassName = activeTab.toneClassName;
+  const activeItems = allItems.filter((item) => viewFilter === "all" || (viewFilter === "archived" ? Boolean(item.archivedAt) : !item.archivedAt));
+  const targets = allItems.filter((item) => item.id !== mergeSource?.id && !item.archivedAt);
   const openCreateDialog = () => {
     setEditingId(null);
     setEditingName("");
@@ -149,6 +186,54 @@ export function ExpenseDimensionManager() {
     setEditingIconKey(item.iconKey ?? null);
     setError(null);
     setDialogMode("edit");
+  };
+
+  const updateDimension = () => {
+    if (activeDimension === "category") return addCategory;
+    if (activeDimension === "paymentMethod") return addPaymentMethod;
+    return addTag;
+  };
+  const updateMergedDimension = (snapshot: DataSnapshot, result: DimensionItem, sourceId: string) => {
+    const updater = updateDimension();
+    const next = updater(snapshot, result as never);
+    const markArchived = <T extends DimensionItem>(items: T[]) => items.map((candidate) => candidate.id === sourceId ? { ...candidate, archivedAt: new Date().toISOString() } : candidate);
+    return activeDimension === "category" ? { ...next, expenseCategories: markArchived(next.expenseCategories) as ExpenseCategory[] } : activeDimension === "paymentMethod" ? { ...next, paymentMethods: markArchived(next.paymentMethods) as PaymentMethod[] } : { ...next, expenseTags: markArchived(next.expenseTags) as ExpenseTag[] };
+  };
+
+  const runLifecycle = async (item: DimensionItem, action: "archive" | "restore") => {
+    setError(null);
+    try {
+      await mutate(() => activeDimension === "category"
+        ? action === "archive" ? api.archiveExpenseCategory(item.id) : api.restoreExpenseCategory(item.id)
+        : activeDimension === "paymentMethod"
+          ? action === "archive" ? api.archivePaymentMethod(item.id) : api.restorePaymentMethod(item.id)
+          : action === "archive" ? api.archiveExpenseTag(item.id) : api.restoreExpenseTag(item.id), { backgroundRefresh: true, update: (snapshot, result) => updateDimension()(snapshot, result as never) });
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "操作失败");
+    }
+  };
+
+  const openMergeDialog = (item: DimensionItem) => {
+    setMergeSource(item);
+    setMergeTargetId("");
+    setError(null);
+  };
+
+  const submitMerge = async () => {
+    if (!mergeSource || !mergeTargetId || mergeTargetId === mergeSource.id) return;
+    setError(null);
+    try {
+      await mutate(() => activeDimension === "category"
+        ? api.mergeExpenseCategory(mergeSource.id, { targetId: mergeTargetId })
+          : activeDimension === "paymentMethod"
+            ? api.mergePaymentMethod(mergeSource.id, { targetId: mergeTargetId })
+            : api.mergeExpenseTag(mergeSource.id, { targetId: mergeTargetId }), { backgroundRefresh: true, update: (snapshot, result) => updateMergedDimension(snapshot, result as DimensionItem, mergeSource.id) });
+      setMergeSource(null);
+      setMergeTargetId("");
+      setSuccess(`${mergeSource.name} 已归档，历史账目已迁移到目标字段。`);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "合并失败，请检查名称是否冲突");
+    }
   };
 
   useEffect(() => {
@@ -207,7 +292,7 @@ export function ExpenseDimensionManager() {
         id={`expense-dimension-panel-${activeDimension}`}
         role="tabpanel"
         aria-labelledby={`expense-dimension-tab-${activeDimension}`}
-        className="overflow-hidden rounded-xl border border-zinc-200 bg-white/80 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/70"
+        className="overflow-visible rounded-xl border border-zinc-200 bg-white/80 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/70"
       >
         <div className="flex flex-col gap-3 border-b border-zinc-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -225,11 +310,19 @@ export function ExpenseDimensionManager() {
             {error}
           </p>
         )}
+        {success && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">{success}</p>}
 
-        <button type="button" onClick={openCreateDialog} disabled={isSubmitting} className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white ${activeToneClassName.includes("emerald") ? "bg-emerald-700 hover:bg-emerald-800" : activeToneClassName.includes("blue") ? "bg-blue-700 hover:bg-blue-800" : "bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-200 dark:text-zinc-900"}`}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          新建{activeTab.label}
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" onClick={openCreateDialog} disabled={isSubmitting} className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white ${activeToneClassName.includes("emerald") ? "bg-emerald-700 hover:bg-emerald-800" : activeToneClassName.includes("blue") ? "bg-blue-700 hover:bg-blue-800" : "bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-200 dark:text-zinc-900"}`}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            新建{activeTab.label}
+          </button>
+          <div className="flex items-center gap-2 text-sm" aria-label="字段视图">
+          {([['active','启用'],['all','全部'],['archived','已归档']] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setViewFilter(value)} aria-pressed={viewFilter === value} className={`rounded-md px-2.5 py-1.5 ${viewFilter === value ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`}>{label}</button>
+          ))}
+          </div>
+        </div>
 
           <div>
             <div className="mb-2">
@@ -252,7 +345,26 @@ export function ExpenseDimensionManager() {
                         <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>
                         {item.archivedAt && <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-500">已归档</span>}
                       </div>
-                      <div className="flex items-center gap-2"><button type="button" aria-label={`编辑${item.name}`} onClick={() => beginEdit(item)} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"><Pencil className="h-3.5 w-3.5" aria-hidden="true" /></button><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${activeToneClassName}`}>可选</span></div>
+                      <div className="flex items-center gap-1">
+                        <DimensionActionButton label={`编辑${item.name}`} onClick={() => beginEdit(item)}>
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </DimensionActionButton>
+                        {item.archivedAt ? (
+                          <DimensionActionButton label={`恢复${item.name}`} onClick={() => runLifecycle(item, "restore")} disabled={isSubmitting}>
+                            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                          </DimensionActionButton>
+                        ) : (
+                          <DimensionActionButton label={`归档${item.name}`} onClick={() => runLifecycle(item, "archive")} disabled={isSubmitting}>
+                            <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                          </DimensionActionButton>
+                        )}
+                        {!item.archivedAt && allItems.length > 1 && (
+                          <DimensionActionButton label={`合并${item.name}`} onClick={() => openMergeDialog(item)} disabled={isSubmitting}>
+                            <Merge className="h-3.5 w-3.5" aria-hidden="true" />
+                          </DimensionActionButton>
+                        )}
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${activeToneClassName}`}>可选</span>
+                      </div>
                     </>
                   </li>
                 ))
@@ -282,9 +394,9 @@ export function ExpenseDimensionManager() {
               <label htmlFor="expense-dimension-dialog-name" className="block text-sm text-zinc-700 dark:text-zinc-300">名称<input id="expense-dimension-dialog-name" autoFocus value={editingName} onChange={(event) => setEditingName(event.target.value)} maxLength={80} placeholder={activeTab.placeholder} className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100" /></label>
               <div>
                 <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">图标</p>
-                <div className="grid grid-cols-6 gap-2" aria-label="选择图标">
-                  <button type="button" aria-label="不使用图标" onClick={() => setEditingIconKey(null)} className={`rounded-md border px-2 py-2 text-xs ${editingIconKey === null ? "border-blue-500 bg-blue-50" : "border-zinc-200 dark:border-zinc-700"}`}>无</button>
-                  {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={label} title={label} onClick={() => setEditingIconKey(key)} className={`flex items-center justify-center rounded-md border p-2 ${editingIconKey === key ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-200 text-zinc-500 dark:border-zinc-700"}`}><Icon className="h-4 w-4" aria-hidden="true" /></button>; })}
+                <div className="grid grid-cols-8 gap-0 sm:grid-cols-10" aria-label="选择图标">
+                  <button type="button" aria-label="不使用图标" onClick={() => setEditingIconKey(null)} className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${editingIconKey === null ? "bg-blue-50 text-blue-700 ring-1 ring-blue-400 dark:bg-blue-950/40 dark:text-blue-300" : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}>无</button>
+                  {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={label} title={label} onClick={() => setEditingIconKey(key)} className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${editingIconKey === key ? "bg-blue-50 text-blue-700 ring-1 ring-blue-400 dark:bg-blue-950/40 dark:text-blue-300" : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}><Icon className="h-3.5 w-3.5" aria-hidden="true" /></button>; })}
                 </div>
               </div>
               {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -293,6 +405,17 @@ export function ExpenseDimensionManager() {
                 <button type="submit" disabled={!editingName.trim() || isSubmitting} className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"><Check className="h-4 w-4" aria-hidden="true" />{isSubmitting ? "保存中" : dialogMode === "create" ? "创建" : "保存"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {mergeSource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="expense-dimension-merge-title" className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 id="expense-dimension-merge-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">合并{activeTab.label}</h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">将“{mergeSource.name}”的历史账目迁移到目标字段，来源字段随后归档。当前已加载数据中有 {countDimensionUsage(data, activeDimension, mergeSource.id)} 条相关账目。</p>
+            <label className="mt-4 block text-sm text-zinc-700 dark:text-zinc-300">目标字段<select value={mergeTargetId} onChange={(event) => setMergeTargetId(event.target.value)} className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"><option value="">请选择目标</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
+            {error && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setMergeSource(null)} disabled={isSubmitting} className="rounded-md border border-zinc-200 px-3 py-2 text-sm">取消</button><button type="button" onClick={submitMerge} disabled={!mergeTargetId || isSubmitting} className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">{isSubmitting ? "合并中" : "确认合并"}</button></div>
           </div>
         </div>
       )}
