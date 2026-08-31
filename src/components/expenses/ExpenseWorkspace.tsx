@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Inbox, Receipt, SlidersHorizontal, X } from "lucide-react";
 import { useData, type DataSnapshot } from "@/context/MockContext";
 import type { Expense } from "@/lib/domain/types";
+import { formatDateKeyInTimezone } from "@/lib/time/timezone";
 import { ExpenseRecordForm } from "./ExpenseRecordForm";
 import { ExpenseRecordList } from "./ExpenseRecordList";
 import {
@@ -39,30 +40,35 @@ const emptyExpenseFilterDraft = (): ExpenseFilterDraft => ({
   datePreset: "all",
 });
 
-const dateKeyFromDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const shiftExpenseDateKey = (dateKey: string, days: number) => {
+  const value = new Date(`${dateKey}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
 };
 
-const dateRangeForPreset = (preset: Exclude<ExpenseDatePreset, "all" | "custom">) => {
-  const today = new Date();
-  const to = dateKeyFromDate(today);
+export const getExpenseDateRangeForPreset = (
+  preset: Exclude<ExpenseDatePreset, "all" | "custom">,
+  timezone: string,
+  now = new Date(),
+) => {
+  const to = formatDateKeyInTimezone(now, timezone);
   if (preset === "today") return { from: to, to };
   if (preset === "last7") {
-    const from = new Date(today);
-    from.setDate(from.getDate() - 6);
-    return { from: dateKeyFromDate(from), to };
+    return { from: shiftExpenseDateKey(to, -6), to };
   }
-  return { from: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`, to };
+  return { from: `${to.slice(0, 7)}-01`, to };
 };
 
-const inferExpenseDatePreset = (from: string, to: string): ExpenseDatePreset => {
+export const inferExpenseDatePreset = (
+  from: string,
+  to: string,
+  timezone: string,
+  now = new Date(),
+): ExpenseDatePreset => {
   if (!from && !to) return "all";
   const presets: Array<Exclude<ExpenseDatePreset, "all" | "custom">> = ["today", "last7", "month"];
   return presets.find((preset) => {
-    const range = dateRangeForPreset(preset);
+    const range = getExpenseDateRangeForPreset(preset, timezone, now);
     return range.from === from && range.to === to;
   }) ?? "custom";
 };
@@ -573,7 +579,7 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
               <button
                 type="button"
                 onClick={() => {
-                  setMobileFilterDraft({ ...searchQuery, datePreset: inferExpenseDatePreset(searchQuery.from, searchQuery.to) });
+                  setMobileFilterDraft({ ...searchQuery, datePreset: inferExpenseDatePreset(searchQuery.from, searchQuery.to, timezone) });
                   setMobileFilterOpen(true);
                 }}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
@@ -601,7 +607,7 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
                 </header>
                 <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
                   <label className="block space-y-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">关键词（备注/捕获消息）<input value={mobileFilterDraft.q} onChange={(event) => setMobileFilterDraft((value) => ({ ...value, q: event.target.value }))} placeholder="输入关键词" className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2.5 text-sm font-normal dark:border-zinc-700 dark:text-zinc-100" /></label>
-                  <fieldset className="space-y-2"><legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">发生日期</legend><div className="grid grid-cols-2 gap-2">{([['all', '全部时间'], ['today', '今天'], ['last7', '最近 7 天'], ['month', '本月'], ['custom', '自定义范围']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => { const range = value === 'all' ? { from: '', to: '' } : value === 'custom' ? { from: mobileFilterDraft.from, to: mobileFilterDraft.to } : dateRangeForPreset(value); setMobileFilterDraft((draft) => ({ ...draft, datePreset: value, ...range })); }} className={`rounded-md border px-3 py-2.5 text-sm ${mobileFilterDraft.datePreset === value ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-200'}`}>{label}</button>)}</div>{mobileFilterDraft.datePreset === 'custom' && <div className="grid grid-cols-2 gap-3 pt-1"><label className="space-y-1 text-xs text-zinc-500">开始日期<input type="date" value={mobileFilterDraft.from} onChange={(event) => setMobileFilterDraft((draft) => ({ ...draft, from: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 text-sm dark:border-zinc-700" /></label><label className="space-y-1 text-xs text-zinc-500">结束日期<input type="date" value={mobileFilterDraft.to} onChange={(event) => setMobileFilterDraft((draft) => ({ ...draft, to: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 text-sm dark:border-zinc-700" /></label></div>}</fieldset>
+                  <fieldset className="space-y-2"><legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">发生日期</legend><div className="grid grid-cols-2 gap-2">{([['all', '全部时间'], ['today', '今天'], ['last7', '最近 7 天'], ['month', '本月'], ['custom', '自定义范围']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => { const range = value === 'all' ? { from: '', to: '' } : value === 'custom' ? { from: mobileFilterDraft.from, to: mobileFilterDraft.to } : getExpenseDateRangeForPreset(value, timezone); setMobileFilterDraft((draft) => ({ ...draft, datePreset: value, ...range })); }} className={`rounded-md border px-3 py-2.5 text-sm ${mobileFilterDraft.datePreset === value ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : 'border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-200'}`}>{label}</button>)}</div>{mobileFilterDraft.datePreset === 'custom' && <div className="grid grid-cols-2 gap-3 pt-1"><label className="space-y-1 text-xs text-zinc-500">开始日期<input type="date" value={mobileFilterDraft.from} onChange={(event) => setMobileFilterDraft((draft) => ({ ...draft, from: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 text-sm dark:border-zinc-700" /></label><label className="space-y-1 text-xs text-zinc-500">结束日期<input type="date" value={mobileFilterDraft.to} onChange={(event) => setMobileFilterDraft((draft) => ({ ...draft, to: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-2.5 py-2 text-sm dark:border-zinc-700" /></label></div>}</fieldset>
                   <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">分类<select value={mobileFilterDraft.categoryId} onChange={(event) => setMobileFilterDraft((value) => ({ ...value, categoryId: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2.5 text-sm font-normal dark:border-zinc-700 dark:text-zinc-100"><option value="">全部分类</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="space-y-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">支付方式<select value={mobileFilterDraft.paymentMethodId} onChange={(event) => setMobileFilterDraft((value) => ({ ...value, paymentMethodId: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2.5 text-sm font-normal dark:border-zinc-700 dark:text-zinc-100"><option value="">全部支付方式</option>{paymentMethods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="space-y-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">标签<select value={mobileFilterDraft.tagId} onChange={(event) => setMobileFilterDraft((value) => ({ ...value, tagId: event.target.value }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2.5 text-sm font-normal dark:border-zinc-700 dark:text-zinc-100"><option value="">全部标签</option>{tags.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="space-y-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">整理状态<select value={mobileFilterDraft.reviewStatus} onChange={(event) => setMobileFilterDraft((value) => ({ ...value, reviewStatus: event.target.value as "" | "pending" | "reviewed" }))} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2.5 text-sm font-normal dark:border-zinc-700 dark:text-zinc-100"><option value="">全部状态</option><option value="pending">待整理</option><option value="reviewed">已整理</option></select></label></div>
                 </div>
                 <footer className="flex gap-3 border-t border-zinc-200 px-5 py-4 dark:border-zinc-800"><button type="button" onClick={() => setMobileFilterDraft(emptyExpenseFilterDraft())} className="flex-1 rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">重置</button><button type="button" onClick={() => { setSearchQuery(mobileFilterDraft); setMobileFilterOpen(false); }} className="flex-1 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">应用筛选</button></footer>

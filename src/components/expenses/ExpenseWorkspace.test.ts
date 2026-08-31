@@ -3,11 +3,13 @@ import type { DataSnapshot } from "@/context/MockContext";
 import type { Expense } from "@/lib/domain/types";
 import {
   EXPENSE_PAGE_SIZE,
+  getExpenseDateRangeForPreset,
   getExpensePageCount,
   getExpensePageIndex,
   getExpensePageSlice,
   getExpenseKeyboardDirection,
   getExpenseWorkspaceInitialSelection,
+  inferExpenseDatePreset,
   updateSnapshotWithExpense,
 } from "./ExpenseWorkspace";
 
@@ -96,5 +98,29 @@ describe("expense workspace paging", () => {
     expect(getExpensePageSlice(records, 0)).toHaveLength(EXPENSE_PAGE_SIZE);
     expect(getExpensePageSlice(records, 1)).toHaveLength(1);
     expect(getExpensePageSlice(records, 1)[0]?.id).toBe(`expense-${EXPENSE_PAGE_SIZE + 1}`);
+  });
+});
+
+describe("expense workspace mobile date presets", () => {
+  it("uses the configured application timezone rather than the browser local date", () => {
+    const now = new Date("2026-08-31T00:30:00.000Z");
+
+    expect(getExpenseDateRangeForPreset("today", "America/Los_Angeles", now)).toEqual({
+      from: "2026-08-30",
+      to: "2026-08-30",
+    });
+    expect(getExpenseDateRangeForPreset("last7", "America/Los_Angeles", now)).toEqual({
+      from: "2026-08-24",
+      to: "2026-08-30",
+    });
+  });
+
+  it("uses the timezone-local month and recognizes matching preset ranges", () => {
+    const now = new Date("2026-09-01T00:30:00.000Z");
+    const range = getExpenseDateRangeForPreset("month", "America/Los_Angeles", now);
+
+    expect(range).toEqual({ from: "2026-08-01", to: "2026-08-31" });
+    expect(inferExpenseDatePreset(range.from, range.to, "America/Los_Angeles", now)).toBe("month");
+    expect(inferExpenseDatePreset(range.from, range.to, "Asia/Shanghai", now)).toBe("custom");
   });
 });
