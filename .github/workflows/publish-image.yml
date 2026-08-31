@@ -21,6 +21,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Normalize image name
+        id: image
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -32,7 +38,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
