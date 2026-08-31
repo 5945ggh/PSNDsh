@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { ApplicationError } from "@/lib/application/error";
 import { QUOTATION_CATALOG_VERSION } from "@/lib/ambient/quotations";
 import { openDatabase } from "@/lib/db";
-import { entries, focusSegments, users, weekPlans } from "@/lib/db/schema";
+import { entries, expenses, focusSegments, users, weekPlans } from "@/lib/db/schema";
+import { sortExpensesForHistory } from "@/lib/expenses/history";
 import { SqliteApplicationService } from "./sqlite-service";
 
 const USER_A = "user-a";
@@ -808,6 +809,218 @@ describe("SqliteApplicationService", () => {
     expect(() => appB.addToWeekPlan(entry.id, "2026-06-22")).toThrow(/ENTRY_NOT_FOUND/);
   });
 
+  it("captures a minimal CNY expense with the required default states", () => {
+    const captured = service().captureExpense({ id: "expense-minimal", amountCents: 1_250 });
+
+    expect(captured).toEqual({
+      created: true,
+      expense: expect.objectContaining({
+        id: "expense-minimal",
+        amountCents: 1_250,
+        currency: "CNY",
+        occurredAt: "2026-06-26T12:00:00.000Z",
+        occurredOn: null,
+        recordedAt: "2026-06-26T12:00:00.000Z",
+        recognitionStatus: "recognized",
+        reviewStatus: "pending",
+        source: "shortcut",
+        categoryId: null,
+        paymentMethodId: null,
+        tags: [],
+        recoverableCents: 0,
+        settled: false,
+        deletedAt: null,
+      }),
+    });
+    expect(service().getExpenses()).toEqual([expect.objectContaining({ id: "expense-minimal" })]);
+    expect(service().getInboxExpenses()).toEqual([expect.objectContaining({ id: "expense-minimal" })]);
+  });
+
+  it("rejects non-positive or fractional expense amounts", () => {
+    const app = service();
+
+    expect(() => app.captureExpense({ id: "expense-zero", amountCents: 0 })).toThrow(/EXPENSE_INVALID_AMOUNT/);
+    expect(() => app.captureExpense({ id: "expense-negative", amountCents: -1 })).toThrow(/EXPENSE_INVALID_AMOUNT/);
+    expect(() => app.captureExpense({ id: "expense-fraction", amountCents: 1.5 })).toThrow(/EXPENSE_INVALID_AMOUNT/);
+  });
+
+  it("rejects impossible calendar dates for expense occurrence", () => {
+    const app = service();
+
+    expect(() => app.captureExpense({ id: "expense-invalid-date", amountCents: 100, occurredOn: "2026-02-30" }))
+      .toThrow(/REQUEST_INVALID/);
+  });
+
+  it("returns the existing expense for an idempotent retry and reports conflicting UUID fields", () => {
+    const app = service();
+    const first = app.captureExpense({ id: "expense-retry", amountCents: 2_500 });
+    currentTime = at("2026-06-26T12:05:00.000Z");
+    const retried = app.captureExpense({ id: "expense-retry", amountCents: 2_500 });
+
+    expect(retried).toEqual({ created: false, expense: first.expense });
+    expect(app.getExpenses()).toHaveLength(1);
+    try {
+      app.captureExpense({ id: "expense-retry", amountCents: 2_501 });
+      throw new Error("expected idempotency conflict");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "EXPENSE_IDEMPOTENCY_CONFLICT",
+        details: { id: "expense-retry", conflictingFields: ["amountCents"] },
+      } satisfies Partial<ApplicationError>);
+    }
+  });
+
+  it("keeps same client UUIDs isolated by user", () => {
+    const appA = service(USER_A);
+    const appB = service(USER_B);
+    const expenseA = appA.captureExpense({ id: "shared-client-uuid", amountCents: 100 }).expense;
+    const expenseB = appB.captureExpense({ id: "shared-client-uuid", amountCents: 200 }).expense;
+
+    expect(expenseA.amountCents).toBe(100);
+    expect(expenseB.amountCents).toBe(200);
+    expect(appA.getExpenses()).toEqual([expect.objectContaining({ id: "shared-client-uuid", amountCents: 100 })]);
+    expect(appB.getExpenses()).toEqual([expect.objectContaining({ id: "shared-client-uuid", amountCents: 200 })]);
+    const onlyA = appA.captureExpense({ id: "expense-only-a", amountCents: 300 }).expense;
+    expect(appB.getExpenseById(onlyA.id)).toBeUndefined();
+    expect(() => appB.updateExpense(onlyA.id, { note: "越权" })).toThrow(/EXPENSE_NOT_FOUND/);
+    expect(() => appB.deleteExpense(onlyA.id)).toThrow(/EXPENSE_NOT_FOUND/);
+  });
+
+  it("keeps an expense UUID tombstone after soft deletion and prevents late retries from reviving it", () => {
+    const app = service();
+    app.captureExpense({ id: "expense-deleted", amountCents: 888 });
+    app.deleteExpense("expense-deleted");
+
+    expect(app.getExpenses()).toEqual([]);
+    expect(app.getExpenseById("expense-deleted")).toBeUndefined();
+    expect(app.getExpenseById("expense-deleted", { includeDeleted: true })).toEqual(expect.objectContaining({
+      id: "expense-deleted",
+      deletedAt: expect.any(String),
+    }));
+    expect(() => app.captureExpense({ id: "expense-deleted", amountCents: 888 })).toThrow(/EXPENSE_DELETED/);
+  });
+
+  it("pages mixed occurrence precisions with the effective-timezone history key", () => {
+    const app = new SqliteApplicationService(handle.db, {
+      userId: USER_A,
+      clock: () => currentTime,
+      effectiveTimezone: "America/New_York",
+    });
+    const capture = (id: string, occurredAt: string | null, occurredOn: string | null) => {
+      const result = app.captureExpense({
+        id,
+        amountCents: 100,
+        ...(occurredAt ? { occurredAt, occurrencePrecision: "datetime" as const } : {
+          occurredOn: occurredOn!,
+          occurrencePrecision: "date" as const,
+        }),
+      });
+      currentTime = new Date(currentTime.getTime() + 1_000);
+      return result.expense;
+    };
+
+    const captured = [
+      capture("datetime-jun-28", "2026-06-29T02:00:00.000Z", null),
+      capture("date-jun-29-early", null, "2026-06-29"),
+      capture("datetime-jun-29", "2026-06-29T15:00:00.000Z", null),
+      capture("date-jun-29-late", null, "2026-06-29"),
+      capture("datetime-jun-30", "2026-06-30T01:00:00.000Z", null),
+      capture("date-jun-28", null, "2026-06-28"),
+    ];
+    const expectedIds = sortExpensesForHistory(captured, "America/New_York").map((expense) => expense.id);
+
+    const first = app.getExpenseHistoryPage(2);
+    const second = app.getExpenseHistoryPage(2, first.nextCursor ?? undefined);
+    const third = app.getExpenseHistoryPage(2, second.nextCursor ?? undefined);
+
+    expect([...first.items, ...second.items, ...third.items].map((expense) => expense.id)).toEqual(expectedIds);
+    expect(new Set([...first.items, ...second.items, ...third.items].map((expense) => expense.id))).toHaveLength(captured.length);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(second.nextCursor).toEqual(expect.any(String));
+    expect(third).toMatchObject({ hasMore: false, nextCursor: null });
+    expect(handle.db.select().from(expenses).all()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ historyDateKey: "2026-06-29", historyOccurredAtMs: expect.any(Number) }),
+      expect.objectContaining({ historyDateKey: "2026-06-29", historyOccurredAtMs: 0 }),
+    ]));
+  });
+
+  it("rejects a continuation cursor after an unloaded history record changes", () => {
+    const app = service();
+    app.captureExpense({ id: "history-newest", amountCents: 100, occurredAt: "2026-06-28T10:00:00.000Z" });
+    app.captureExpense({ id: "history-middle", amountCents: 100, occurredAt: "2026-06-27T10:00:00.000Z" });
+    app.captureExpense({ id: "history-unloaded", amountCents: 100, occurredAt: "2026-06-26T10:00:00.000Z" });
+
+    const first = app.getExpenseHistoryPage(2);
+    app.updateExpense("history-unloaded", { occurredAt: "2026-06-29T10:00:00.000Z" });
+
+    try {
+      app.getExpenseHistoryPage(2, first.nextCursor ?? undefined);
+      throw new Error("expected stale history cursor");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "EXPENSE_HISTORY_STALE" } satisfies Partial<ApplicationError>);
+    }
+  });
+
+  it("applies expense history search and dimension/date filters in persistence", () => {
+    const app = service();
+    const category = app.createExpenseCategory({ name: "餐饮" });
+    const paymentMethod = app.createPaymentMethod({ name: "微信" });
+    const tag = app.createExpenseTag({ name: "工作" });
+    const first = app.captureExpense({ id: "filter-first", amountCents: 100, occurredOn: "2026-06-20", captureMessage: "午餐" }).expense;
+    app.updateExpense(first.id, { categoryId: category.id, paymentMethodId: paymentMethod.id, tagIds: [tag.id], reviewStatus: "reviewed" });
+    app.captureExpense({ id: "filter-second", amountCents: 200, occurredOn: "2026-06-25", captureMessage: "交通" });
+
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "午餐", categoryId: category.id, paymentMethodId: paymentMethod.id, tagId: tag.id, reviewStatus: "reviewed", from: "2026-06-20", to: "2026-06-20" }).items.map((item) => item.id)).toEqual([first.id]);
+    expect(app.getExpenseHistoryPage(25, undefined, { from: "2026-06-21" }).items.map((item) => item.id)).toEqual(["filter-second"]);
+  });
+
+  it("treats SQL wildcard characters as literals in expense history search", () => {
+    const app = service();
+    app.captureExpense({ id: "literal-percent", amountCents: 100, captureMessage: "100% complete" });
+    app.captureExpense({ id: "literal-underscore", amountCents: 200, captureMessage: "project_alpha" });
+    app.captureExpense({ id: "literal-other", amountCents: 300, captureMessage: "1000 complete" });
+
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "%" }).items.map((item) => item.id)).toEqual(["literal-percent"]);
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "_" }).items.map((item) => item.id)).toEqual(["literal-underscore"]);
+  });
+
+  it("preserves occurrence facts separately from recorded time and supports independent inbox organization", () => {
+    const app = service();
+    const category = app.createExpenseCategory({ name: "餐饮" });
+    const tag = app.createExpenseTag({ name: "出差" });
+    const paymentMethod = app.createPaymentMethod({ name: "校园卡" });
+    const expense = app.captureExpense({
+      id: "expense-organize",
+      amountCents: 3_600,
+      occurredAt: "2026-06-20T08:30:00.000Z",
+      occurredTimezone: "Asia/Shanghai",
+      captureMessage: "早餐",
+    }).expense;
+
+    expect(expense.occurredAt).toBe("2026-06-20T08:30:00.000Z");
+    expect(expense.recordedAt).toBe("2026-06-26T12:00:00.000Z");
+    const organized = app.updateExpense(expense.id, {
+      note: "食堂早餐",
+      categoryId: category.id,
+      tagIds: [tag.id],
+      paymentMethodId: paymentMethod.id,
+      reviewStatus: "reviewed",
+    });
+    expect(organized).toMatchObject({
+      note: "食堂早餐",
+      categoryId: category.id,
+      paymentMethodId: paymentMethod.id,
+      reviewStatus: "reviewed",
+      tags: [{ id: tag.id, name: "出差" }],
+    });
+    expect(app.getInboxExpenses()).toEqual([]);
+
+    const unclassifiedReviewed = app.captureExpense({ id: "expense-unclassified", amountCents: 42 }).expense;
+    const reviewed = app.updateExpense(unclassifiedReviewed.id, { reviewStatus: "reviewed" });
+    expect(reviewed).toEqual(expect.objectContaining({ categoryId: null, reviewStatus: "reviewed" }));
+    expect(app.getExpenses().map((record) => record.id)).toContain(unclassifiedReviewed.id);
+  });
+
   it("rejects profile reads without an authenticated user", () => {
     expect(() => service(null).getUser()).toThrow(/UNAUTHORIZED/);
   });
@@ -847,12 +1060,30 @@ describe("SqliteApplicationService", () => {
       colorKey: "blue",
       recurrence: null,
     });
+    const category = appA.createExpenseCategory({ name: "餐饮", iconKey: "utensils" });
+    const archivedCategory = appA.createExpenseCategory({ name: "已归档分类" });
+    appA.archiveExpenseCategory(archivedCategory.id);
+    const tag = appA.createExpenseTag({ name: "工作日", iconKey: "tag" });
+    const paymentMethod = appA.createPaymentMethod({ name: "微信支付", iconKey: "smartphone" });
+    const expense = appA.captureExpense({
+      id: "expense-export-a",
+      amountCents: 1250,
+      occurredOn: "2026-06-25",
+      captureMessage: "午餐",
+    }).expense;
+    const updatedExpense = appA.updateExpense(expense.id, {
+      categoryId: category.id,
+      paymentMethodId: paymentMethod.id,
+      tagIds: [tag.id],
+      reviewStatus: "reviewed",
+    });
+    appA.deleteExpense(updatedExpense.id);
     const entryB = appB.addEntry({ parentId: null, title: "不能导出的条目", description: null, completionMode: "completable", dueAt: null });
 
     const exported = appA.exportUserData();
     const serialized = JSON.stringify(exported);
     expect(exported).toMatchObject({
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       effectiveTimezone: "Asia/Shanghai",
       profile: { id: USER_A },
     });
@@ -864,6 +1095,20 @@ describe("SqliteApplicationService", () => {
     }));
     expect(exported.focusSessions).toHaveLength(1);
     expect(exported.scheduleBlocks).toHaveLength(1);
+    expect(exported.expenses).toHaveLength(1);
+    expect(exported.expenses[0]).toMatchObject({
+      id: expense.id,
+      deletedAt: expect.any(String),
+      categoryId: category.id,
+      paymentMethodId: paymentMethod.id,
+      tags: [{ id: tag.id, name: tag.name }],
+    });
+    expect(exported.expenseCategories).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: category.id, name: category.name, archivedAt: null }),
+      expect.objectContaining({ id: archivedCategory.id, name: archivedCategory.name, archivedAt: expect.any(String) }),
+    ]));
+    expect(exported.expenseTags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
+    expect(exported.paymentMethods).toEqual([expect.objectContaining({ id: paymentMethod.id, name: paymentMethod.name })]);
     expect(serialized).not.toContain("passwordHash");
     expect(serialized).not.toContain("sessionToken");
   });
@@ -912,5 +1157,73 @@ describe("SqliteApplicationService", () => {
       if (previousMode === undefined) delete process.env.REGISTRATION_MODE;
       else process.env.REGISTRATION_MODE = previousMode;
     }
+  });
+
+  it("validates edited amounts against recoverable cents and keeps occurrence precision coherent", () => {
+    const app = service();
+    const expense = app.captureExpense({ id: "expense-edit-boundaries", amountCents: 1_000 }).expense;
+
+    expect(() => app.updateExpense(expense.id, { recoverableCents: 800, amountCents: 700 }))
+      .toThrow(/预计可收回金额/);
+    app.updateExpense(expense.id, { recoverableCents: 400 });
+    const changedAmount = app.updateExpense(expense.id, { amountCents: 700 });
+    expect(changedAmount).toMatchObject({ amountCents: 700, recoverableCents: 400 });
+
+    const dated = app.updateExpense(expense.id, { occurredOn: "2026-06-27" });
+    expect(dated).toMatchObject({ occurrencePrecision: "date", occurredOn: "2026-06-27", occurredAt: null });
+    const timed = app.updateExpense(expense.id, { occurredAt: "2026-06-27T08:30:00.000Z" });
+    expect(timed).toMatchObject({ occurrencePrecision: "datetime", occurredAt: "2026-06-27T08:30:00.000Z", occurredOn: null });
+  });
+
+  it("archives, restores, and merges expense dimensions transactionally", () => {
+    const app = service();
+    const category = app.createExpenseCategory({ name: "早餐" });
+    const categoryTarget = app.createExpenseCategory({ name: "餐饮" });
+    const tag = app.createExpenseTag({ name: "校园" });
+    const tagTarget = app.createExpenseTag({ name: "出行" });
+    const paymentMethod = app.createPaymentMethod({ name: "现金" });
+    const paymentTarget = app.createPaymentMethod({ name: "支付宝" });
+    const expense = app.captureExpense({ id: "expense-dimension-ops", amountCents: 1_500 }).expense;
+
+    expect(app.renameExpenseCategory(category.id, { name: "早饭" })).toMatchObject({ name: "早饭" });
+    expect(app.archiveExpenseCategory(category.id)).toMatchObject({ archivedAt: expect.any(String) });
+    expect(app.restoreExpenseCategory(category.id)).toMatchObject({ archivedAt: null });
+    expect(app.mergeExpenseCategory(category.id, { targetId: categoryTarget.id })).toMatchObject({ archivedAt: expect.any(String) });
+
+    app.updateExpense(expense.id, {
+      categoryId: categoryTarget.id,
+      tagIds: [tag.id],
+      paymentMethodId: paymentMethod.id,
+      reviewStatus: "reviewed",
+    });
+    app.mergeExpenseTag(tag.id, { targetId: tagTarget.id });
+    app.mergePaymentMethod(paymentMethod.id, { targetId: paymentTarget.id });
+
+    const reloaded = app.getExpenseById(expense.id, { includeDeleted: true });
+    expect(reloaded).toMatchObject({
+      categoryId: categoryTarget.id,
+      paymentMethodId: paymentTarget.id,
+      tags: [{ id: tagTarget.id, name: "出行" }],
+    });
+    expect(app.getExpenseCategories(true).map((item) => item.id)).toContain(category.id);
+    expect(app.getExpenseTags(true).map((item) => item.id)).toContain(tag.id);
+    expect(app.getPaymentMethods(true).map((item) => item.id)).toContain(paymentMethod.id);
+  });
+
+  it("invalidates history cursors when merging tags changes record relations", () => {
+    const app = service();
+    const source = app.createExpenseTag({ name: "待合并" });
+    const target = app.createExpenseTag({ name: "目标" });
+    const first = app.captureExpense({ id: "tag-cursor-first", amountCents: 100 }).expense;
+    const second = app.captureExpense({ id: "tag-cursor-second", amountCents: 200 }).expense;
+    app.updateExpense(first.id, { tagIds: [source.id] });
+    app.updateExpense(second.id, { tagIds: [source.id] });
+
+    const page = app.getExpenseHistoryPage(1, undefined, { tagId: source.id });
+    expect(page.nextCursor).toEqual(expect.any(String));
+    app.mergeExpenseTag(source.id, { targetId: target.id });
+
+    expect(() => app.getExpenseHistoryPage(1, page.nextCursor ?? undefined, { tagId: source.id }))
+      .toThrow(/EXPENSE_HISTORY_STALE/);
   });
 });

@@ -12,8 +12,15 @@ import {
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
   WeekPlanItemInput,
+  Expense,
+  ExpenseCategory,
+  ExpenseTag,
+  PaymentMethod,
 } from "@/lib/domain/types";
 import type { ScenarioPreset } from "@/lib/mock/types";
+import { decodeExpenseHistoryCursor, getExpenseHistoryPage, sortExpensesForHistory } from "@/lib/expenses/history";
+import type { ExpenseHistoryQuery } from "@/lib/application/contract";
+import { formatDateKeyInTimezone } from "@/lib/time/timezone";
 import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import {
   MOCK_USER,
@@ -24,6 +31,10 @@ import {
   MOCK_SCHEDULE_BLOCKS_NORMAL,
   MOCK_FOCUS_SESSIONS_NORMAL,
   MOCK_ICS_PREVIEW,
+  MOCK_EXPENSES,
+  MOCK_EXPENSE_CATEGORIES,
+  MOCK_EXPENSE_TAGS,
+  MOCK_PAYMENT_METHODS,
 } from "./fixtures";
 import { MockDomainError } from "./domain";
 
@@ -54,6 +65,40 @@ const shiftYmd = (date: string, days: number) => formatYmd(parseYmd(date) + days
 const toRangeBounds = (startDate: string, endDate: string) => ({
   startMs: Date.parse(`${startDate}T00:00:00+08:00`),
   endMs: Date.parse(`${endDate}T00:00:00+08:00`),
+});
+
+const normalizeOptionalText = (value: string | null | undefined) => {
+  const normalized = value?.trim() ?? "";
+  return normalized ? normalized : null;
+};
+
+const normalizeCaptureMessage = normalizeOptionalText;
+
+const assertPositiveInteger = (value: number, message: string) => {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new MockDomainError("EXPENSE_INVALID_AMOUNT", message);
+  }
+};
+
+const assertDateTime = (value: string, message: string) => {
+  if (!Number.isFinite(Date.parse(value))) {
+    throw new MockDomainError("REQUEST_INVALID", message);
+  }
+};
+
+const assertDateKey = (value: string, message: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new MockDomainError("REQUEST_INVALID", message);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new MockDomainError("REQUEST_INVALID", message);
+  }
+};
+
+const cloneExpense = (expense: Expense): Expense => ({
+  ...expense,
+  tags: expense.tags.map((tag) => ({ ...tag })),
 });
 
 const intersectSeconds = (
@@ -116,6 +161,14 @@ export class MockDataStore {
   );
   private scheduleBlocks: ScheduleBlock[] = [...MOCK_SCHEDULE_BLOCKS_NORMAL];
   private focusSessions: FocusSession[] = [...MOCK_FOCUS_SESSIONS_NORMAL];
+  private expenses: Expense[] = [
+    ...MOCK_EXPENSES.map((expense) => cloneExpense(expense)),
+    { ...cloneExpense(MOCK_EXPENSES[0]), id: "exp_reviewed_unclassified", reviewStatus: "reviewed", categoryId: null, note: null },
+  ];
+  private expenseCategories: ExpenseCategory[] = [...MOCK_EXPENSE_CATEGORIES];
+  private expenseTags: ExpenseTag[] = [...MOCK_EXPENSE_TAGS];
+  private paymentMethods: PaymentMethod[] = [...MOCK_PAYMENT_METHODS];
+  private expenseHistoryRevision = 0;
   private listeners: Array<() => void> = [];
   private credentials = new Map<string, { user: UserProfile; password: string }>([
     [MOCK_USER.username, { user: MOCK_USER, password: "password123" }],
@@ -134,6 +187,10 @@ export class MockDataStore {
 
   private notify() {
     this.listeners.forEach((l) => l());
+  }
+
+  private invalidateExpenseHistory() {
+    this.expenseHistoryRevision += 1;
   }
 
   public getScenario(): ScenarioPreset {
@@ -156,6 +213,10 @@ export class MockDataStore {
       ]);
       this.scheduleBlocks = [];
       this.focusSessions = [];
+      this.expenseCategories = [];
+      this.expenseTags = [];
+      this.paymentMethods = [];
+      this.expenses = [];
     } else {
       this.user = MOCK_USER;
       this.entries = [...MOCK_ENTRIES_NORMAL];
@@ -167,6 +228,13 @@ export class MockDataStore {
       );
       this.scheduleBlocks = [...MOCK_SCHEDULE_BLOCKS_NORMAL];
       this.focusSessions = [...MOCK_FOCUS_SESSIONS_NORMAL];
+      this.expenseCategories = [...MOCK_EXPENSE_CATEGORIES];
+      this.expenseTags = [...MOCK_EXPENSE_TAGS];
+      this.paymentMethods = [...MOCK_PAYMENT_METHODS];
+      this.expenses = [
+        ...MOCK_EXPENSES.map((expense) => cloneExpense(expense)),
+        { ...cloneExpense(MOCK_EXPENSES[0]), id: "exp_reviewed_unclassified", reviewStatus: "reviewed", categoryId: null, note: null },
+      ];
       this.recalculateEntryFocusSeconds();
     }
     this.notify();
@@ -647,6 +715,496 @@ export class MockDataStore {
 
   public deleteScheduleBlock(id: string) {
     this.scheduleBlocks = this.scheduleBlocks.filter((b) => b.id !== id);
+    this.notify();
+  }
+
+  // --- EXPENSES ---
+
+  private getExpenseCategoryById(id: string) {
+    const category = this.expenseCategories.find((item) => item.id === id && item.archivedAt === null);
+    if (!category) throw new MockDomainError("EXPENSE_CATEGORY_NOT_FOUND", "分类不存在或已归档");
+    return category;
+  }
+
+  private getExpenseCategoryByIdIncludingArchived(id: string) {
+    const category = this.expenseCategories.find((item) => item.id === id);
+    if (!category) throw new MockDomainError("EXPENSE_CATEGORY_NOT_FOUND", "分类不存在");
+    return category;
+  }
+
+  private getExpenseCategoryByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    return this.expenseCategories.find((item) => item.id !== ignoreId && item.name.trim().toLowerCase() === normalized);
+  }
+
+  private getExpenseTagById(id: string) {
+    const tag = this.expenseTags.find((item) => item.id === id && item.archivedAt === null);
+    if (!tag) throw new MockDomainError("EXPENSE_TAG_NOT_FOUND", "标签不存在或已归档");
+    return tag;
+  }
+
+  private getExpenseTagByIdIncludingArchived(id: string) {
+    const tag = this.expenseTags.find((item) => item.id === id);
+    if (!tag) throw new MockDomainError("EXPENSE_TAG_NOT_FOUND", "标签不存在");
+    return tag;
+  }
+
+  private getExpenseTagByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    return this.expenseTags.find((item) => item.id !== ignoreId && item.name.trim().toLowerCase() === normalized);
+  }
+
+  private getPaymentMethodById(id: string) {
+    const method = this.paymentMethods.find((item) => item.id === id && item.archivedAt === null);
+    if (!method) throw new MockDomainError("PAYMENT_METHOD_NOT_FOUND", "支付方式不存在或已归档");
+    return method;
+  }
+
+  private getPaymentMethodByIdIncludingArchived(id: string) {
+    const method = this.paymentMethods.find((item) => item.id === id);
+    if (!method) throw new MockDomainError("PAYMENT_METHOD_NOT_FOUND", "支付方式不存在");
+    return method;
+  }
+
+  private getPaymentMethodByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    return this.paymentMethods.find((item) => item.id !== ignoreId && item.name.trim().toLowerCase() === normalized);
+  }
+
+  private getExpenseRow(id: string, includeDeleted = false) {
+    const row = this.expenses.find((expense) => expense.id === id);
+    if (!row || (!includeDeleted && row.deletedAt !== null)) {
+      throw new MockDomainError("EXPENSE_NOT_FOUND", "开销记录不存在");
+    }
+    return row;
+  }
+
+  public createExpenseCategory(input: { name: string; iconKey?: ExpenseCategory["iconKey"] }): ExpenseCategory {
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    if (this.getExpenseCategoryByName(name)) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
+    }
+    const category: ExpenseCategory = { id: `cat_${Date.now()}_${this.expenseCategories.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
+    this.expenseCategories.push(category);
+    this.notify();
+    return { ...category };
+  }
+
+  public getExpenseCategories(includeArchived = false): ExpenseCategory[] {
+    return this.expenseCategories
+      .filter((category) => includeArchived || category.archivedAt === null)
+      .map((category) => ({ ...category }));
+  }
+
+  public renameExpenseCategory(id: string, input: { name: string; iconKey?: ExpenseCategory["iconKey"] }): ExpenseCategory {
+    const category = this.getExpenseCategoryByIdIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getExpenseCategoryByName(name, category.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
+    }
+    category.name = name;
+    if (input.iconKey !== undefined) category.iconKey = input.iconKey;
+    this.notify();
+    return { ...category };
+  }
+
+  public archiveExpenseCategory(id: string): ExpenseCategory {
+    const category = this.getExpenseCategoryById(id);
+    category.archivedAt = new Date().toISOString();
+    this.notify();
+    return { ...category };
+  }
+
+  public restoreExpenseCategory(id: string): ExpenseCategory {
+    const category = this.getExpenseCategoryByIdIncludingArchived(id);
+    if (category.archivedAt === null) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "分类已经处于启用状态");
+    }
+    const conflict = this.getExpenseCategoryByName(category.name, category.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name: category.name });
+    }
+    category.archivedAt = null;
+    this.notify();
+    return { ...category };
+  }
+
+  public mergeExpenseCategory(id: string, input: { targetId: string }): ExpenseCategory {
+    const source = this.getExpenseCategoryByIdIncludingArchived(id);
+    const target = this.getExpenseCategoryById(input.targetId);
+    if (source.id === target.id) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    for (const expense of this.expenses) {
+      if (expense.categoryId === source.id) {
+        expense.categoryId = target.id;
+      }
+    }
+    source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
+    this.notify();
+    return { ...source };
+  }
+
+  public createExpenseTag(input: { name: string; iconKey?: ExpenseTag["iconKey"] }): ExpenseTag {
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    if (this.getExpenseTagByName(name)) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
+    }
+    const tag: ExpenseTag = { id: `tag_${Date.now()}_${this.expenseTags.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
+    this.expenseTags.push(tag);
+    this.notify();
+    return { ...tag };
+  }
+
+  public getExpenseTags(includeArchived = false): ExpenseTag[] {
+    return this.expenseTags
+      .filter((tag) => includeArchived || tag.archivedAt === null)
+      .map((tag) => ({ ...tag }));
+  }
+
+  public renameExpenseTag(id: string, input: { name: string; iconKey?: ExpenseTag["iconKey"] }): ExpenseTag {
+    const tag = this.getExpenseTagByIdIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getExpenseTagByName(name, tag.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
+    }
+    tag.name = name;
+    if (input.iconKey !== undefined) tag.iconKey = input.iconKey;
+    this.notify();
+    return { ...tag };
+  }
+
+  public archiveExpenseTag(id: string): ExpenseTag {
+    const tag = this.getExpenseTagById(id);
+    tag.archivedAt = new Date().toISOString();
+    this.notify();
+    return { ...tag };
+  }
+
+  public restoreExpenseTag(id: string): ExpenseTag {
+    const tag = this.getExpenseTagByIdIncludingArchived(id);
+    if (tag.archivedAt === null) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "标签已经处于启用状态");
+    }
+    const conflict = this.getExpenseTagByName(tag.name, tag.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name: tag.name });
+    }
+    tag.archivedAt = null;
+    this.notify();
+    return { ...tag };
+  }
+
+  public mergeExpenseTag(id: string, input: { targetId: string }): ExpenseTag {
+    const source = this.getExpenseTagByIdIncludingArchived(id);
+    const target = this.getExpenseTagById(input.targetId);
+    if (source.id === target.id) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    for (const expense of this.expenses) {
+      const nextTags = expense.tags.map((tag) => (tag.id === source.id ? { ...target } : { ...tag }));
+      const deduped = new Map<string, ExpenseTag>();
+      for (const tag of nextTags) deduped.set(tag.id, tag);
+      expense.tags = Array.from(deduped.values());
+    }
+    source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
+    this.notify();
+    return { ...source };
+  }
+
+  public createPaymentMethod(input: { name: string; iconKey?: PaymentMethod["iconKey"] }): PaymentMethod {
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    if (this.getPaymentMethodByName(name)) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
+    }
+    const method: PaymentMethod = { id: `pm_${Date.now()}_${this.paymentMethods.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
+    this.paymentMethods.push(method);
+    this.notify();
+    return { ...method };
+  }
+
+  public getPaymentMethods(includeArchived = false): PaymentMethod[] {
+    return this.paymentMethods
+      .filter((method) => includeArchived || method.archivedAt === null)
+      .map((method) => ({ ...method }));
+  }
+
+  public renamePaymentMethod(id: string, input: { name: string; iconKey?: PaymentMethod["iconKey"] }): PaymentMethod {
+    const method = this.getPaymentMethodByIdIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getPaymentMethodByName(name, method.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
+    }
+    method.name = name;
+    if (input.iconKey !== undefined) method.iconKey = input.iconKey;
+    this.notify();
+    return { ...method };
+  }
+
+  public archivePaymentMethod(id: string): PaymentMethod {
+    const method = this.getPaymentMethodById(id);
+    method.archivedAt = new Date().toISOString();
+    this.notify();
+    return { ...method };
+  }
+
+  public restorePaymentMethod(id: string): PaymentMethod {
+    const method = this.getPaymentMethodByIdIncludingArchived(id);
+    if (method.archivedAt === null) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "支付方式已经处于启用状态");
+    }
+    const conflict = this.getPaymentMethodByName(method.name, method.id);
+    if (conflict) {
+      throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name: method.name });
+    }
+    method.archivedAt = null;
+    this.notify();
+    return { ...method };
+  }
+
+  public mergePaymentMethod(id: string, input: { targetId: string }): PaymentMethod {
+    const source = this.getPaymentMethodByIdIncludingArchived(id);
+    const target = this.getPaymentMethodById(input.targetId);
+    if (source.id === target.id) {
+      throw new MockDomainError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    for (const expense of this.expenses) {
+      if (expense.paymentMethodId === source.id) {
+        expense.paymentMethodId = target.id;
+      }
+    }
+    source.archivedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
+    this.notify();
+    return { ...source };
+  }
+
+  public captureExpense(input: {
+    id: string;
+    amountCents: number;
+    currency?: "CNY";
+    occurredAt?: string;
+    occurredOn?: string;
+    occurredTimezone?: string | null;
+    occurrencePrecision?: "datetime" | "date";
+    captureMessage?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    source?: "shortcut" | "manual";
+  }) {
+    if (!input.id.trim()) throw new MockDomainError("REQUEST_INVALID", "开销记录 UUID 不能为空");
+    assertPositiveInteger(input.amountCents, "金额必须为正整数分");
+    if (input.currency !== undefined && input.currency !== "CNY") {
+      throw new MockDomainError("REQUEST_INVALID", "首版仅支持 CNY");
+    }
+    if (input.latitude !== undefined && input.latitude !== null && (!Number.isFinite(input.latitude) || input.latitude < -90 || input.latitude > 90)) {
+      throw new MockDomainError("REQUEST_INVALID", "纬度超出有效范围");
+    }
+    if (input.longitude !== undefined && input.longitude !== null && (!Number.isFinite(input.longitude) || input.longitude < -180 || input.longitude > 180)) {
+      throw new MockDomainError("REQUEST_INVALID", "经度超出有效范围");
+    }
+
+    const existing = this.expenses.find((expense) => expense.id === input.id);
+    if (existing) {
+      if (existing.deletedAt !== null) {
+        throw new MockDomainError("EXPENSE_DELETED", "已删除的开销记录不能通过重试恢复");
+      }
+      const conflicts: string[] = [];
+      if (input.amountCents !== existing.amountCents) conflicts.push("amountCents");
+      if (input.currency !== undefined && input.currency !== existing.currency) conflicts.push("currency");
+      if (input.occurredAt !== undefined && input.occurredAt !== existing.occurredAt) conflicts.push("occurredAt");
+      if (input.occurredOn !== undefined && input.occurredOn !== existing.occurredOn) conflicts.push("occurredOn");
+      if (input.occurredTimezone !== undefined && input.occurredTimezone !== existing.occurredTimezone) conflicts.push("occurredTimezone");
+      if (input.occurrencePrecision !== undefined && input.occurrencePrecision !== existing.occurrencePrecision) conflicts.push("occurrencePrecision");
+      if (input.captureMessage !== undefined && normalizeCaptureMessage(input.captureMessage) !== existing.captureMessage) conflicts.push("captureMessage");
+      if (input.latitude !== undefined && input.latitude !== existing.latitude) conflicts.push("latitude");
+      if (input.longitude !== undefined && input.longitude !== existing.longitude) conflicts.push("longitude");
+      if (input.source !== undefined && input.source !== existing.source) conflicts.push("source");
+      if (conflicts.length > 0) {
+        throw new MockDomainError("EXPENSE_IDEMPOTENCY_CONFLICT", "同一 UUID 的捕获字段不一致", {
+          id: input.id,
+          conflictingFields: conflicts,
+        });
+      }
+      return { created: false, expense: cloneExpense(existing) };
+    }
+
+    const recordedAt = new Date().toISOString();
+    const precision = input.occurrencePrecision ?? (input.occurredOn ? "date" : "datetime");
+    if (input.occurredAt && input.occurredOn) {
+      throw new MockDomainError("REQUEST_INVALID", "发生时间和发生日期只能提供一个");
+    }
+    if (precision === "date") {
+      if (!input.occurredOn) throw new MockDomainError("REQUEST_INVALID", "日期精度必须提供 occurredOn");
+      assertDateKey(input.occurredOn, "发生日期无效");
+    } else {
+      const occurredAt = input.occurredAt ?? recordedAt;
+      assertDateTime(occurredAt, "发生时间无效");
+    }
+
+    const expense: Expense = {
+      id: input.id,
+      amountCents: input.amountCents,
+      currency: "CNY",
+      occurredAt: precision === "datetime" ? (input.occurredAt ?? recordedAt) : null,
+      occurredOn: precision === "date" ? input.occurredOn ?? null : null,
+      occurredTimezone: input.occurredTimezone ?? "Asia/Shanghai",
+      occurrencePrecision: precision,
+      recordedAt,
+      captureMessage: normalizeCaptureMessage(input.captureMessage),
+      note: null,
+      categoryId: null,
+      paymentMethodId: null,
+      tags: [],
+      reviewStatus: "pending",
+      recognitionStatus: "recognized",
+      recoverableCents: 0,
+      settled: false,
+      source: input.source ?? "shortcut",
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      deletedAt: null,
+      createdAt: recordedAt,
+      updatedAt: recordedAt,
+    };
+    this.expenses.unshift(expense);
+    this.invalidateExpenseHistory();
+    this.notify();
+    return { created: true, expense: cloneExpense(expense) };
+  }
+
+  public getExpenses(): Expense[] {
+    return sortExpensesForHistory(
+      this.expenses
+      .filter((expense) => expense.deletedAt === null)
+      .map((expense) => cloneExpense(expense)),
+      this.getCapabilities().effectiveTimezone,
+    );
+  }
+
+  public getAllExpensesForExport(): Expense[] {
+    return this.expenses.map((expense) => cloneExpense(expense));
+  }
+
+  public getExpenseHistoryPage(limit = 25, before?: string, query: ExpenseHistoryQuery = {}) {
+    const normalizedQuery = query.q?.trim().toLocaleLowerCase();
+    const revision = `${this.expenseHistoryRevision}:${JSON.stringify({
+      q: normalizedQuery ?? null,
+      from: query.from ?? null,
+      to: query.to ?? null,
+      categoryId: query.categoryId ?? null,
+      paymentMethodId: query.paymentMethodId ?? null,
+      tagId: query.tagId ?? null,
+      reviewStatus: query.reviewStatus ?? null,
+    })}`;
+    if (before) {
+      const cursor = decodeExpenseHistoryCursor(before);
+      if (!cursor) throw new MockDomainError("REQUEST_INVALID", "开销历史游标无效");
+      if (cursor.revision !== revision) {
+        throw new MockDomainError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
+      }
+    }
+    const filtered = this.expenses.filter((expense) => {
+      if (expense.deletedAt !== null) return false;
+      if (normalizedQuery && ![expense.note, expense.captureMessage].some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))) return false;
+      const historyDateKey = expense.occurredOn ?? (expense.occurredAt ? formatDateKeyInTimezone(expense.occurredAt, this.getCapabilities().effectiveTimezone) : "");
+      if (query.from && historyDateKey < query.from) return false;
+      if (query.to && historyDateKey > query.to) return false;
+      if (query.categoryId && expense.categoryId !== query.categoryId) return false;
+      if (query.paymentMethodId && expense.paymentMethodId !== query.paymentMethodId) return false;
+      if (query.tagId && !expense.tags.some((tag) => tag.id === query.tagId)) return false;
+      if (query.reviewStatus && expense.reviewStatus !== query.reviewStatus) return false;
+      return true;
+    });
+    return getExpenseHistoryPage(
+      filtered.map((expense) => cloneExpense(expense)),
+      this.getCapabilities().effectiveTimezone,
+      limit,
+      before,
+      revision,
+    );
+  }
+
+  public getInboxExpenses(): Expense[] {
+    return this.expenses
+      .filter((expense) => expense.deletedAt === null && expense.reviewStatus === "pending")
+      .map((expense) => cloneExpense(expense))
+      .sort((left, right) => Date.parse(right.recordedAt) - Date.parse(left.recordedAt));
+  }
+
+  public getExpenseById(id: string, includeDeleted = false): Expense | undefined {
+    const expense = this.expenses.find((item) => item.id === id);
+    if (!expense || (!includeDeleted && expense.deletedAt !== null)) return undefined;
+    return cloneExpense(expense);
+  }
+
+  public updateExpense(
+    id: string,
+    input: {
+      amountCents?: number;
+      occurredAt?: string | null;
+      occurredOn?: string | null;
+      occurrencePrecision?: "datetime" | "date";
+      note?: string | null;
+      categoryId?: string | null;
+      paymentMethodId?: string | null;
+      reviewStatus?: "pending" | "reviewed";
+      tagIds?: string[];
+      recoverableCents?: number;
+      settled?: boolean;
+    }
+  ): Expense {
+    const current = this.getExpenseRow(id);
+    if (input.amountCents !== undefined) assertPositiveInteger(input.amountCents, "金额必须为正整数分");
+    if (input.occurredAt !== undefined && input.occurredAt !== null) { assertDateTime(input.occurredAt, "发生时间无效"); current.occurredAt = input.occurredAt; current.occurredOn = null; current.occurrencePrecision = "datetime"; }
+    if (input.occurredOn !== undefined && input.occurredOn !== null) { assertDateKey(input.occurredOn, "发生日期无效"); current.occurredOn = input.occurredOn; current.occurredAt = null; current.occurrencePrecision = "date"; }
+    if (input.categoryId !== undefined && input.categoryId !== null) this.getExpenseCategoryById(input.categoryId);
+    if (input.paymentMethodId !== undefined && input.paymentMethodId !== null) this.getPaymentMethodById(input.paymentMethodId);
+    const tagIds = input.tagIds === undefined ? undefined : [...new Set(input.tagIds)];
+    tagIds?.forEach((tagId) => this.getExpenseTagById(tagId));
+    const nextAmountCents = input.amountCents ?? current.amountCents;
+    if (input.recoverableCents !== undefined) {
+      if (!Number.isSafeInteger(input.recoverableCents) || input.recoverableCents < 0 || input.recoverableCents > nextAmountCents) {
+        throw new MockDomainError("REQUEST_INVALID", "预计可收回金额必须是介于零和开销金额之间的整数分");
+      }
+    }
+    if (input.recoverableCents === undefined && current.recoverableCents > nextAmountCents) {
+      throw new MockDomainError("REQUEST_INVALID", "新的金额不能低于预计可收回金额");
+    }
+
+    if (input.amountCents !== undefined) current.amountCents = input.amountCents;
+    current.note = input.note === undefined ? current.note : normalizeOptionalText(input.note);
+    current.categoryId = input.categoryId === undefined ? current.categoryId : input.categoryId;
+    current.paymentMethodId = input.paymentMethodId === undefined ? current.paymentMethodId : input.paymentMethodId;
+    current.reviewStatus = input.reviewStatus ?? current.reviewStatus;
+    current.recoverableCents = input.recoverableCents ?? current.recoverableCents;
+    current.settled = input.settled ?? current.settled;
+    current.tags =
+      tagIds === undefined
+        ? current.tags.map((tag) => ({ ...tag }))
+        : tagIds.map((tagId) => ({ ...this.getExpenseTagById(tagId) }));
+    current.updatedAt = new Date().toISOString();
+    this.invalidateExpenseHistory();
+    this.notify();
+    return cloneExpense(current);
+  }
+
+  public deleteExpense(id: string): void {
+    const current = this.getExpenseRow(id);
+    current.deletedAt = new Date().toISOString();
+    current.updatedAt = current.deletedAt;
+    this.invalidateExpenseHistory();
     this.notify();
   }
 

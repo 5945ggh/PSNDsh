@@ -1,9 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ApplicationError } from "@/lib/application/error";
 import { getRuntimeDatabase } from "@/lib/db";
 import { SqliteApplicationService } from "@/lib/persistence/sqlite-service";
+import { apiKeys } from "@/lib/db/schema";
+import { authenticateBearerApiKey } from "@/lib/security/api-key";
 
 export const SESSION_COOKIE = "pd-session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -137,6 +140,21 @@ export const serviceForRequest = (request: Request) => {
     userId: sessionUserIdForRequest(request),
   });
 };
+
+export const apiKeyUserIdForRequest = (request: Request) => {
+  const auth = authenticateBearerApiKey(request.headers.get("authorization"), (id) =>
+    getRuntimeDatabase().select().from(apiKeys).where(eq(apiKeys.id, id)).get()
+  );
+  if (!auth) throw new ApplicationError("UNAUTHORIZED", "无效的 API key");
+  // Usage telemetry is best-effort and must not break a successful capture.
+  try {
+    getRuntimeDatabase().update(apiKeys).set({ lastUsedAt: new Date().toISOString() }).where(eq(apiKeys.id, auth.id)).run();
+  } catch { /* ignored */ }
+  return auth.userId;
+};
+
+export const apiKeyServiceForRequest = (request: Request) =>
+  new SqliteApplicationService(getRuntimeDatabase(), { userId: apiKeyUserIdForRequest(request) });
 
 export const jsonData = (data: unknown, init?: ResponseInit) =>
   NextResponse.json({ data }, init);

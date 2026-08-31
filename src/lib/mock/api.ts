@@ -1,6 +1,6 @@
 import { mockStore } from "./store";
 import { MockApplicationService } from "./service";
-import { LoginInput, RegisterInput } from "@/lib/application/contract";
+import { LoginInput, RegisterInput, ExpenseHistoryQuery } from "@/lib/application/contract";
 
 /**
  * Client-side stand-in for the documented same-origin JSON API. Components use
@@ -25,6 +25,31 @@ export class MockApiAdapter {
   updateEntry(id: string, updates: Parameters<MockApplicationService["updateEntry"]>[1]) { return this.service.updateEntry(id, updates); }
   moveEntry(id: string, parentId: string | null) { return this.service.moveEntry(id, parentId); }
   deleteEntry(id: string) { return this.service.deleteEntry(id); }
+  getExpenses() { return this.service.getExpenses(); }
+  getExpenseHistoryPage(limit?: number, before?: string, query?: ExpenseHistoryQuery) { return this.service.getExpenseHistoryPage(limit, before, query); }
+  getInboxExpenses() { return this.service.getInboxExpenses(); }
+  getExpenseCategories(includeArchived?: boolean) { return this.service.getExpenseCategories(includeArchived); }
+  getExpenseTags(includeArchived?: boolean) { return this.service.getExpenseTags(includeArchived); }
+  getPaymentMethods(includeArchived?: boolean) { return this.service.getPaymentMethods(includeArchived); }
+  captureExpense(...args: Parameters<MockApplicationService["captureExpense"]>) { return this.service.captureExpense(...args); }
+  updateExpense(...args: Parameters<MockApplicationService["updateExpense"]>) { return this.service.updateExpense(...args); }
+  createExpenseCategory(...args: Parameters<MockApplicationService["createExpenseCategory"]>) { return this.service.createExpenseCategory(...args); }
+  renameExpenseCategory(...args: Parameters<MockApplicationService["renameExpenseCategory"]>) { return this.service.renameExpenseCategory(...args); }
+  archiveExpenseCategory(...args: Parameters<MockApplicationService["archiveExpenseCategory"]>) { return this.service.archiveExpenseCategory(...args); }
+  restoreExpenseCategory(...args: Parameters<MockApplicationService["restoreExpenseCategory"]>) { return this.service.restoreExpenseCategory(...args); }
+  mergeExpenseCategory(...args: Parameters<MockApplicationService["mergeExpenseCategory"]>) { return this.service.mergeExpenseCategory(...args); }
+  createExpenseTag(...args: Parameters<MockApplicationService["createExpenseTag"]>) { return this.service.createExpenseTag(...args); }
+  renameExpenseTag(...args: Parameters<MockApplicationService["renameExpenseTag"]>) { return this.service.renameExpenseTag(...args); }
+  archiveExpenseTag(...args: Parameters<MockApplicationService["archiveExpenseTag"]>) { return this.service.archiveExpenseTag(...args); }
+  restoreExpenseTag(...args: Parameters<MockApplicationService["restoreExpenseTag"]>) { return this.service.restoreExpenseTag(...args); }
+  mergeExpenseTag(...args: Parameters<MockApplicationService["mergeExpenseTag"]>) { return this.service.mergeExpenseTag(...args); }
+  createPaymentMethod(...args: Parameters<MockApplicationService["createPaymentMethod"]>) { return this.service.createPaymentMethod(...args); }
+  renamePaymentMethod(...args: Parameters<MockApplicationService["renamePaymentMethod"]>) { return this.service.renamePaymentMethod(...args); }
+  archivePaymentMethod(...args: Parameters<MockApplicationService["archivePaymentMethod"]>) { return this.service.archivePaymentMethod(...args); }
+  restorePaymentMethod(...args: Parameters<MockApplicationService["restorePaymentMethod"]>) { return this.service.restorePaymentMethod(...args); }
+  mergePaymentMethod(...args: Parameters<MockApplicationService["mergePaymentMethod"]>) { return this.service.mergePaymentMethod(...args); }
+  getExpenseById(...args: Parameters<MockApplicationService["getExpenseById"]>) { return this.service.getExpenseById(...args); }
+  deleteExpense(...args: Parameters<MockApplicationService["deleteExpense"]>) { return this.service.deleteExpense(...args); }
   getWeekPlan(weekStart?: string) { return this.service.getWeekPlan(weekStart); }
   getExistingWeekPlan(weekStart: string) { return this.service.getExistingWeekPlan(weekStart); }
   updateWeekPlanNote(note: string, weekStart?: string) { return this.service.updateWeekPlanNote(note, weekStart); }

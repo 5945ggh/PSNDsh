@@ -1,19 +1,19 @@
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@11.2.2 --activate
+RUN npm install --global pnpm@11.2.2
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN corepack pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
 COPY . .
-RUN corepack pnpm build
+RUN pnpm build
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN corepack pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile
 
 FROM base AS runner
 
@@ -35,4 +35,4 @@ RUN mkdir -p /app/data && chown -R app:app /app
 USER app
 EXPOSE 3000
 
-CMD ["corepack", "pnpm", "start"]
+CMD ["pnpm", "start"]

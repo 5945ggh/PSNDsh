@@ -3,6 +3,10 @@ import {
   Entry,
   FocusSegment,
   FocusSession,
+  ExpenseCategory,
+  ExpenseDataExport,
+  ExpenseTag,
+  PaymentMethod,
   ScheduleBlockInput,
   UpdateScheduleBlockInput,
   UserDataExport,
@@ -41,6 +45,33 @@ export class MockApplicationService implements ApplicationService {
   getExistingWeekPlan(weekStart: string) { return this.store.getExistingWeekPlan(weekStart); }
   getActiveFocus() { return this.store.getActiveFocus(); }
   getFocusSessions() { return this.store.getFocusSessions(); }
+  getExpenses() { return this.store.getExpenses(); }
+  getExpenseHistoryPage(...args: Parameters<MockDataStore["getExpenseHistoryPage"]>) { return this.store.getExpenseHistoryPage(...args); }
+  getInboxExpenses() { return this.store.getInboxExpenses(); }
+  getExpenseCategories(includeArchived = false) { return this.store.getExpenseCategories(includeArchived); }
+  getExpenseTags(includeArchived = false) { return this.store.getExpenseTags(includeArchived); }
+  getPaymentMethods(includeArchived = false) { return this.store.getPaymentMethods(includeArchived); }
+  captureExpense(input: Parameters<MockDataStore["captureExpense"]>[0]) { return this.store.captureExpense(input); }
+  updateExpense(id: string, input: Parameters<MockDataStore["updateExpense"]>[1]) { return this.store.updateExpense(id, input); }
+  createExpenseCategory(input: { name: string }): ExpenseCategory { return this.store.createExpenseCategory(input); }
+  renameExpenseCategory(id: string, input: { name: string }): ExpenseCategory { return this.store.renameExpenseCategory(id, input); }
+  archiveExpenseCategory(id: string): ExpenseCategory { return this.store.archiveExpenseCategory(id); }
+  restoreExpenseCategory(id: string): ExpenseCategory { return this.store.restoreExpenseCategory(id); }
+  mergeExpenseCategory(id: string, input: { targetId: string }): ExpenseCategory { return this.store.mergeExpenseCategory(id, input); }
+  createExpenseTag(input: { name: string }): ExpenseTag { return this.store.createExpenseTag(input); }
+  renameExpenseTag(id: string, input: { name: string }): ExpenseTag { return this.store.renameExpenseTag(id, input); }
+  archiveExpenseTag(id: string): ExpenseTag { return this.store.archiveExpenseTag(id); }
+  restoreExpenseTag(id: string): ExpenseTag { return this.store.restoreExpenseTag(id); }
+  mergeExpenseTag(id: string, input: { targetId: string }): ExpenseTag { return this.store.mergeExpenseTag(id, input); }
+  createPaymentMethod(input: { name: string }): PaymentMethod { return this.store.createPaymentMethod(input); }
+  renamePaymentMethod(id: string, input: { name: string }): PaymentMethod { return this.store.renamePaymentMethod(id, input); }
+  archivePaymentMethod(id: string): PaymentMethod { return this.store.archivePaymentMethod(id); }
+  restorePaymentMethod(id: string): PaymentMethod { return this.store.restorePaymentMethod(id); }
+  mergePaymentMethod(id: string, input: { targetId: string }): PaymentMethod { return this.store.mergePaymentMethod(id, input); }
+  getExpenseById(id: string, options: { includeDeleted?: boolean } = {}) {
+    return this.store.getExpenseById(id, options.includeDeleted ?? false);
+  }
+  deleteExpense(id: string) { this.store.deleteExpense(id); }
   getScheduleBlocks() { return this.store.getScheduleBlocks(); }
   getScheduleImports() { return []; }
   deleteScheduleImport(id: string) { void id; throw new MockDomainError("SCHEDULE_NOT_FOUND", "导入批次不存在"); }
@@ -62,7 +93,7 @@ export class MockApplicationService implements ApplicationService {
     const profile = this.getUser();
     if (!profile) throw new MockDomainError("UNAUTHORIZED", "当前没有登录用户");
     return {
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       exportedAt: new Date().toISOString(),
       effectiveTimezone: this.getCapabilities().effectiveTimezone,
       profile,
@@ -70,6 +101,23 @@ export class MockApplicationService implements ApplicationService {
       weekPlans: [this.getWeekPlan()],
       focusSessions: this.getFocusSessions(),
       scheduleBlocks: this.getScheduleBlocks(),
+      expenses: this.store.getAllExpensesForExport(),
+      expenseCategories: this.getExpenseCategories(true),
+      expenseTags: this.getExpenseTags(true),
+      paymentMethods: this.getPaymentMethods(true),
+    };
+  }
+
+  exportExpenseData(): ExpenseDataExport {
+    const data = this.exportUserData();
+    return {
+      schemaVersion: data.schemaVersion,
+      exportedAt: data.exportedAt,
+      effectiveTimezone: data.effectiveTimezone,
+      expenses: data.expenses,
+      expenseCategories: data.expenseCategories,
+      expenseTags: data.expenseTags,
+      paymentMethods: data.paymentMethods,
     };
   }
 

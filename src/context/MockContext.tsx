@@ -10,7 +10,8 @@ import React, {
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
-import { ApiAdapter, isUnauthorizedError } from "@/lib/api/client";
+import { ApiAdapter, ApiClientError, isUnauthorizedError } from "@/lib/api/client";
+import { sortExpensesForHistory } from "@/lib/expenses/history";
 import {
   createApiAdapter,
   DataTransport,
@@ -22,7 +23,11 @@ import {
   Capabilities,
   DashboardPayload,
   Entry,
+  Expense,
+  ExpenseCategory,
+  ExpenseTag,
   FocusSession,
+  PaymentMethod,
   ScheduleBlock,
   StatisticsPayload,
   WeekPlan,
@@ -47,6 +52,13 @@ export type DataSnapshot = {
   scheduleBlocks: ScheduleBlock[];
   dashboard: DashboardPayload | null;
   statistics: Partial<Record<"day" | "week" | "month", StatisticsPayload>>;
+  expenses: Expense[];
+  expensesNextCursor: string | null;
+  expensesHasMore: boolean;
+  inboxExpenses: Expense[];
+  expenseCategories: ExpenseCategory[];
+  expenseTags: ExpenseTag[];
+  paymentMethods: PaymentMethod[];
 };
 
 export type RefreshOptions = {
@@ -72,6 +84,7 @@ export type DataContextType = {
   pendingMutations: number;
   version: number;
   refresh: (options?: RefreshOptions) => Promise<void>;
+  loadMoreExpenses: () => Promise<void>;
   mutate: <T>(
     operation: () => Promise<T>,
     options?: MutationOptions<T>
@@ -96,6 +109,13 @@ const emptyData = (): DataSnapshot => ({
   scheduleBlocks: [],
   dashboard: null,
   statistics: {},
+  expenses: [],
+  expensesNextCursor: null,
+  expensesHasMore: false,
+  inboxExpenses: [],
+  expenseCategories: [],
+  expenseTags: [],
+  paymentMethods: [],
 });
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -120,6 +140,11 @@ const readAuthenticatedData = async (
     scheduleBlocks,
     dashboard,
     weekStatistics,
+    expenseHistoryPage,
+    inboxExpenses,
+    expenseCategories,
+    expenseTags,
+    paymentMethods,
   ] = await Promise.all([
     resources.has("capabilities") ? api.getCapabilities() : previous.capabilities,
     resources.has("entries") ? api.getEntries() : previous.entries,
@@ -131,7 +156,22 @@ const readAuthenticatedData = async (
     resources.has("weekStatistics")
       ? api.getStatisticsPayload("week")
       : previous.statistics.week,
+    resources.has("expenses") ? api.getExpenseHistoryPage(25) : null,
+    resources.has("inboxExpenses") ? api.getInboxExpenses() : previous.inboxExpenses,
+    resources.has("expenseDimensions") ? api.getExpenseCategories(pathname.startsWith("/settings")) : previous.expenseCategories,
+    resources.has("expenseDimensions") ? api.getExpenseTags(pathname.startsWith("/settings")) : previous.expenseTags,
+    resources.has("expenseDimensions") ? api.getPaymentMethods(pathname.startsWith("/settings")) : previous.paymentMethods,
   ]);
+
+  // A first-page response represents one exact server snapshot. Replacing the
+  // previously loaded tail prevents a refreshed cursor from bridging revisions.
+  const expenses = expenseHistoryPage ? expenseHistoryPage.items : previous.expenses;
+  const expensesNextCursor = expenseHistoryPage
+    ? expenseHistoryPage.nextCursor
+    : previous.expensesNextCursor;
+  const expensesHasMore = expenseHistoryPage
+    ? expenseHistoryPage.hasMore
+    : previous.expensesHasMore;
 
   return {
     capabilities,
@@ -145,6 +185,13 @@ const readAuthenticatedData = async (
     statistics: weekStatistics
       ? { ...previous.statistics, week: weekStatistics }
       : previous.statistics,
+    expenses,
+    expensesNextCursor,
+    expensesHasMore,
+    inboxExpenses,
+    expenseCategories,
+    expenseTags,
+    paymentMethods,
   } satisfies DataSnapshot;
 };
 
@@ -167,14 +214,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     isMockApiFeatures(api) ? api.getScenario() : "normal"
   );
   const requestVersion = useRef(0);
+  const mutationVersion = useRef(0);
   const snapshotRef = useRef<DataSnapshot>(emptyData());
   const loadedResourcesRef = useRef<LoadedResources>({
     userId: null,
     resources: new Set(),
   });
+  const loadingExpensesRef = useRef(false);
 
   const refresh = useCallback(async ({ background = false }: RefreshOptions = {}) => {
     const requestId = ++requestVersion.current;
+    const refreshMutationVersion = mutationVersion.current;
     if (!background) {
       setStatus("loading");
       setError(null);
@@ -193,7 +243,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         ? await readAuthenticatedData(api, session, pathname, snapshotRef.current)
         : { ...emptyData(), capabilities: await api.getCapabilities() };
 
-      if (requestId !== requestVersion.current) return;
+      if (requestId !== requestVersion.current || refreshMutationVersion !== mutationVersion.current) return;
       const userId = session.user?.id ?? null;
       const loadedResources =
         loadedResourcesRef.current.userId === userId
@@ -216,6 +266,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!background) setStatus("error");
     }
   }, [api, pathname]);
+
+  const loadMoreExpenses = useCallback(async () => {
+    if (loadingExpensesRef.current || !snapshotRef.current.expensesHasMore) return;
+    const cursor = snapshotRef.current.expensesNextCursor;
+    if (!cursor) return;
+    const requestId = requestVersion.current;
+    const userId = snapshotRef.current.session.user?.id ?? null;
+    loadingExpensesRef.current = true;
+    try {
+      const page = await api.getExpenseHistoryPage(25, cursor);
+      if (
+        requestVersion.current !== requestId ||
+        snapshotRef.current.session.user?.id !== userId ||
+        snapshotRef.current.expensesNextCursor !== cursor
+      ) return;
+      setData((current) => {
+        const timezone = current.capabilities?.effectiveTimezone ?? "Asia/Shanghai";
+        const expenses = sortExpensesForHistory(
+          Array.from(
+            new Map([...current.expenses, ...page.items].map((expense) => [expense.id, expense] as const)).values(),
+          ),
+          timezone,
+        );
+        const next = {
+          ...current,
+          expenses,
+          expensesNextCursor: page.nextCursor,
+          expensesHasMore: page.hasMore,
+        };
+        snapshotRef.current = next;
+        return next;
+      });
+      setVersion((current) => current + 1);
+    } catch (requestError) {
+      if (requestError instanceof ApiClientError && requestError.code === "EXPENSE_HISTORY_STALE") {
+        await refresh();
+        return;
+      }
+      throw requestError;
+    } finally {
+      loadingExpensesRef.current = false;
+    }
+  }, [api, refresh]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -246,21 +339,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     async <T,>(operation: () => Promise<T>, options: MutationOptions<T> = {}) => {
       setPendingMutations((current) => current + 1);
       setError(null);
+      mutationVersion.current += 1;
       try {
         const result = await operation();
-        if (options.update) {
+        const applyUpdate = () => {
+          if (!options.update) return;
           setData((current) => {
             const next = options.update?.(current, result) ?? current;
             snapshotRef.current = next;
             return next;
           });
-        }
+        };
+        applyUpdate();
         if (options.refresh !== false) {
           const revalidation = refresh({ background: true });
           if (options.backgroundRefresh) {
-            void revalidation;
+            void revalidation.then(applyUpdate);
           } else {
             await revalidation;
+            // Reapply the server-confirmed mutation after revalidation so an
+            // overlapping/stale response cannot resurrect the edited record.
+            applyUpdate();
           }
         }
         return result;
@@ -304,6 +403,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       version,
       refresh,
       mutate,
+      loadMoreExpenses,
       clearError: () => setError(null),
       scenario,
       setScenario,
@@ -313,6 +413,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       data,
       error,
       mutate,
+      loadMoreExpenses,
       pendingMutations,
       refresh,
       scenario,

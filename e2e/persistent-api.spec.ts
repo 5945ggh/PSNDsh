@@ -57,7 +57,7 @@ test("real session persists profile changes and protects dashboard after logout"
   expect(exportResponse.status()).toBe(200);
   expect(exportResponse.headers()["content-disposition"]).toContain("attachment; filename=\"personal-dashboard-export-");
   const exported = (await exportResponse.json()).data;
-  expect(exported).toMatchObject({ schemaVersion: "1.0", profile: { username } });
+  expect(exported).toMatchObject({ schemaVersion: "1.1", profile: { username } });
   expect(JSON.stringify(exported)).not.toContain("passwordHash");
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -91,9 +91,10 @@ test("entry, week plan, active focus refresh recovery, and session ownership use
   const row = page
     .getByText(entryTitle, { exact: true })
     .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' group ')][1]");
-  await row.getByLabel("添加子条目").click();
+  await row.getByLabel("添加子条目").dblclick();
   const childLink = page.getByRole("link", { name: childTitle, exact: true });
   await expect(childLink).toBeVisible();
+  await expect(childLink).toHaveCount(1);
   await expect(childLink).toBeFocused();
   await expect(row.getByLabel("折叠子节点")).toBeVisible();
   await page.getByPlaceholder("搜索条目标题或描述…").fill("日常计划");

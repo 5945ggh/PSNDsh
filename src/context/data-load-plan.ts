@@ -6,7 +6,10 @@ export type DataResource =
   | "focusSessions"
   | "scheduleBlocks"
   | "dashboard"
-  | "weekStatistics";
+  | "weekStatistics"
+  | "expenses"
+  | "inboxExpenses"
+  | "expenseDimensions";
 
 const WORKSPACE_BASE: DataResource[] = [
   "capabilities",
@@ -26,8 +29,10 @@ export const resourcesForPathname = (pathname: string): DataResource[] => {
   else if (pathname.startsWith("/entries/")) resources.push("focusSessions");
   else if (pathname === "/statistics") resources.push("weekStatistics");
   else if (pathname === "/review") resources.push("currentWeekPlan", "weekStatistics");
+  else if (pathname === "/inbox") resources.push("inboxExpenses", "expenseDimensions");
+  else if (pathname === "/expenses") resources.push("expenses", "expenseDimensions");
   else if (pathname === "/settings") {
-    resources.push("focusSessions", "scheduleBlocks");
+    resources.push("focusSessions", "scheduleBlocks", "expenses", "expenseDimensions");
   }
 
   return resources;

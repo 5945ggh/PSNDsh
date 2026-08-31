@@ -1,10 +1,17 @@
 import { randomUUID, scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { AppDatabase } from "@/lib/db";
 import {
+  apiKeys,
   entries,
+  expenseCategories,
+  expenseHistoryRevisions,
+  expenseRecordTags,
+  expenses,
+  expenseTags,
   focusSegments,
   focusSessions,
+  paymentMethods,
   scheduleBlocks,
   scheduleImports,
   scheduleTemplateApplications,
@@ -17,10 +24,20 @@ import {
 import {
   ApplicationService,
   AddEntryInput,
+  CaptureExpenseInput,
+  CaptureExpenseResult,
+  CreateExpenseDimensionInput,
+  ExpenseApplicationService,
+  ApiKeyApplicationService,
+  ApiKeyCreated,
+  ApiKeyMetadata,
   LoginInput,
   ManualFocusInput,
+  MergeExpenseDimensionInput,
   RegisterInput,
+  UpdateExpenseInput,
   UpdateEntryInput,
+  ExpenseHistoryQuery,
 } from "@/lib/application/contract";
 import { ApplicationError } from "@/lib/application/error";
 import { selectSeasonalQuotation } from "@/lib/ambient/quotations";
@@ -35,8 +52,13 @@ import {
   Capabilities,
   DashboardPayload,
   Entry,
+  Expense,
+  ExpenseDataExport,
+  ExpenseCategory,
+  ExpenseTag,
   FocusSegment,
   FocusSession,
+  PaymentMethod,
   ScheduleBlock,
   ScheduleBlockInput,
   ScheduleImport,
@@ -55,6 +77,13 @@ import {
   WeekPlanItemInput,
 } from "@/lib/domain/types";
 import { assertValidWeekPlanItemInput, parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
+import { generateApiKey, revealApiKey } from "@/lib/security/api-key";
+import {
+  createExpenseHistoryCursor,
+  decodeExpenseHistoryCursor,
+  expenseHistorySortKey,
+  sortExpensesForHistory,
+} from "@/lib/expenses/history";
 
 const DEFAULT_TIMEZONE = "Asia/Shanghai";
 const DEFAULT_USER_ID = "usr_demo";
@@ -70,6 +99,12 @@ type FocusSessionRow = typeof focusSessions.$inferSelect;
 type FocusSegmentRow = typeof focusSegments.$inferSelect;
 type ScheduleRow = typeof scheduleBlocks.$inferSelect;
 type ScheduleTemplateRow = typeof scheduleTemplates.$inferSelect;
+type ExpenseRow = typeof expenses.$inferSelect;
+
+type ExpenseHistoryKeyRow = Pick<
+  ExpenseRow,
+  "rowId" | "id" | "occurredAt" | "occurredOn" | "occurrencePrecision" | "recordedAt" | "createdAt" | "updatedAt"
+>;
 
 const nowIso = (clock: () => Date) => clock().toISOString();
 
@@ -191,7 +226,38 @@ const verifyPassword = (password: string, encoded: string) => {
 
 const entryStatusIsVisible = (row: EntryRow) => row.deletedAt === null;
 
-export class SqliteApplicationService implements ApplicationService {
+const normalizeCaptureMessage = (value: string | null | undefined) =>
+  value === undefined || value === null || value === "" ? null : value;
+
+const assertPositiveInteger = (value: number, message: string) => {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new ApplicationError("EXPENSE_INVALID_AMOUNT", message);
+  }
+};
+
+const assertDateTime = (value: string, message: string) => {
+  if (!Number.isFinite(parseDate(value))) {
+    throw new ApplicationError("REQUEST_INVALID", message);
+  }
+};
+
+const assertDateKey = (value: string, message: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ApplicationError("REQUEST_INVALID", message);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new ApplicationError("REQUEST_INVALID", message);
+  }
+};
+
+const assertCoordinate = (value: number | null | undefined, min: number, max: number, label: string) => {
+  if (value !== undefined && value !== null && (!Number.isFinite(value) || value < min || value > max)) {
+    throw new ApplicationError("REQUEST_INVALID", `${label} 超出有效范围`);
+  }
+};
+
+export class SqliteApplicationService implements ApplicationService, ExpenseApplicationService, ApiKeyApplicationService {
   private userId: string | null;
   private readonly clock: () => Date;
   private readonly timezone: string;
@@ -203,6 +269,34 @@ export class SqliteApplicationService implements ApplicationService {
     this.userId = options.userId === undefined ? DEFAULT_USER_ID : options.userId;
     this.clock = options.clock ?? (() => new Date());
     this.timezone = options.effectiveTimezone ?? process.env.APP_TIMEZONE ?? DEFAULT_TIMEZONE;
+  }
+
+  createApiKey(name: string): ApiKeyCreated {
+    const normalized = name.trim();
+    if (!normalized) throw new ApplicationError("REQUEST_INVALID", "API key 名称不能为空");
+    const userId = this.requireUserId();
+    const material = generateApiKey();
+    const now = nowIso(this.clock);
+    this.db.insert(apiKeys).values({ id: material.keyId, userId, secretHash: material.secretHash, encryptedSecret: material.encryptedSecret, name: normalized, createdAt: now, lastUsedAt: null, revokedAt: null }).run();
+    return { id: material.keyId, name: normalized, createdAt: now, lastUsedAt: null, revokedAt: null, apiKey: material.apiKey };
+  }
+
+  listApiKeys(): ApiKeyMetadata[] {
+    return this.db.select({ id: apiKeys.id, name: apiKeys.name, createdAt: apiKeys.createdAt, lastUsedAt: apiKeys.lastUsedAt, revokedAt: apiKeys.revokedAt }).from(apiKeys).where(eq(apiKeys.userId, this.requireUserId())).orderBy(desc(apiKeys.createdAt)).all();
+  }
+
+  revealApiKey(id: string): string {
+    const row = this.db.select().from(apiKeys).where(and(eq(apiKeys.id, id), eq(apiKeys.userId, this.requireUserId()))).get();
+    if (!row) throw new ApplicationError("REQUEST_INVALID", "API key 不存在");
+    const value = revealApiKey(row);
+    if (!value) throw new ApplicationError("REQUEST_INVALID", "API key 无法解密，请轮换密钥");
+    return value;
+  }
+
+  revokeApiKey(id: string): void {
+    const now = nowIso(this.clock);
+    const result = this.db.update(apiKeys).set({ revokedAt: now }).where(and(eq(apiKeys.id, id), eq(apiKeys.userId, this.requireUserId()), isNull(apiKeys.revokedAt))).run();
+    if (result.changes === 0) throw new ApplicationError("REQUEST_INVALID", "API key 不存在或已撤销");
   }
 
   private requireUserId() {
@@ -230,6 +324,96 @@ export class SqliteApplicationService implements ApplicationService {
       throw new ApplicationError("ENTRY_NOT_FOUND", "条目不存在");
     }
     return row;
+  }
+
+  private getOwnedExpenseRow(id: string, includeDeleted = true) {
+    const row = this.db
+      .select()
+      .from(expenses)
+      .where(and(eq(expenses.id, id), eq(expenses.userId, this.requireUserId())))
+      .get();
+    if (!row || (!includeDeleted && row.deletedAt !== null)) {
+      throw new ApplicationError("EXPENSE_NOT_FOUND", "开销记录不存在");
+    }
+    return row;
+  }
+
+  private getOwnedExpenseCategory(id: string) {
+    const row = this.db.select().from(expenseCategories)
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.userId, this.requireUserId()), isNull(expenseCategories.archivedAt)))
+      .get();
+    if (!row) throw new ApplicationError("EXPENSE_CATEGORY_NOT_FOUND", "分类不存在或已归档");
+    return row;
+  }
+
+  private getOwnedExpenseCategoryIncludingArchived(id: string) {
+    const row = this.db.select().from(expenseCategories)
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.userId, this.requireUserId())))
+      .get();
+    if (!row) throw new ApplicationError("EXPENSE_CATEGORY_NOT_FOUND", "分类不存在");
+    return row;
+  }
+
+  private getOwnedExpenseCategoryByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    const userId = this.requireUserId();
+    return this.db.select({ id: expenseCategories.id, name: expenseCategories.name })
+      .from(expenseCategories)
+      .where(eq(expenseCategories.userId, userId))
+      .all()
+      .find((row) => row.id !== ignoreId && row.name.trim().toLowerCase() === normalized);
+  }
+
+  private getOwnedExpenseTag(id: string) {
+    const row = this.db.select().from(expenseTags)
+      .where(and(eq(expenseTags.id, id), eq(expenseTags.userId, this.requireUserId()), isNull(expenseTags.archivedAt)))
+      .get();
+    if (!row) throw new ApplicationError("EXPENSE_TAG_NOT_FOUND", "标签不存在或已归档");
+    return row;
+  }
+
+  private getOwnedExpenseTagIncludingArchived(id: string) {
+    const row = this.db.select().from(expenseTags)
+      .where(and(eq(expenseTags.id, id), eq(expenseTags.userId, this.requireUserId())))
+      .get();
+    if (!row) throw new ApplicationError("EXPENSE_TAG_NOT_FOUND", "标签不存在");
+    return row;
+  }
+
+  private getOwnedExpenseTagByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    const userId = this.requireUserId();
+    return this.db.select({ id: expenseTags.id, name: expenseTags.name })
+      .from(expenseTags)
+      .where(eq(expenseTags.userId, userId))
+      .all()
+      .find((row) => row.id !== ignoreId && row.name.trim().toLowerCase() === normalized);
+  }
+
+  private getOwnedPaymentMethod(id: string) {
+    const row = this.db.select().from(paymentMethods)
+      .where(and(eq(paymentMethods.id, id), eq(paymentMethods.userId, this.requireUserId()), isNull(paymentMethods.archivedAt)))
+      .get();
+    if (!row) throw new ApplicationError("PAYMENT_METHOD_NOT_FOUND", "支付方式不存在或已归档");
+    return row;
+  }
+
+  private getOwnedPaymentMethodIncludingArchived(id: string) {
+    const row = this.db.select().from(paymentMethods)
+      .where(and(eq(paymentMethods.id, id), eq(paymentMethods.userId, this.requireUserId())))
+      .get();
+    if (!row) throw new ApplicationError("PAYMENT_METHOD_NOT_FOUND", "支付方式不存在");
+    return row;
+  }
+
+  private getOwnedPaymentMethodByName(name: string, ignoreId?: string) {
+    const normalized = name.trim().toLowerCase();
+    const userId = this.requireUserId();
+    return this.db.select({ id: paymentMethods.id, name: paymentMethods.name })
+      .from(paymentMethods)
+      .where(eq(paymentMethods.userId, userId))
+      .all()
+      .find((row) => row.id !== ignoreId && row.name.trim().toLowerCase() === normalized);
   }
 
   private getDirectFocusSecondsByEntry(userId: string) {
@@ -374,6 +558,694 @@ export class SqliteApplicationService implements ApplicationService {
       sourceInstanceKey: row.sourceInstanceKey,
       templateApplicationId: row.templateApplicationId,
     };
+  }
+
+  private toExpenseCategory(row: typeof expenseCategories.$inferSelect): ExpenseCategory {
+    return { id: row.id, name: row.name, iconKey: row.iconKey as ExpenseCategory["iconKey"] ?? null, archivedAt: row.archivedAt };
+  }
+
+  private toExpenseTag(row: typeof expenseTags.$inferSelect): ExpenseTag {
+    return { id: row.id, name: row.name, iconKey: row.iconKey as ExpenseTag["iconKey"] ?? null, archivedAt: row.archivedAt };
+  }
+
+  private toPaymentMethod(row: typeof paymentMethods.$inferSelect): PaymentMethod {
+    return { id: row.id, name: row.name, iconKey: row.iconKey as PaymentMethod["iconKey"] ?? null, archivedAt: row.archivedAt };
+  }
+
+  private toExpense(row: ExpenseRow): Expense {
+    const categoryName = row.categoryId
+      ? this.db.select({ name: expenseCategories.name }).from(expenseCategories).where(eq(expenseCategories.id, row.categoryId)).get()?.name ?? null
+      : null;
+    const paymentMethodName = row.paymentMethodId
+      ? this.db.select({ name: paymentMethods.name }).from(paymentMethods).where(eq(paymentMethods.id, row.paymentMethodId)).get()?.name ?? null
+      : null;
+    const tags = this.db
+      .select({
+        id: expenseTags.id,
+        name: expenseTags.name,
+        archivedAt: expenseTags.archivedAt,
+      })
+      .from(expenseRecordTags)
+      .innerJoin(expenseTags, eq(expenseRecordTags.tagId, expenseTags.id))
+      .where(eq(expenseRecordTags.expenseRowId, row.rowId))
+      .orderBy(asc(expenseTags.name))
+      .all();
+    return {
+      id: row.id,
+      amountCents: row.amountCents,
+      currency: row.currency,
+      occurredAt: row.occurredAt,
+      occurredOn: row.occurredOn,
+      occurredTimezone: row.occurredTimezone,
+      occurrencePrecision: row.occurrencePrecision,
+      recordedAt: row.recordedAt,
+      captureMessage: row.captureMessage,
+      note: row.note,
+      categoryId: row.categoryId,
+      categoryName,
+      paymentMethodId: row.paymentMethodId,
+      paymentMethodName,
+      tags,
+      reviewStatus: row.reviewStatus,
+      recognitionStatus: row.recognitionStatus,
+      recoverableCents: row.recoverableCents,
+      settled: row.settled,
+      source: row.source,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      deletedAt: row.deletedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private toExpenses(rows: ExpenseRow[]): Expense[] {
+    if (rows.length === 0) return [];
+    const categoryIds = rows.map((r) => r.categoryId).filter((v): v is string => Boolean(v));
+    const paymentIds = rows.map((r) => r.paymentMethodId).filter((v): v is string => Boolean(v));
+    const rowIds = rows.map((r) => r.rowId);
+    const categories = new Map((categoryIds.length ? this.db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).where(inArray(expenseCategories.id, categoryIds)).all() : []).map((r) => [r.id, r.name]));
+    const payments = new Map((paymentIds.length ? this.db.select({ id: paymentMethods.id, name: paymentMethods.name }).from(paymentMethods).where(inArray(paymentMethods.id, paymentIds)).all() : []).map((r) => [r.id, r.name]));
+    const tags = new Map<string, ExpenseTag[]>();
+    if (rowIds.length) {
+      this.db.select({ rowId: expenseRecordTags.expenseRowId, id: expenseTags.id, name: expenseTags.name, archivedAt: expenseTags.archivedAt })
+        .from(expenseRecordTags).innerJoin(expenseTags, eq(expenseRecordTags.tagId, expenseTags.id))
+        .where(inArray(expenseRecordTags.expenseRowId, rowIds)).orderBy(asc(expenseTags.name)).all()
+        .forEach((tag) => tags.set(tag.rowId, [...(tags.get(tag.rowId) ?? []), { id: tag.id, name: tag.name, archivedAt: tag.archivedAt }]));
+    }
+    return rows.map((row) => ({ ...this.toExpenseBase(row), categoryName: row.categoryId ? categories.get(row.categoryId) ?? null : null, paymentMethodName: row.paymentMethodId ? payments.get(row.paymentMethodId) ?? null : null, tags: tags.get(row.rowId) ?? [] }));
+  }
+
+  private toExpenseBase(row: ExpenseRow): Omit<Expense, "categoryName" | "paymentMethodName" | "tags"> {
+    return { id: row.id, amountCents: row.amountCents, currency: row.currency, occurredAt: row.occurredAt, occurredOn: row.occurredOn, occurredTimezone: row.occurredTimezone, occurrencePrecision: row.occurrencePrecision, recordedAt: row.recordedAt, captureMessage: row.captureMessage, note: row.note, categoryId: row.categoryId, paymentMethodId: row.paymentMethodId, reviewStatus: row.reviewStatus, recognitionStatus: row.recognitionStatus, recoverableCents: row.recoverableCents, settled: row.settled, source: row.source, latitude: row.latitude, longitude: row.longitude, deletedAt: row.deletedAt, createdAt: row.createdAt, updatedAt: row.updatedAt };
+  }
+
+  private historyKey(row: ExpenseHistoryKeyRow) {
+    return expenseHistorySortKey(row, this.timezone);
+  }
+
+  /**
+   * 0007 cannot derive arbitrary IANA calendar dates in SQLite. Backfill only
+   * legacy rows, without hydrating their dimensions; new writes always persist
+   * these keys before they can appear in a paged query.
+   */
+  private ensureExpenseHistoryKeys(userId: string) {
+    const batchSize = 250;
+    for (;;) {
+      const legacyRows = this.db.select({
+        rowId: expenses.rowId,
+        id: expenses.id,
+        occurredAt: expenses.occurredAt,
+        occurredOn: expenses.occurredOn,
+        occurrencePrecision: expenses.occurrencePrecision,
+        recordedAt: expenses.recordedAt,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+      }).from(expenses).where(and(
+        eq(expenses.userId, userId),
+        isNull(expenses.deletedAt),
+        isNull(expenses.historyDateKey),
+      )).limit(batchSize).all() as ExpenseHistoryKeyRow[];
+      if (legacyRows.length === 0) return;
+      this.db.transaction((tx) => {
+        for (const row of legacyRows) {
+          const key = this.historyKey(row);
+          tx.update(expenses).set({
+            historyDateKey: key.dateKey,
+            historyOccurredAtMs: key.occurredAtMs,
+            historyFallbackMs: key.fallbackMs,
+          }).where(eq(expenses.rowId, row.rowId)).run();
+        }
+      });
+    }
+  }
+
+  private resolveCaptureOccurrence(input: CaptureExpenseInput, recordedAt: string) {
+    const hasOccurredAt = input.occurredAt !== undefined;
+    const hasOccurredOn = input.occurredOn !== undefined;
+    if (hasOccurredAt && hasOccurredOn) {
+      throw new ApplicationError("REQUEST_INVALID", "发生时间和发生日期只能提供一个");
+    }
+
+    const precision = input.occurrencePrecision
+      ?? (hasOccurredOn ? "date" : "datetime");
+    if (precision === "datetime") {
+      if (hasOccurredOn) throw new ApplicationError("REQUEST_INVALID", "日期精度必须使用 occurredOn");
+      const occurredAt = input.occurredAt ?? recordedAt;
+      assertDateTime(occurredAt, "发生时间无效");
+      return {
+        occurredAt,
+        occurredOn: null,
+        occurredTimezone: input.occurredTimezone ?? this.timezone,
+        occurrencePrecision: "datetime" as const,
+      };
+    }
+
+    if (!input.occurredOn) {
+      throw new ApplicationError("REQUEST_INVALID", "日期精度必须提供 occurredOn");
+    }
+    assertDateKey(input.occurredOn, "发生日期无效");
+    return {
+      occurredAt: null,
+      occurredOn: input.occurredOn,
+      occurredTimezone: input.occurredTimezone ?? this.timezone,
+      occurrencePrecision: "date" as const,
+    };
+  }
+
+  private getCaptureConflictFields(row: ExpenseRow, input: CaptureExpenseInput): string[] {
+    const conflicts: string[] = [];
+    if (input.amountCents !== row.amountCents) conflicts.push("amountCents");
+    if (input.currency !== undefined && input.currency !== row.currency) conflicts.push("currency");
+    if (input.occurredAt !== undefined && input.occurredAt !== row.occurredAt) conflicts.push("occurredAt");
+    if (input.occurredOn !== undefined && input.occurredOn !== row.occurredOn) conflicts.push("occurredOn");
+    if (input.occurredTimezone !== undefined && input.occurredTimezone !== row.occurredTimezone) conflicts.push("occurredTimezone");
+    if (input.occurrencePrecision !== undefined && input.occurrencePrecision !== row.occurrencePrecision) conflicts.push("occurrencePrecision");
+    if (input.captureMessage !== undefined && normalizeCaptureMessage(input.captureMessage) !== row.captureMessage) conflicts.push("captureMessage");
+    if (input.latitude !== undefined && input.latitude !== row.latitude) conflicts.push("latitude");
+    if (input.longitude !== undefined && input.longitude !== row.longitude) conflicts.push("longitude");
+    if (input.source !== undefined && input.source !== row.source) conflicts.push("source");
+    return conflicts;
+  }
+
+  private createExpenseDimension(
+    input: CreateExpenseDimensionInput,
+    insert: (row: { id: string; userId: string; name: string; iconKey: string | null; archivedAt: null; createdAt: string; updatedAt: string }) => void
+  ) {
+    const name = input.name.trim();
+    if (!name) throw new ApplicationError("REQUEST_INVALID", "名称不能为空");
+    const createdAt = nowIso(this.clock);
+    const row = { id: randomUUID(), userId: this.requireUserId(), name, iconKey: input.iconKey ?? null, archivedAt: null, createdAt, updatedAt: createdAt };
+    insert(row);
+    return row;
+  }
+
+  createExpenseCategory(input: CreateExpenseDimensionInput): ExpenseCategory {
+    const row = this.createExpenseDimension(input, (category) => {
+      if (this.getOwnedExpenseCategoryByName(category.name)) {
+        throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name: category.name });
+      }
+      this.db.insert(expenseCategories).values(category).run();
+    });
+    return this.toExpenseCategory(row);
+  }
+
+  getExpenseCategories(includeArchived = false): ExpenseCategory[] {
+    const userId = this.requireUserId();
+    return this.db.select().from(expenseCategories)
+      .where(includeArchived ? eq(expenseCategories.userId, userId) : and(eq(expenseCategories.userId, userId), isNull(expenseCategories.archivedAt)))
+      .orderBy(asc(expenseCategories.name))
+      .all()
+      .map((row) => this.toExpenseCategory(row));
+  }
+
+  renameExpenseCategory(id: string, input: CreateExpenseDimensionInput): ExpenseCategory {
+    const row = this.getOwnedExpenseCategoryIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new ApplicationError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getOwnedExpenseCategoryByName(name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(expenseCategories).set({ name, iconKey: input.iconKey, updatedAt })
+      .where(and(eq(expenseCategories.id, row.id), eq(expenseCategories.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseCategory(this.getOwnedExpenseCategoryIncludingArchived(id));
+  }
+
+  archiveExpenseCategory(id: string): ExpenseCategory {
+    const row = this.getOwnedExpenseCategory(id);
+    const archivedAt = nowIso(this.clock);
+    this.db.update(expenseCategories).set({ archivedAt, updatedAt: archivedAt })
+      .where(and(eq(expenseCategories.id, row.id), eq(expenseCategories.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseCategory(this.getOwnedExpenseCategoryIncludingArchived(id));
+  }
+
+  restoreExpenseCategory(id: string): ExpenseCategory {
+    const row = this.getOwnedExpenseCategoryIncludingArchived(id);
+    if (row.archivedAt === null) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "分类已经处于启用状态");
+    }
+    const conflict = this.getOwnedExpenseCategoryByName(row.name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name: row.name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(expenseCategories).set({ archivedAt: null, updatedAt })
+      .where(and(eq(expenseCategories.id, row.id), eq(expenseCategories.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseCategory({ ...row, archivedAt: null, updatedAt });
+  }
+
+  mergeExpenseCategory(id: string, input: MergeExpenseDimensionInput): ExpenseCategory {
+    const source = this.getOwnedExpenseCategoryIncludingArchived(id);
+    const target = this.getOwnedExpenseCategory(input.targetId);
+    if (source.id === target.id) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    const updatedAt = nowIso(this.clock);
+    const dateOnlyFallbackMs = Date.parse(updatedAt);
+    this.db.transaction((tx) => {
+      tx.update(expenses).set({
+        categoryId: target.id,
+        updatedAt,
+        historyFallbackMs: sql<number>`CASE WHEN ${expenses.occurrencePrecision} = 'date' THEN ${dateOnlyFallbackMs} ELSE ${expenses.historyFallbackMs} END`,
+      })
+        .where(and(eq(expenses.userId, this.requireUserId()), eq(expenses.categoryId, source.id)))
+        .run();
+      tx.update(expenseCategories).set({ archivedAt: updatedAt, updatedAt })
+        .where(and(eq(expenseCategories.id, source.id), eq(expenseCategories.userId, this.requireUserId())))
+        .run();
+    });
+    return this.toExpenseCategory(this.getOwnedExpenseCategoryIncludingArchived(id));
+  }
+
+  createExpenseTag(input: CreateExpenseDimensionInput): ExpenseTag {
+    const row = this.createExpenseDimension(input, (tag) => {
+      if (this.getOwnedExpenseTagByName(tag.name)) {
+        throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name: tag.name });
+      }
+      this.db.insert(expenseTags).values(tag).run();
+    });
+    return this.toExpenseTag(row);
+  }
+
+  getExpenseTags(includeArchived = false): ExpenseTag[] {
+    const userId = this.requireUserId();
+    return this.db.select().from(expenseTags)
+      .where(includeArchived ? eq(expenseTags.userId, userId) : and(eq(expenseTags.userId, userId), isNull(expenseTags.archivedAt)))
+      .orderBy(asc(expenseTags.name))
+      .all()
+      .map((row) => this.toExpenseTag(row));
+  }
+
+  renameExpenseTag(id: string, input: CreateExpenseDimensionInput): ExpenseTag {
+    const row = this.getOwnedExpenseTagIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new ApplicationError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getOwnedExpenseTagByName(name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(expenseTags).set({ name, iconKey: input.iconKey, updatedAt })
+      .where(and(eq(expenseTags.id, row.id), eq(expenseTags.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseTag(this.getOwnedExpenseTagIncludingArchived(id));
+  }
+
+  archiveExpenseTag(id: string): ExpenseTag {
+    const row = this.getOwnedExpenseTag(id);
+    const archivedAt = nowIso(this.clock);
+    this.db.update(expenseTags).set({ archivedAt, updatedAt: archivedAt })
+      .where(and(eq(expenseTags.id, row.id), eq(expenseTags.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseTag(this.getOwnedExpenseTagIncludingArchived(id));
+  }
+
+  restoreExpenseTag(id: string): ExpenseTag {
+    const row = this.getOwnedExpenseTagIncludingArchived(id);
+    if (row.archivedAt === null) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "标签已经处于启用状态");
+    }
+    const conflict = this.getOwnedExpenseTagByName(row.name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name: row.name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(expenseTags).set({ archivedAt: null, updatedAt })
+      .where(and(eq(expenseTags.id, row.id), eq(expenseTags.userId, this.requireUserId())))
+      .run();
+    return this.toExpenseTag({ ...row, archivedAt: null, updatedAt });
+  }
+
+  mergeExpenseTag(id: string, input: MergeExpenseDimensionInput): ExpenseTag {
+    const source = this.getOwnedExpenseTagIncludingArchived(id);
+    const target = this.getOwnedExpenseTag(input.targetId);
+    if (source.id === target.id) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.transaction((tx) => {
+      const duplicateExpenseRowIds = tx.select({ expenseRowId: expenseRecordTags.expenseRowId })
+        .from(expenseRecordTags)
+        .where(eq(expenseRecordTags.tagId, target.id))
+        .all()
+        .map((row) => row.expenseRowId);
+      if (duplicateExpenseRowIds.length > 0) {
+        tx.delete(expenseRecordTags).where(and(
+          eq(expenseRecordTags.tagId, source.id),
+          inArray(expenseRecordTags.expenseRowId, duplicateExpenseRowIds)
+        )).run();
+      }
+      tx.update(expenseRecordTags).set({ tagId: target.id })
+        .where(eq(expenseRecordTags.tagId, source.id))
+        .run();
+      tx.update(expenseTags).set({ archivedAt: updatedAt, updatedAt })
+        .where(and(eq(expenseTags.id, source.id), eq(expenseTags.userId, this.requireUserId())))
+        .run();
+      tx.insert(expenseHistoryRevisions)
+        .values({ userId: this.requireUserId(), revision: 1 })
+        .onConflictDoUpdate({
+          target: expenseHistoryRevisions.userId,
+          set: { revision: sql`${expenseHistoryRevisions.revision} + 1` },
+        })
+        .run();
+    });
+    return this.toExpenseTag(this.getOwnedExpenseTagIncludingArchived(id));
+  }
+
+  createPaymentMethod(input: CreateExpenseDimensionInput): PaymentMethod {
+    const row = this.createExpenseDimension(input, (method) => {
+      if (this.getOwnedPaymentMethodByName(method.name)) {
+        throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name: method.name });
+      }
+      this.db.insert(paymentMethods).values(method).run();
+    });
+    return this.toPaymentMethod(row);
+  }
+
+  getPaymentMethods(includeArchived = false): PaymentMethod[] {
+    const userId = this.requireUserId();
+    return this.db.select().from(paymentMethods)
+      .where(includeArchived ? eq(paymentMethods.userId, userId) : and(eq(paymentMethods.userId, userId), isNull(paymentMethods.archivedAt)))
+      .orderBy(asc(paymentMethods.name))
+      .all()
+      .map((row) => this.toPaymentMethod(row));
+  }
+
+  renamePaymentMethod(id: string, input: CreateExpenseDimensionInput): PaymentMethod {
+    const row = this.getOwnedPaymentMethodIncludingArchived(id);
+    const name = input.name.trim();
+    if (!name) throw new ApplicationError("REQUEST_INVALID", "名称不能为空");
+    const conflict = this.getOwnedPaymentMethodByName(name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(paymentMethods).set({ name, iconKey: input.iconKey, updatedAt })
+      .where(and(eq(paymentMethods.id, row.id), eq(paymentMethods.userId, this.requireUserId())))
+      .run();
+    return this.toPaymentMethod(this.getOwnedPaymentMethodIncludingArchived(id));
+  }
+
+  archivePaymentMethod(id: string): PaymentMethod {
+    const row = this.getOwnedPaymentMethod(id);
+    const archivedAt = nowIso(this.clock);
+    this.db.update(paymentMethods).set({ archivedAt, updatedAt: archivedAt })
+      .where(and(eq(paymentMethods.id, row.id), eq(paymentMethods.userId, this.requireUserId())))
+      .run();
+    return this.toPaymentMethod(this.getOwnedPaymentMethodIncludingArchived(id));
+  }
+
+  restorePaymentMethod(id: string): PaymentMethod {
+    const row = this.getOwnedPaymentMethodIncludingArchived(id);
+    if (row.archivedAt === null) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "支付方式已经处于启用状态");
+    }
+    const conflict = this.getOwnedPaymentMethodByName(row.name, row.id);
+    if (conflict) {
+      throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name: row.name });
+    }
+    const updatedAt = nowIso(this.clock);
+    this.db.update(paymentMethods).set({ archivedAt: null, updatedAt })
+      .where(and(eq(paymentMethods.id, row.id), eq(paymentMethods.userId, this.requireUserId())))
+      .run();
+    return this.toPaymentMethod({ ...row, archivedAt: null, updatedAt });
+  }
+
+  mergePaymentMethod(id: string, input: MergeExpenseDimensionInput): PaymentMethod {
+    const source = this.getOwnedPaymentMethodIncludingArchived(id);
+    const target = this.getOwnedPaymentMethod(input.targetId);
+    if (source.id === target.id) {
+      throw new ApplicationError("EXPENSE_DIMENSION_CONFLICT", "不能合并到自身");
+    }
+    const updatedAt = nowIso(this.clock);
+    const dateOnlyFallbackMs = Date.parse(updatedAt);
+    this.db.transaction((tx) => {
+      tx.update(expenses).set({
+        paymentMethodId: target.id,
+        updatedAt,
+        historyFallbackMs: sql<number>`CASE WHEN ${expenses.occurrencePrecision} = 'date' THEN ${dateOnlyFallbackMs} ELSE ${expenses.historyFallbackMs} END`,
+      })
+        .where(and(eq(expenses.userId, this.requireUserId()), eq(expenses.paymentMethodId, source.id)))
+        .run();
+      tx.update(paymentMethods).set({ archivedAt: updatedAt, updatedAt })
+        .where(and(eq(paymentMethods.id, source.id), eq(paymentMethods.userId, this.requireUserId())))
+        .run();
+    });
+    return this.toPaymentMethod(this.getOwnedPaymentMethodIncludingArchived(id));
+  }
+
+  captureExpense(input: CaptureExpenseInput): CaptureExpenseResult {
+    if (!input.id.trim()) throw new ApplicationError("REQUEST_INVALID", "开销记录 UUID 不能为空");
+    assertPositiveInteger(input.amountCents, "金额必须为正整数分");
+    if (input.currency !== undefined && input.currency !== "CNY") {
+      throw new ApplicationError("REQUEST_INVALID", "首版仅支持 CNY");
+    }
+    assertCoordinate(input.latitude, -90, 90, "纬度");
+    assertCoordinate(input.longitude, -180, 180, "经度");
+
+    const userId = this.requireUserId();
+    const existing = this.db.select().from(expenses)
+      .where(and(eq(expenses.userId, userId), eq(expenses.id, input.id)))
+      .get();
+    if (existing) {
+      if (existing.deletedAt !== null) {
+        throw new ApplicationError("EXPENSE_DELETED", "已删除的开销记录不能通过重试恢复", { id: input.id });
+      }
+      const conflictingFields = this.getCaptureConflictFields(existing, input);
+      if (conflictingFields.length > 0) {
+        throw new ApplicationError("EXPENSE_IDEMPOTENCY_CONFLICT", "同一 UUID 的捕获字段不一致", {
+          id: input.id,
+          conflictingFields,
+        });
+      }
+      return { expense: this.toExpense(existing), created: false };
+    }
+
+    const recordedAt = nowIso(this.clock);
+    const occurrence = this.resolveCaptureOccurrence(input, recordedAt);
+    const row: typeof expenses.$inferInsert = {
+      rowId: randomUUID(),
+      id: input.id,
+      userId,
+      amountCents: input.amountCents,
+      currency: "CNY",
+      ...occurrence,
+      recordedAt,
+      captureMessage: normalizeCaptureMessage(input.captureMessage),
+      note: null,
+      categoryId: null,
+      paymentMethodId: null,
+      reviewStatus: "pending",
+      recognitionStatus: "recognized",
+      recoverableCents: 0,
+      settled: false,
+      source: input.source ?? "shortcut",
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      deletedAt: null,
+      createdAt: recordedAt,
+      updatedAt: recordedAt,
+    };
+    const historyKey = this.historyKey(row as ExpenseHistoryKeyRow);
+    row.historyDateKey = historyKey.dateKey;
+    row.historyOccurredAtMs = historyKey.occurredAtMs;
+    row.historyFallbackMs = historyKey.fallbackMs;
+    this.db.insert(expenses).values(row).run();
+    const created = this.db.select().from(expenses).where(eq(expenses.rowId, row.rowId)).get() as ExpenseRow;
+    return { expense: this.toExpense(created), created: true };
+  }
+
+  getExpenses(): Expense[] {
+    const result = this.db.select().from(expenses)
+      .where(and(eq(expenses.userId, this.requireUserId()), isNull(expenses.deletedAt)))
+      .all()
+      .map((row) => this.toExpense(row));
+    return sortExpensesForHistory(result, this.timezone);
+  }
+
+  getExpenseHistoryPage(limit = 25, before?: string, query: ExpenseHistoryQuery = {}) {
+    const bounded = Math.min(100, Math.max(1, Math.floor(limit)));
+    const userId = this.requireUserId();
+    this.ensureExpenseHistoryKeys(userId);
+    const predicates = [eq(expenses.userId, userId), isNull(expenses.deletedAt)];
+    const normalizedQuery = query.q?.trim().toLocaleLowerCase();
+    if (normalizedQuery) predicates.push(sql`(
+      instr(lower(coalesce(${expenses.note}, '')), ${normalizedQuery}) > 0
+      OR instr(lower(coalesce(${expenses.captureMessage}, '')), ${normalizedQuery}) > 0
+    )`);
+    if (query.from) predicates.push(sql`${expenses.historyDateKey} >= ${query.from}`);
+    if (query.to) predicates.push(sql`${expenses.historyDateKey} <= ${query.to}`);
+    if (query.categoryId) predicates.push(eq(expenses.categoryId, query.categoryId));
+    if (query.paymentMethodId) predicates.push(eq(expenses.paymentMethodId, query.paymentMethodId));
+    if (query.reviewStatus) predicates.push(eq(expenses.reviewStatus, query.reviewStatus));
+    if (query.tagId) {
+      predicates.push(sql`exists (
+        select 1
+        from ${expenseRecordTags}
+        where ${expenseRecordTags.expenseRowId} = ${expenses.rowId}
+          and ${expenseRecordTags.tagId} = ${query.tagId}
+      )`);
+    }
+    let cursor = null;
+    if (before) {
+      cursor = decodeExpenseHistoryCursor(before);
+      if (!cursor) throw new ApplicationError("REQUEST_INVALID", "开销历史游标无效");
+      predicates.push(sql`(
+        ${expenses.historyDateKey} < ${cursor.dateKey}
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} < ${cursor.occurredAtMs})
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} = ${cursor.occurredAtMs} AND ${expenses.historyFallbackMs} < ${cursor.fallbackMs})
+        OR (${expenses.historyDateKey} = ${cursor.dateKey} AND ${expenses.historyOccurredAtMs} = ${cursor.occurredAtMs} AND ${expenses.historyFallbackMs} = ${cursor.fallbackMs} AND ${expenses.id} > ${cursor.id})
+      )`);
+    }
+    const result = this.db.transaction((tx) => {
+      const dataRevision = String(
+        tx.select({ value: expenseHistoryRevisions.revision })
+          .from(expenseHistoryRevisions)
+          .where(eq(expenseHistoryRevisions.userId, userId))
+          .get()?.value ?? 0,
+      );
+      const revision = `${dataRevision}:${JSON.stringify({
+        q: normalizedQuery ?? null,
+        from: query.from ?? null,
+        to: query.to ?? null,
+        categoryId: query.categoryId ?? null,
+        paymentMethodId: query.paymentMethodId ?? null,
+        tagId: query.tagId ?? null,
+        reviewStatus: query.reviewStatus ?? null,
+      })}`;
+      if (cursor && cursor.revision !== revision) {
+        throw new ApplicationError("EXPENSE_HISTORY_STALE", "开销历史已更新，请重新加载");
+      }
+      const rows = tx.select().from(expenses)
+        .where(and(...predicates))
+        .orderBy(
+          desc(expenses.historyDateKey),
+          desc(expenses.historyOccurredAtMs),
+          desc(expenses.historyFallbackMs),
+          asc(expenses.id),
+        )
+        .limit(bounded + 1)
+        .all() as ExpenseRow[];
+      return { revision, rows };
+    });
+    const pageRows = result.rows.slice(0, bounded);
+    const items = this.toExpenses(pageRows);
+    const hasMore = result.rows.length > bounded;
+    return {
+      items,
+      hasMore,
+      nextCursor: hasMore
+        ? createExpenseHistoryCursor(items[items.length - 1]!, this.timezone, result.revision)
+        : null,
+    };
+  }
+
+  getInboxExpenses(): Expense[] {
+    const result = this.db.select().from(expenses)
+      .where(and(
+        eq(expenses.userId, this.requireUserId()),
+        eq(expenses.reviewStatus, "pending"),
+        isNull(expenses.deletedAt)
+      ))
+      .orderBy(desc(expenses.recordedAt))
+      .all()
+      .map((row) => this.toExpense(row));
+    return result;
+  }
+
+  getExpenseById(id: string, options: { includeDeleted?: boolean } = {}): Expense | undefined {
+    try {
+      return this.toExpense(this.getOwnedExpenseRow(id, options.includeDeleted ?? false));
+    } catch (error) {
+      if (error instanceof ApplicationError && error.code === "EXPENSE_NOT_FOUND") return undefined;
+      throw error;
+    }
+  }
+
+  updateExpense(id: string, input: UpdateExpenseInput): Expense {
+    const current = this.getOwnedExpenseRow(id, false);
+    if (input.amountCents !== undefined) assertPositiveInteger(input.amountCents, "金额必须为正整数分");
+    if (input.occurredAt !== undefined && input.occurredOn !== undefined && input.occurredAt !== null && input.occurredOn !== null) {
+      throw new ApplicationError("REQUEST_INVALID", "发生时间和发生日期只能提供一个");
+    }
+    if (input.occurredAt !== undefined && input.occurredAt !== null) assertDateTime(input.occurredAt, "发生时间无效");
+    if (input.occurredOn !== undefined && input.occurredOn !== null) assertDateKey(input.occurredOn, "发生日期无效");
+    const nextAmountCents = input.amountCents ?? current.amountCents;
+    const nextPrecision = input.occurrencePrecision
+      ?? (input.occurredOn !== undefined ? "date" : input.occurredAt !== undefined ? "datetime" : current.occurrencePrecision);
+    const nextOccurredAt = input.occurredAt !== undefined ? input.occurredAt : input.occurredOn !== undefined ? null : current.occurredAt;
+    const nextOccurredOn = input.occurredOn !== undefined ? input.occurredOn : input.occurredAt !== undefined ? null : current.occurredOn;
+    if (nextPrecision === "datetime" && (!nextOccurredAt || nextOccurredOn !== null)) {
+      throw new ApplicationError("REQUEST_INVALID", "日期时间精度必须提供发生时间");
+    }
+    if (nextPrecision === "date" && (!nextOccurredOn || nextOccurredAt !== null)) {
+      throw new ApplicationError("REQUEST_INVALID", "日期精度必须提供发生日期");
+    }
+    if (input.categoryId !== undefined && input.categoryId !== null) this.getOwnedExpenseCategory(input.categoryId);
+    if (input.paymentMethodId !== undefined && input.paymentMethodId !== null) this.getOwnedPaymentMethod(input.paymentMethodId);
+    const tagIds = input.tagIds === undefined ? undefined : [...new Set(input.tagIds)];
+    tagIds?.forEach((tagId) => this.getOwnedExpenseTag(tagId));
+    if (input.recoverableCents !== undefined) {
+      if (!Number.isSafeInteger(input.recoverableCents) || input.recoverableCents < 0 || input.recoverableCents > nextAmountCents) {
+        throw new ApplicationError("REQUEST_INVALID", "预计可收回金额必须是介于零和开销金额之间的整数分");
+      }
+    }
+    if (input.recoverableCents === undefined && current.recoverableCents > nextAmountCents) {
+      throw new ApplicationError("REQUEST_INVALID", "新的金额不能低于预计可收回金额");
+    }
+
+    const updatedAt = nowIso(this.clock);
+    const historyKey = this.historyKey({
+      ...current,
+      occurredAt: nextOccurredAt,
+      occurredOn: nextOccurredOn,
+      occurrencePrecision: nextPrecision,
+      updatedAt,
+    });
+    this.db.transaction((tx) => {
+      tx.update(expenses).set({
+        amountCents: input.amountCents,
+        occurredAt: nextOccurredAt,
+        occurredOn: nextOccurredOn,
+        occurrencePrecision: nextPrecision,
+        note: input.note === undefined ? undefined : normalizeOptionalText(input.note),
+        categoryId: input.categoryId,
+        paymentMethodId: input.paymentMethodId,
+        reviewStatus: input.reviewStatus,
+        recoverableCents: input.recoverableCents,
+        settled: input.settled,
+        updatedAt,
+        historyDateKey: historyKey.dateKey,
+        historyOccurredAtMs: historyKey.occurredAtMs,
+        historyFallbackMs: historyKey.fallbackMs,
+      }).where(and(eq(expenses.rowId, current.rowId), eq(expenses.userId, this.requireUserId()), isNull(expenses.deletedAt))).run();
+      if (tagIds !== undefined) {
+        tx.delete(expenseRecordTags).where(eq(expenseRecordTags.expenseRowId, current.rowId)).run();
+        if (tagIds.length > 0) {
+          tx.insert(expenseRecordTags).values(tagIds.map((tagId) => ({
+            id: randomUUID(),
+            expenseRowId: current.rowId,
+            tagId,
+            createdAt: updatedAt,
+          }))).run();
+        }
+      }
+    });
+    const result = this.getExpenseById(id) as Expense;
+    return result;
+  }
+
+  deleteExpense(id: string): void {
+    const current = this.getOwnedExpenseRow(id, false);
+    const deletedAt = nowIso(this.clock);
+    this.db.update(expenses).set({ deletedAt, updatedAt: deletedAt })
+      .where(and(eq(expenses.rowId, current.rowId), eq(expenses.userId, this.requireUserId()), isNull(expenses.deletedAt)))
+      .run();
   }
 
   getCapabilities(): Capabilities {
@@ -1295,8 +2167,14 @@ export class SqliteApplicationService implements ApplicationService {
       .all();
 
     const entriesForExport = this.toEntries(allEntryRows, this.getDirectFocusSecondsByEntry(userId));
+    const expenseRows = this.db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.userId, userId))
+      .orderBy(asc(expenses.createdAt), asc(expenses.id))
+      .all() as ExpenseRow[];
     return {
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       exportedAt: nowIso(this.clock),
       effectiveTimezone: this.timezone,
       profile: this.toUser(this.getUserRow()!),
@@ -1320,6 +2198,23 @@ export class SqliteApplicationService implements ApplicationService {
       })),
       focusSessions: this.getFocusSessions(),
       scheduleBlocks: this.getScheduleBlocks(),
+      expenses: this.toExpenses(expenseRows),
+      expenseCategories: this.getExpenseCategories(true),
+      expenseTags: this.getExpenseTags(true),
+      paymentMethods: this.getPaymentMethods(true),
+    };
+  }
+
+  exportExpenseData(): ExpenseDataExport {
+    const data = this.exportUserData();
+    return {
+      schemaVersion: data.schemaVersion,
+      exportedAt: data.exportedAt,
+      effectiveTimezone: data.effectiveTimezone,
+      expenses: data.expenses,
+      expenseCategories: data.expenseCategories,
+      expenseTags: data.expenseTags,
+      paymentMethods: data.paymentMethods,
     };
   }
 

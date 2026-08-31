@@ -3,6 +3,7 @@ import {
   AnySQLiteColumn,
   integer,
   index,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -22,6 +23,21 @@ export const users = sqliteTable(
     updatedAt: timestamp("updated_at"),
   },
   (table) => [uniqueIndex("users_username_unique").on(table.username)]
+);
+
+export const apiKeys = sqliteTable(
+  "api_keys",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    secretHash: text("secret_hash").notNull(),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at"),
+    lastUsedAt: text("last_used_at"),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [index("api_keys_user_created_idx").on(table.userId, table.createdAt)]
 );
 
 export const entries = sqliteTable(
@@ -228,8 +244,115 @@ export const scheduleBlocks = sqliteTable(
   ]
 );
 
+export const expenseCategories = sqliteTable(
+  "expense_categories",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    iconKey: text("icon_key"),
+    archivedAt: text("archived_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [index("expense_categories_user_archived_idx").on(table.userId, table.archivedAt)]
+);
+
+export const expenseTags = sqliteTable(
+  "expense_tags",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    iconKey: text("icon_key"),
+    archivedAt: text("archived_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [index("expense_tags_user_archived_idx").on(table.userId, table.archivedAt)]
+);
+
+export const paymentMethods = sqliteTable(
+  "payment_methods",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    iconKey: text("icon_key"),
+    archivedAt: text("archived_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [index("payment_methods_user_archived_idx").on(table.userId, table.archivedAt)]
+);
+
+export const expenses = sqliteTable(
+  "expenses",
+  {
+    // rowId is only an internal relation key. id remains the client UUID.
+    rowId: text("row_id").primaryKey(),
+    id: text("id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency", { enum: ["CNY"] }).notNull().default("CNY"),
+    occurredAt: text("occurred_at"),
+    occurredOn: text("occurred_on"),
+    occurredTimezone: text("occurred_timezone"),
+    occurrencePrecision: text("occurrence_precision", { enum: ["datetime", "date"] }).notNull(),
+    recordedAt: timestamp("recorded_at"),
+    captureMessage: text("capture_message"),
+    note: text("note"),
+    categoryId: text("category_id").references(() => expenseCategories.id, { onDelete: "restrict" }),
+    paymentMethodId: text("payment_method_id").references(() => paymentMethods.id, { onDelete: "restrict" }),
+    reviewStatus: text("review_status", { enum: ["pending", "reviewed"] }).notNull().default("pending"),
+    recognitionStatus: text("recognition_status", { enum: ["recognized"] }).notNull().default("recognized"),
+    recoverableCents: integer("recoverable_cents").notNull().default(0),
+    settled: integer("settled", { mode: "boolean" }).notNull().default(false),
+    source: text("source", { enum: ["shortcut", "manual"] }).notNull().default("shortcut"),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    deletedAt: text("deleted_at"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+    // Persisted from the effective timezone so SQLite can use the same keyset
+    // ordering as the history UI without loading and sorting the full history.
+    historyDateKey: text("history_date_key"),
+    historyOccurredAtMs: integer("history_occurred_at_ms"),
+    historyFallbackMs: integer("history_fallback_ms"),
+  },
+  (table) => [
+    uniqueIndex("expenses_user_client_id_unique").on(table.userId, table.id),
+    index("expenses_user_active_recorded_idx").on(table.userId, table.deletedAt, table.recordedAt),
+    index("expenses_user_history_keyset_idx").on(table.userId, table.deletedAt, table.historyDateKey, table.historyOccurredAtMs, table.historyFallbackMs, table.id),
+    index("expenses_user_inbox_idx").on(table.userId, table.reviewStatus, table.deletedAt, table.recordedAt),
+  ]
+);
+
+export const expenseHistoryRevisions = sqliteTable(
+  "expense_history_revisions",
+  {
+    userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(0),
+  }
+);
+
+export const expenseRecordTags = sqliteTable(
+  "expense_record_tags",
+  {
+    id: text("id").primaryKey(),
+    expenseRowId: text("expense_row_id").notNull().references(() => expenses.rowId, { onDelete: "cascade" }),
+    tagId: text("tag_id").notNull().references(() => expenseTags.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at"),
+  },
+  (table) => [
+    uniqueIndex("expense_record_tags_unique").on(table.expenseRowId, table.tagId),
+    index("expense_record_tags_tag_idx").on(table.tagId),
+  ]
+);
+
 export const schema = {
   users,
+  apiKeys,
   entries,
   weekPlans,
   weekPlanEntries,
@@ -240,4 +363,9 @@ export const schema = {
   scheduleTemplates,
   scheduleTemplateItems,
   scheduleTemplateApplications,
+  expenseCategories,
+  expenseTags,
+  paymentMethods,
+  expenses,
+  expenseRecordTags,
 };

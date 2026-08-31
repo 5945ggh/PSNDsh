@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockDataStore } from "./store";
+import { MockApplicationService } from "./service";
 
 const DEFAULT_WEEK_START = "2026-06-22";
 const SELECTED_WEEK_START = "2026-07-06";
@@ -139,6 +140,53 @@ describe("MockDataStore week plans", () => {
       role: "focus",
       plannedFocusSeconds: 3_600,
     }, DEFAULT_WEEK_START)).toThrow(/WEEK_PLAN_ITEM_NOT_FOUND/);
+  });
+});
+
+describe("MockDataStore expenses", () => {
+  it("keeps a newly captured unclassified expense in both Inbox and the complete list", () => {
+    const store = new MockDataStore();
+    const created = store.captureExpense({ id: "expense-test-1", amountCents: 1250, captureMessage: "午饭" });
+
+    expect(created.expense.reviewStatus).toBe("pending");
+    expect(store.getInboxExpenses().map((item) => item.id)).toContain("expense-test-1");
+    expect(store.getExpenses().map((item) => item.id)).toContain("expense-test-1");
+  });
+
+  it("keeps deleted expense lookup behavior aligned with the persistent service", () => {
+    const app = new MockApplicationService(new MockDataStore());
+    const expense = app.captureExpense({ id: "expense-mock-tombstone", amountCents: 100 }).expense;
+    app.deleteExpense(expense.id);
+
+    expect(app.getExpenseById(expense.id)).toBeUndefined();
+    expect(app.getExpenseById(expense.id, { includeDeleted: true })).toEqual(expect.objectContaining({
+      id: expense.id,
+      deletedAt: expect.any(String),
+    }));
+  });
+
+  it("reviews on save or keep-original, while skip leaves Inbox membership unchanged", () => {
+    const store = new MockDataStore();
+    const id = store.getInboxExpenses().find((item) => !item.categoryId)?.id as string;
+    expect(store.getInboxExpenses().map((item) => item.id)).toContain(id);
+
+    store.updateExpense(id, { reviewStatus: "reviewed" });
+    expect(store.getInboxExpenses().map((item) => item.id)).not.toContain(id);
+    expect(store.getExpenses().find((item) => item.id === id)?.categoryId).toBeNull();
+
+    const next = store.captureExpense({ id: "expense-test-2", amountCents: 900, captureMessage: "公交" }).expense;
+    expect(store.getInboxExpenses().map((item) => item.id)).toContain(next.id);
+  });
+
+  it("preserves capture messages after copying them into the regular note and supports multiple tags", () => {
+    const store = new MockDataStore();
+    const expense = store.getInboxExpenses()[0];
+    const tags = store.getExpenseTags();
+    const saved = store.updateExpense(expense.id, { note: expense.captureMessage, tagIds: tags.map((tag) => tag.id), reviewStatus: "reviewed" });
+
+    expect(saved.captureMessage).toBe(expense.captureMessage);
+    expect(saved.note).toBe(expense.captureMessage);
+    expect(saved.tags).toHaveLength(tags.length);
   });
 });
 

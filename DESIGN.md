@@ -28,8 +28,8 @@
 
 ## Information architecture
 
-- Primary navigation: 首页、计划、日历、统计、周度回顾、设置
-- Core routes/screens: 登录、首次注册、首页、本周计划与条目树、条目详情、周历、统计、周度回顾、设置、专注结束与拆分流程
+- Primary navigation: 首页、计划、日历、统计、周度回顾、账目、设置
+- Core routes/screens: 登录、首次注册、首页、本周计划与条目树、条目详情、周历、统计、周度回顾、账目 Inbox、全部开销表格、设置及其二级设置页面、专注结束与拆分流程
 - Content hierarchy: 当前行动和今日信息优先；本周承诺其次；历史、统计和配置按需进入。周度回顾默认将上周复盘与本周进展并列，历史周可按需切换查看
 - Global state: 活动计时器在所有登录后页面可见、可结束，但不遮挡导航和主要操作
 
@@ -41,6 +41,8 @@
 - 数据可解释：直接投入、聚合投入和未关联投入用明确术语区分
 - 常用动作靠近上下文：条目旁创建子项，日历空白处补录，活动计时器处结束
 - 渐进披露：默认表单保持短小，拆分、成果、重复规则等复杂选项按需展开
+- 账目按任务分模式：Inbox 是逐条整理队列；全部记录是可扫描、按发生日期分组的连续历史流，首屏显示最近记录并在接近底部时加载更早记录，详情只有主动选中后在当前行下方原地展开，桌面与窄屏保持同一种交互。Inbox 的“保存修改”只保存内容并保留待整理，“保存并标记已整理”保存内容后移入已整理状态并进入下一条；展开详情可用 `←` / `→` 切换记录，`↑` / `↓` 保留页面滚动
+- 配置与历史分离：分类、支付方式和标签在设置页集中管理；归档不抹除历史关联，合并必须可预览且事务性完成
 - Tradeoffs: 宁可减少首页信息密度，也不让提醒、时间和活动状态争夺视觉主导；宁可多一步确认危险操作，也不允许隐式丢失历史
 
 ## Visual language
@@ -55,7 +57,7 @@
 ## Components
 
 - Existing components to reuse: 当前 AppShell、日历轨道、日程编辑弹窗与 ICS 导入弹窗；导入接入真实 API 时保持既有弹窗布局、预览选择和就地错误表达
-- New/changed components: AppShell、PrimaryNav、GlobalFocusBar、EntryTree、EntryRow、WeekPlanList、ScheduleGrid、FocusBlock、ScheduleBlock、StatBreakdown、TimeTrend、DeadlineList、ProfileForm、FocusEditor、SegmentEditor；首页与统计页使用独立卡片分组承载这些信息，不把页面整体改成无边界分区
+- New/changed components: AppShell、PrimaryNav、SettingsSecondaryNav、GlobalFocusBar、EntryTree、EntryRow、WeekPlanList、ScheduleGrid、FocusBlock、ScheduleBlock、StatBreakdown、TimeTrend、DeadlineList、ProfileForm、FocusEditor、SegmentEditor、ExpenseTable、ExpenseDetailDrawer、ExpenseDimensionManager；首页与统计页使用独立卡片分组承载这些信息，不把页面整体改成无边界分区
 - Variants and states: 活跃、暂停、完成、归档、逾期、临期、未关联、加载、空、错误、禁用；日程与专注必须有稳定独立变体
 - Token/component ownership: 前端样例应输出颜色、排版、间距和状态 token；正式实现吸收其思想后由根 `DESIGN.md` 维护最终 token 语义
 
@@ -70,20 +72,22 @@
 ## Responsive behavior
 
 - Supported breakpoints/devices: 约 360px 手机宽度至宽屏桌面；重点验证 390x844、768x1024、1440x900
-- Layout adaptations: 桌面导航可为侧栏，移动端使用稳定底部或顶部导航；计划树与详情由双栏降为逐层页面或抽屉；统计图转换为纵向布局
+- Layout adaptations: 桌面导航可为侧栏，移动端使用稳定底部或顶部导航；计划树与详情由双栏降为逐层页面或抽屉；统计图转换为纵向布局；全部开销列表在桌面与窄屏均使用行内展开，展开表单在桌面为双列、窄屏为单列
 - Touch/hover differences: 所有关键能力必须有点击入口，不能只依赖 hover；触摸目标保持合理尺寸
 - Calendar: 桌面周网格使用从 `06:00` 到次日 `06:00` 的连续时间轴，视觉顺序为 `06:00-23:00`、`00:00-05:00`；日期列仍按自然日归属，跨午夜或跨 06:00 的事件必须在准确时段连续呈现。小时行高在 `40px-56px` 范围内随视口高度使用 `clamp` 调整，刻度、网格和事件定位必须共用该尺寸。手机首次进入默认单日纵览，用户可主动切换至紧凑列表或周网格，不强求把七列硬塞入窄屏
 
 ## Interaction states
 
 - Loading: 首次恢复会话时可使用全页状态；后续写入后的重校验必须在后台完成，保持当前页面与已输入内容稳定，只在相关控件显示提交中状态
-- Empty: 提供与当前页面直接相关的首个动作，例如创建条目、加入本周、开始无归属专注或新增日程
+- Empty: 提供与当前页面直接相关的首个动作，例如创建条目、加入本周、开始无归属专注、新增日程或选择一条开销查看详情；全部记录无选中项时不渲染空编辑表单
 - Error: 说明发生了什么并提供可执行恢复；表单保留输入；领域冲突定位到具体时段或对象
 - Success: 就地更新并使用简短反馈，不以庆祝动画打断工作流
 - Disabled: 说明禁用原因，例如已有活动计时器或注册已关闭
 - Weekly review: 默认把“上周复盘”与“本周进展”作为同等层级的摘要；历史周选择只读且不得创建周计划。“已带入下一周”只展示下一周计划中实际标记为 `rollover` 的条目；若下一周计划尚未建立，明确说明暂无结转记录，不从当前条目状态重新推断
 - ICS import: 文件选择后保持两阶段“预览 -> 确认”；过滤项和窗口限制在预览内说明，确认过期后保留文件选择并提示重新解析
 - Offline/slow network: 首版天气明确为未配置；季节名句由本地 JSON 数据包直接展示，不应因网络进入错误状态；核心写入失败不得假装成功；活动计时 UI 明确同步状态
+- Expense list performance: Inbox 保持固定单页整理队列；全部记录使用基于时间排序的服务端 cursor progressive loading，列表只渲染当前已加载历史，接近底部自动加载更早记录并按日期合并；切换详情不重置滚动位置；表格行的标签仅展示有限摘要，详情中展示完整标签
+- Expense dimensions: 分类、支付方式和标签支持创建、改名、归档、恢复；已使用项目不得物理删除，合并需显示影响条数并在单事务内更新历史关联后归档源项目
 
 ## Content voice
 
@@ -105,3 +109,4 @@
 - 真实天气配置进入范围后，需要补充天气状态、位置设置和失败文案。
 - Agent/MCP 进入范围前，需要补充授权、审计和可撤销操作的界面约束。
 - 如未来引入稳定视觉回归，应以当前已验收实现为基线，而不是归档的前端样例任务书。
+- 全部记录不强调离散页码；仅保留轻量加载状态、失败重试和必要时的加载更多兜底。
