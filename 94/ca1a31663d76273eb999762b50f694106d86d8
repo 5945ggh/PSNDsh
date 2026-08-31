@@ -1,0 +1,26 @@
+docs/OPERATIONS.md
+  s_b5b14ba2e73b70::t_76f034e9aa6363 73,130-132,136-138
+  s_b5b14ba2e73b70::t_10e41489a7cc34 139
+docker-compose.production.yml
+  s_b5b14ba2e73b70::t_76f034e9aa6363 7-11
+.github/workflows/publish-image.yml
+  s_b5b14ba2e73b70::t_76f034e9aa6363 24-29,41
+scripts/deploy-production.sh
+  s_b5b14ba2e73b70::t_76f034e9aa6363 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "94ca1a31663d76273eb999762b50f694106d86d8",
+  "prompts": {},
+  "sessions": {
+    "s_b5b14ba2e73b70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b7-9f17-7bc3-bb01-a651b3ebe42a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
