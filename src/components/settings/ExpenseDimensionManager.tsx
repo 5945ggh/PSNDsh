@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Check, CreditCard, Hash, LoaderCircle, Pencil, Plus, Tags, X, type LucideIcon } from "lucide-react";
 import { useData, type DataSnapshot } from "@/context/MockContext";
 import type { ExpenseCategory, ExpenseTag, PaymentMethod } from "@/lib/domain/types";
@@ -75,46 +75,40 @@ export const addPaymentMethod = (snapshot: DataSnapshot, paymentMethod: PaymentM
 
 export function ExpenseDimensionManager() {
   const { api, data, mutate, pendingMutations } = useData();
-  const [categoryName, setCategoryName] = useState("");
-  const [paymentMethodName, setPaymentMethodName] = useState("");
-  const [tagName, setTagName] = useState("");
-  const [iconKey, setIconKey] = useState<ExpenseCategory["iconKey"]>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingIconKey, setEditingIconKey] = useState<DimensionItem["iconKey"]>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
 
   const [activeDimension, setActiveDimension] = useState<ExpenseDimensionKind>("category");
 
-  const submit = async (event: FormEvent, kind: ExpenseDimensionKind) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const rawValue =
-      kind === "category" ? categoryName : kind === "paymentMethod" ? paymentMethodName : tagName;
-    const value = rawValue.trim();
+    const value = editingName.trim();
     if (!value) return;
 
     setError(null);
     try {
-      if (kind === "category") {
-        await mutate(() => api.createExpenseCategory({ name: value, iconKey }), {
-          backgroundRefresh: true,
-          update: addCategory,
-        });
-        setCategoryName("");
-      } else if (kind === "paymentMethod") {
-        await mutate(() => api.createPaymentMethod({ name: value, iconKey }), {
-          backgroundRefresh: true,
-          update: addPaymentMethod,
-        });
-        setPaymentMethodName("");
+      const update = { name: value, iconKey: editingIconKey };
+      if (dialogMode === "create" && activeDimension === "category") {
+        await mutate(() => api.createExpenseCategory(update), { backgroundRefresh: true, update: addCategory });
+      } else if (dialogMode === "create" && activeDimension === "paymentMethod") {
+        await mutate(() => api.createPaymentMethod(update), { backgroundRefresh: true, update: addPaymentMethod });
+      } else if (dialogMode === "create") {
+        await mutate(() => api.createExpenseTag(update), { backgroundRefresh: true, update: addTag });
+      } else if (editingId && activeDimension === "category") {
+        await mutate(() => api.renameExpenseCategory(editingId, update), { backgroundRefresh: true, update: addCategory });
+      } else if (editingId && activeDimension === "paymentMethod") {
+        await mutate(() => api.renamePaymentMethod(editingId, update), { backgroundRefresh: true, update: addPaymentMethod });
       } else {
-        await mutate(() => api.createExpenseTag({ name: value, iconKey }), {
-          backgroundRefresh: true,
-          update: addTag,
-        });
-        setTagName("");
+        if (!editingId) return;
+        await mutate(() => api.renameExpenseTag(editingId, update), { backgroundRefresh: true, update: addTag });
       }
-      setIconKey(null);
+      setDialogMode(null);
+      setEditingId(null);
+      setEditingName("");
+      setEditingIconKey(null);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "创建失败");
     }
@@ -129,18 +123,13 @@ export function ExpenseDimensionManager() {
       : activeDimension === "paymentMethod"
         ? data.paymentMethods
         : data.expenseTags;
-  const activeInputValue =
-    activeDimension === "category"
-      ? categoryName
-      : activeDimension === "paymentMethod"
-        ? paymentMethodName
-        : tagName;
   const activeToneClassName = activeTab.toneClassName;
-  const activeSubmitLabel = isSubmitting ? "保存中" : `创建${activeTab.label}`;
-  const setActiveInputValue = (value: string) => {
-    if (activeDimension === "category") setCategoryName(value);
-    else if (activeDimension === "paymentMethod") setPaymentMethodName(value);
-    else setTagName(value);
+  const openCreateDialog = () => {
+    setEditingId(null);
+    setEditingName("");
+    setEditingIconKey(null);
+    setError(null);
+    setDialogMode("create");
   };
   const activateDimension = (dimension: ExpenseDimensionKind) => {
     setActiveDimension(dimension);
@@ -159,26 +148,17 @@ export function ExpenseDimensionManager() {
     setEditingName(item.name);
     setEditingIconKey(item.iconKey ?? null);
     setError(null);
+    setDialogMode("edit");
   };
 
-  const saveEdit = async (item: DimensionItem) => {
-    const name = editingName.trim();
-    if (!name) return;
-    setError(null);
-    try {
-      const update = { name, iconKey: editingIconKey };
-      if (activeDimension === "category") {
-        await mutate(() => api.renameExpenseCategory(item.id, update), { backgroundRefresh: true, update: addCategory });
-      } else if (activeDimension === "paymentMethod") {
-        await mutate(() => api.renamePaymentMethod(item.id, update), { backgroundRefresh: true, update: addPaymentMethod });
-      } else {
-        await mutate(() => api.renameExpenseTag(item.id, update), { backgroundRefresh: true, update: addTag });
-      }
-      setEditingId(null);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "保存失败");
-    }
-  };
+  useEffect(() => {
+    if (!dialogMode) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) setDialogMode(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dialogMode, isSubmitting]);
 
   return (
     <section aria-label="账目字段" className="space-y-4">
@@ -246,31 +226,10 @@ export function ExpenseDimensionManager() {
           </p>
         )}
 
-        <form onSubmit={(event) => void submit(event, activeDimension)} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label htmlFor={activeTab.inputId} className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-500">
-            新建{activeTab.label}
-            <input
-              id={activeTab.inputId}
-              value={activeInputValue}
-              onChange={(event) => setActiveInputValue(event.target.value)}
-              maxLength={80}
-              placeholder={activeTab.placeholder}
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:text-zinc-100 dark:focus:border-zinc-400"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!activeInputValue.trim() || isSubmitting}
-            className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${activeToneClassName.includes("emerald") ? "bg-emerald-700 hover:bg-emerald-800" : activeToneClassName.includes("blue") ? "bg-blue-700 hover:bg-blue-800" : "bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-100"}`}
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            {activeSubmitLabel}
-          </button>
-        </form>
-        <div className="flex flex-wrap gap-1.5" aria-label="选择图标">
-          <button type="button" aria-label="不使用图标" onClick={() => setIconKey(null)} className={`rounded-md border px-2 py-1 text-xs ${iconKey === null ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}>无</button>
-          {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={label} title={label} onClick={() => setIconKey(key)} className={`rounded-md border p-1.5 ${iconKey === key ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}><Icon className="h-4 w-4" aria-hidden="true" /></button>; })}
-        </div>
+        <button type="button" onClick={openCreateDialog} disabled={isSubmitting} className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white ${activeToneClassName.includes("emerald") ? "bg-emerald-700 hover:bg-emerald-800" : activeToneClassName.includes("blue") ? "bg-blue-700 hover:bg-blue-800" : "bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-200 dark:text-zinc-900"}`}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          新建{activeTab.label}
+        </button>
 
           <div>
             <div className="mb-2">
@@ -287,17 +246,7 @@ export function ExpenseDimensionManager() {
                     key={item.id}
                     className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/40"
                   >
-                  {editingId === item.id ? (
-                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                      <input aria-label={`编辑${activeTab.label}名称`} value={editingName} onChange={(event) => setEditingName(event.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
-                      <div className="flex flex-wrap gap-1">
-                        {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={`选择${label}图标`} title={label} onClick={() => setEditingIconKey(key)} className={`rounded-md border p-1 ${editingIconKey === key ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}><Icon className="h-3.5 w-3.5" aria-hidden="true" /></button>; })}
-                      </div>
-                      <button type="button" aria-label="保存维度修改" onClick={() => void saveEdit(item)} disabled={!editingName.trim() || isSubmitting} className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50"><Check className="h-4 w-4" aria-hidden="true" /></button>
-                      <button type="button" aria-label="取消维度修改" onClick={() => setEditingId(null)} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"><X className="h-4 w-4" aria-hidden="true" /></button>
-                    </div>
-                  ) : (
-                    <>
+                  <>
                       <div className="flex min-w-0 items-center gap-2">
                         {(() => { const Icon = getExpenseIcon(item.iconKey, activeDimension === "paymentMethod" ? "wallet" : activeDimension === "tag" ? "tag" : "circle-help"); return <Icon className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />; })()}
                         <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>
@@ -305,7 +254,6 @@ export function ExpenseDimensionManager() {
                       </div>
                       <div className="flex items-center gap-2"><button type="button" aria-label={`编辑${item.name}`} onClick={() => beginEdit(item)} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"><Pencil className="h-3.5 w-3.5" aria-hidden="true" /></button><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${activeToneClassName}`}>可选</span></div>
                     </>
-                  )}
                   </li>
                 ))
               )}
@@ -320,6 +268,34 @@ export function ExpenseDimensionManager() {
         )}
       </div>
       </div>
+      {dialogMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setDialogMode(null); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="expense-dimension-dialog-title" className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 id="expense-dimension-dialog-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{dialogMode === "create" ? `新建${activeTab.label}` : `编辑${activeTab.label}`}</h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">设置名称和用于识别的图标。</p>
+              </div>
+              <button type="button" aria-label="关闭" onClick={() => setDialogMode(null)} disabled={isSubmitting} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"><X className="h-4 w-4" aria-hidden="true" /></button>
+            </div>
+            <form onSubmit={submit} className="space-y-4">
+              <label htmlFor="expense-dimension-dialog-name" className="block text-sm text-zinc-700 dark:text-zinc-300">名称<input id="expense-dimension-dialog-name" autoFocus value={editingName} onChange={(event) => setEditingName(event.target.value)} maxLength={80} placeholder={activeTab.placeholder} className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100" /></label>
+              <div>
+                <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">图标</p>
+                <div className="grid grid-cols-6 gap-2" aria-label="选择图标">
+                  <button type="button" aria-label="不使用图标" onClick={() => setEditingIconKey(null)} className={`rounded-md border px-2 py-2 text-xs ${editingIconKey === null ? "border-blue-500 bg-blue-50" : "border-zinc-200 dark:border-zinc-700"}`}>无</button>
+                  {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={label} title={label} onClick={() => setEditingIconKey(key)} className={`flex items-center justify-center rounded-md border p-2 ${editingIconKey === key ? "border-blue-500 bg-blue-50 text-blue-700" : "border-zinc-200 text-zinc-500 dark:border-zinc-700"}`}><Icon className="h-4 w-4" aria-hidden="true" /></button>; })}
+                </div>
+              </div>
+              {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setDialogMode(null)} disabled={isSubmitting} className="rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">取消</button>
+                <button type="submit" disabled={!editingName.trim() || isSubmitting} className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"><Check className="h-4 w-4" aria-hidden="true" />{isSubmitting ? "保存中" : dialogMode === "create" ? "创建" : "保存"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
