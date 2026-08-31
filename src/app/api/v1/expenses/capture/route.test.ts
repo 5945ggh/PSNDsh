@@ -80,10 +80,12 @@ describe("POST /api/v1/expenses/capture", () => {
 
     const floatingTail = await post(`Bearer ${first.apiKey}`, { amount_cents: 1250.0000000000002 });
     const fractionalCent = await post(`Bearer ${first.apiKey}`, { amount_cents: 1250.25 });
+    const largeFractionalCent = await post(`Bearer ${first.apiKey}`, { amount_cents: 1_000_000_000_000_000.5 });
 
     expect(floatingTail.status).toBe(201);
     await expect(floatingTail.json()).resolves.toMatchObject({ data: { amountCents: 1250 } });
     expect(fractionalCent.status).toBe(400);
+    expect(largeFractionalCent.status).toBe(400);
   });
 
   it("rejects invalid and revoked keys without exposing key material", async () => {

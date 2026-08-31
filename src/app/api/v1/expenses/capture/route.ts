@@ -13,9 +13,9 @@ const amountCents = z.preprocess((value) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return value;
   const rounded = Math.round(value);
   // Shortcuts may leave a harmless IEEE-754 tail after multiplying yuan by 100
-  // (for example, 1250.0000000000002). Normalize only that machine epsilon;
-  // real fractional cents must still be rejected by the integer validator.
-  const epsilon = Number.EPSILON * Math.max(1, Math.abs(value)) * 16;
+  // (for example, 1250.0000000000002). Keep the tolerance fixed so large
+  // amounts cannot turn a real fractional cent into an integer.
+  const epsilon = 1e-9;
   return Math.abs(value - rounded) <= epsilon ? rounded : value;
 }, z.number().int().positive().safe());
 const inputSchema = z.object({
