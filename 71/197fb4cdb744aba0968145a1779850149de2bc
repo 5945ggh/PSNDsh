@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_b5b14ba2e73b70::t_b3820d818c8f8e 32-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "71197fb4cdb744aba0968145a1779850149de2bc",
+  "prompts": {},
+  "sessions": {
+    "s_b5b14ba2e73b70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b7-9f17-7bc3-bb01-a651b3ebe42a",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
