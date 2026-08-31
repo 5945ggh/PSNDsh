@@ -36,23 +36,20 @@ jobs:
           node-version: 22.13.1
           cache: pnpm
 
-      - name: Enable Corepack
-        run: corepack enable
-
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: corepack pnpm lint
+        run: pnpm lint
 
       - name: Typecheck
-        run: corepack pnpm exec tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
       - name: Unit and integration tests
-        run: corepack pnpm test
+        run: pnpm test
 
       - name: Production build
-        run: corepack pnpm build
+        run: pnpm build
 
   container:
     runs-on: ubuntu-latest
