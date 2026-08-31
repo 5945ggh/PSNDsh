@@ -1,0 +1,28 @@
+e2e/expenses.spec.ts
+  s_4e6f23fe192a6b::t_d063702ada0e3c 234
+  s_4e6f23fe192a6b::t_f332cebf802126 235,240
+  s_4e6f23fe192a6b::t_8dbac2f3e1c550 237-239
+  s_4e6f23fe192a6b::t_75c58b00dce3a0 236
+src/components/expenses/ExpenseRecordList.tsx
+  s_4e6f23fe192a6b::t_4d96e0b99b7b39 261
+src/app/(dashboard)/settings/page.tsx
+  s_4e6f23fe192a6b::t_4d96e0b99b7b39 61
+e2e/settings.spec.ts
+  s_4e6f23fe192a6b::t_8715f2d162440b 40,46-47,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "05072a16f948cd2b26bfe45cce2fae1f5dfee2db",
+  "prompts": {},
+  "sessions": {
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
