@@ -773,13 +773,13 @@ export class MockDataStore {
     return row;
   }
 
-  public createExpenseCategory(input: { name: string }): ExpenseCategory {
+  public createExpenseCategory(input: { name: string; iconKey?: ExpenseCategory["iconKey"] }): ExpenseCategory {
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
     if (this.getExpenseCategoryByName(name)) {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
     }
-    const category: ExpenseCategory = { id: `cat_${Date.now()}_${this.expenseCategories.length}`, name, archivedAt: null };
+    const category: ExpenseCategory = { id: `cat_${Date.now()}_${this.expenseCategories.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
     this.expenseCategories.push(category);
     this.notify();
     return { ...category };
@@ -791,7 +791,7 @@ export class MockDataStore {
       .map((category) => ({ ...category }));
   }
 
-  public renameExpenseCategory(id: string, input: { name: string }): ExpenseCategory {
+  public renameExpenseCategory(id: string, input: { name: string; iconKey?: ExpenseCategory["iconKey"] }): ExpenseCategory {
     const category = this.getExpenseCategoryByIdIncludingArchived(id);
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
@@ -800,6 +800,7 @@ export class MockDataStore {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
     }
     category.name = name;
+    if (input.iconKey !== undefined) category.iconKey = input.iconKey;
     this.notify();
     return { ...category };
   }
@@ -842,13 +843,13 @@ export class MockDataStore {
     return { ...source };
   }
 
-  public createExpenseTag(input: { name: string }): ExpenseTag {
+  public createExpenseTag(input: { name: string; iconKey?: ExpenseTag["iconKey"] }): ExpenseTag {
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
     if (this.getExpenseTagByName(name)) {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
     }
-    const tag: ExpenseTag = { id: `tag_${Date.now()}_${this.expenseTags.length}`, name, archivedAt: null };
+    const tag: ExpenseTag = { id: `tag_${Date.now()}_${this.expenseTags.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
     this.expenseTags.push(tag);
     this.notify();
     return { ...tag };
@@ -860,7 +861,7 @@ export class MockDataStore {
       .map((tag) => ({ ...tag }));
   }
 
-  public renameExpenseTag(id: string, input: { name: string }): ExpenseTag {
+  public renameExpenseTag(id: string, input: { name: string; iconKey?: ExpenseTag["iconKey"] }): ExpenseTag {
     const tag = this.getExpenseTagByIdIncludingArchived(id);
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
@@ -869,6 +870,7 @@ export class MockDataStore {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
     }
     tag.name = name;
+    if (input.iconKey !== undefined) tag.iconKey = input.iconKey;
     this.notify();
     return { ...tag };
   }
@@ -912,13 +914,13 @@ export class MockDataStore {
     return { ...source };
   }
 
-  public createPaymentMethod(input: { name: string }): PaymentMethod {
+  public createPaymentMethod(input: { name: string; iconKey?: PaymentMethod["iconKey"] }): PaymentMethod {
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
     if (this.getPaymentMethodByName(name)) {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
     }
-    const method: PaymentMethod = { id: `pm_${Date.now()}_${this.paymentMethods.length}`, name, archivedAt: null };
+    const method: PaymentMethod = { id: `pm_${Date.now()}_${this.paymentMethods.length}`, name, iconKey: input.iconKey ?? null, archivedAt: null };
     this.paymentMethods.push(method);
     this.notify();
     return { ...method };
@@ -930,7 +932,7 @@ export class MockDataStore {
       .map((method) => ({ ...method }));
   }
 
-  public renamePaymentMethod(id: string, input: { name: string }): PaymentMethod {
+  public renamePaymentMethod(id: string, input: { name: string; iconKey?: PaymentMethod["iconKey"] }): PaymentMethod {
     const method = this.getPaymentMethodByIdIncludingArchived(id);
     const name = input.name.trim();
     if (!name) throw new MockDomainError("REQUEST_INVALID", "名称不能为空");
@@ -939,6 +941,7 @@ export class MockDataStore {
       throw new MockDomainError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
     }
     method.name = name;
+    if (input.iconKey !== undefined) method.iconKey = input.iconKey;
     this.notify();
     return { ...method };
   }

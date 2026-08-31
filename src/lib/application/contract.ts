@@ -27,6 +27,7 @@ import {
   WeekPlan,
   WeekPlanItemInput,
 } from "@/lib/domain/types";
+import type { ExpenseIconKey } from "@/lib/domain/types";
 import { parseWeekStart, WEEK_START_MESSAGES } from "@/lib/domain/week-plan";
 import { z } from "zod";
 import type { ExpenseHistoryPage } from "@/lib/expenses/history";
@@ -105,6 +106,7 @@ export type UpdateExpenseInput = Partial<Pick<
 
 export type CreateExpenseDimensionInput = {
   name: string;
+  iconKey?: ExpenseIconKey | null;
 };
 
 export type MergeExpenseDimensionInput = {

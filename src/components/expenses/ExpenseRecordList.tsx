@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, LoaderCircle, Receipt } from "lucide-react";
-import type { Expense } from "@/lib/domain/types";
+import type { Expense, ExpenseCategory, PaymentMethod } from "@/lib/domain/types";
+import { getExpenseIcon } from "./expense-icons";
 import {
   expenseAmountLabel,
   expenseOccurrenceLabel,
@@ -36,6 +37,8 @@ type ExpenseRecordListProps = {
   onLoadMore?: () => void;
   categoryNames: ReadonlyMap<string, string>;
   paymentMethodNames: ReadonlyMap<string, string>;
+  categoryIcons?: ReadonlyMap<string, ExpenseCategory["iconKey"]>;
+  paymentMethodIcons?: ReadonlyMap<string, PaymentMethod["iconKey"]>;
   groupByDate?: boolean;
   summaryExpenses?: Expense[];
   renderExpanded?: (expense: Expense) => React.ReactNode;
@@ -94,6 +97,8 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
   onLoadMore,
   categoryNames,
   paymentMethodNames,
+  categoryIcons,
+  paymentMethodIcons,
   groupByDate = false,
   summaryExpenses,
   renderExpanded,
@@ -138,8 +143,9 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
           }`}
         >
           <div className="flex items-start justify-between gap-3">
-            <span className="min-w-0 truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {expensePrimaryText(expense)}
+            <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="truncate">{expensePrimaryText(expense)}</span>
+              {expense.categoryId && (() => { const Icon = getExpenseIcon(categoryIcons?.get(expense.categoryId)); return <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true" />; })()}
             </span>
             <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
               {expenseAmountLabel(expense)}
@@ -149,9 +155,9 @@ export const ExpenseRecordList: React.FC<ExpenseRecordListProps> = ({
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
             <span>{expenseOccurrenceLabel(expense, timezone)}</span>
             <span aria-hidden="true">·</span>
-            <span>{recordCategoryLabel(expense, categoryNames)}</span>
+            <span className="inline-flex items-center gap-1">{expense.categoryId && (() => { const Icon = getExpenseIcon(categoryIcons?.get(expense.categoryId)); return <Icon className="h-3 w-3" aria-hidden="true" />; })()}{recordCategoryLabel(expense, categoryNames)}</span>
             <span aria-hidden="true">·</span>
-            <span>{recordPaymentMethodLabel(expense, paymentMethodNames)}</span>
+            <span className="inline-flex items-center gap-1">{expense.paymentMethodId && (() => { const Icon = getExpenseIcon(paymentMethodIcons?.get(expense.paymentMethodId), "wallet"); return <Icon className="h-3 w-3" aria-hidden="true" />; })()}{recordPaymentMethodLabel(expense, paymentMethodNames)}</span>
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">

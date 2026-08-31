@@ -291,21 +291,29 @@ export type ExpenseReviewStatus = "pending" | "reviewed";
 export type ExpenseRecognitionStatus = "recognized";
 export type ExpenseSource = "shortcut" | "manual";
 
+export type ExpenseIconKey =
+  | "utensils" | "coffee" | "shopping-cart" | "car" | "plane" | "home"
+  | "briefcase" | "graduation-cap" | "heart-pulse" | "wallet" | "credit-card"
+  | "banknote" | "smartphone" | "gift" | "ticket" | "fuel" | "tag" | "circle-help";
+
 export type ExpenseCategory = {
   id: string;
   name: string;
+  iconKey?: ExpenseIconKey | null;
   archivedAt: string | null;
 };
 
 export type ExpenseTag = {
   id: string;
   name: string;
+  iconKey?: ExpenseIconKey | null;
   archivedAt: string | null;
 };
 
 export type PaymentMethod = {
   id: string;
   name: string;
+  iconKey?: ExpenseIconKey | null;
   archivedAt: string | null;
 };
 

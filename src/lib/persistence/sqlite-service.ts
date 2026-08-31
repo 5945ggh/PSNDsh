@@ -555,15 +555,15 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
   }
 
   private toExpenseCategory(row: typeof expenseCategories.$inferSelect): ExpenseCategory {
-    return { id: row.id, name: row.name, archivedAt: row.archivedAt };
+    return { id: row.id, name: row.name, iconKey: row.iconKey as ExpenseCategory["iconKey"] ?? null, archivedAt: row.archivedAt };
   }
 
   private toExpenseTag(row: typeof expenseTags.$inferSelect): ExpenseTag {
-    return { id: row.id, name: row.name, archivedAt: row.archivedAt };
+    return { id: row.id, name: row.name, iconKey: row.iconKey as ExpenseTag["iconKey"] ?? null, archivedAt: row.archivedAt };
   }
 
   private toPaymentMethod(row: typeof paymentMethods.$inferSelect): PaymentMethod {
-    return { id: row.id, name: row.name, archivedAt: row.archivedAt };
+    return { id: row.id, name: row.name, iconKey: row.iconKey as PaymentMethod["iconKey"] ?? null, archivedAt: row.archivedAt };
   }
 
   private toExpense(row: ExpenseRow): Expense {
@@ -724,12 +724,12 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
 
   private createExpenseDimension(
     input: CreateExpenseDimensionInput,
-    insert: (row: { id: string; userId: string; name: string; archivedAt: null; createdAt: string; updatedAt: string }) => void
+    insert: (row: { id: string; userId: string; name: string; iconKey: string | null; archivedAt: null; createdAt: string; updatedAt: string }) => void
   ) {
     const name = input.name.trim();
     if (!name) throw new ApplicationError("REQUEST_INVALID", "名称不能为空");
     const createdAt = nowIso(this.clock);
-    const row = { id: randomUUID(), userId: this.requireUserId(), name, archivedAt: null, createdAt, updatedAt: createdAt };
+    const row = { id: randomUUID(), userId: this.requireUserId(), name, iconKey: input.iconKey ?? null, archivedAt: null, createdAt, updatedAt: createdAt };
     insert(row);
     return row;
   }
@@ -762,7 +762,7 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "分类名称已存在", { name });
     }
     const updatedAt = nowIso(this.clock);
-    this.db.update(expenseCategories).set({ name, updatedAt })
+    this.db.update(expenseCategories).set({ name, iconKey: input.iconKey, updatedAt })
       .where(and(eq(expenseCategories.id, row.id), eq(expenseCategories.userId, this.requireUserId())))
       .run();
     return this.toExpenseCategory(this.getOwnedExpenseCategoryIncludingArchived(id));
@@ -844,7 +844,7 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "标签名称已存在", { name });
     }
     const updatedAt = nowIso(this.clock);
-    this.db.update(expenseTags).set({ name, updatedAt })
+    this.db.update(expenseTags).set({ name, iconKey: input.iconKey, updatedAt })
       .where(and(eq(expenseTags.id, row.id), eq(expenseTags.userId, this.requireUserId())))
       .run();
     return this.toExpenseTag(this.getOwnedExpenseTagIncludingArchived(id));
@@ -932,7 +932,7 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
       throw new ApplicationError("EXPENSE_DIMENSION_NAME_TAKEN", "支付方式名称已存在", { name });
     }
     const updatedAt = nowIso(this.clock);
-    this.db.update(paymentMethods).set({ name, updatedAt })
+    this.db.update(paymentMethods).set({ name, iconKey: input.iconKey, updatedAt })
       .where(and(eq(paymentMethods.id, row.id), eq(paymentMethods.userId, this.requireUserId())))
       .run();
     return this.toPaymentMethod(this.getOwnedPaymentMethodIncludingArchived(id));

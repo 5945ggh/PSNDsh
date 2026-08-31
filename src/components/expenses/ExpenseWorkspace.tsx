@@ -317,6 +317,8 @@ export const ExpenseWorkspace: React.FC<{ mode: ExpenseWorkspaceMode }> = ({ mod
       onLoadMore={mode === "expenses" ? handleLoadMore : undefined}
       categoryNames={categoryNames}
       paymentMethodNames={paymentMethodNames}
+      categoryIcons={new Map(categories.map((item) => [item.id, item.iconKey] as const))}
+      paymentMethodIcons={new Map(paymentMethods.map((item) => [item.id, item.iconKey] as const))}
       groupByDate={mode === "expenses"}
       summaryExpenses={mode === "expenses" ? orderedRecords : undefined}
       renderExpanded={usesInlineDetail ? () => renderDetailPanel() : undefined}

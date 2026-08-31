@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CreditCard, Hash, LoaderCircle, Plus, Tags, type LucideIcon } from "lucide-react";
+import { Check, CreditCard, Hash, LoaderCircle, Pencil, Plus, Tags, X, type LucideIcon } from "lucide-react";
 import { useData, type DataSnapshot } from "@/context/MockContext";
 import type { ExpenseCategory, ExpenseTag, PaymentMethod } from "@/lib/domain/types";
+import { EXPENSE_ICON_OPTIONS, getExpenseIcon } from "@/components/expenses/expense-icons";
 
 type DimensionItem = ExpenseCategory | ExpenseTag | PaymentMethod;
 export type ExpenseDimensionKind = "category" | "paymentMethod" | "tag";
@@ -77,7 +78,11 @@ export function ExpenseDimensionManager() {
   const [categoryName, setCategoryName] = useState("");
   const [paymentMethodName, setPaymentMethodName] = useState("");
   const [tagName, setTagName] = useState("");
+  const [iconKey, setIconKey] = useState<ExpenseCategory["iconKey"]>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingIconKey, setEditingIconKey] = useState<DimensionItem["iconKey"]>(null);
 
   const [activeDimension, setActiveDimension] = useState<ExpenseDimensionKind>("category");
 
@@ -91,24 +96,25 @@ export function ExpenseDimensionManager() {
     setError(null);
     try {
       if (kind === "category") {
-        await mutate(() => api.createExpenseCategory({ name: value }), {
+        await mutate(() => api.createExpenseCategory({ name: value, iconKey }), {
           backgroundRefresh: true,
           update: addCategory,
         });
         setCategoryName("");
       } else if (kind === "paymentMethod") {
-        await mutate(() => api.createPaymentMethod({ name: value }), {
+        await mutate(() => api.createPaymentMethod({ name: value, iconKey }), {
           backgroundRefresh: true,
           update: addPaymentMethod,
         });
         setPaymentMethodName("");
       } else {
-        await mutate(() => api.createExpenseTag({ name: value }), {
+        await mutate(() => api.createExpenseTag({ name: value, iconKey }), {
           backgroundRefresh: true,
           update: addTag,
         });
         setTagName("");
       }
+      setIconKey(null);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "创建失败");
     }
@@ -146,6 +152,32 @@ export function ExpenseDimensionManager() {
     const activeIndex = EXPENSE_DIMENSION_TABS.findIndex((tab) => tab.id === activeDimension);
     const nextIndex = (activeIndex + direction + EXPENSE_DIMENSION_TABS.length) % EXPENSE_DIMENSION_TABS.length;
     activateDimension(EXPENSE_DIMENSION_TABS[nextIndex].id);
+  };
+
+  const beginEdit = (item: DimensionItem) => {
+    setEditingId(item.id);
+    setEditingName(item.name);
+    setEditingIconKey(item.iconKey ?? null);
+    setError(null);
+  };
+
+  const saveEdit = async (item: DimensionItem) => {
+    const name = editingName.trim();
+    if (!name) return;
+    setError(null);
+    try {
+      const update = { name, iconKey: editingIconKey };
+      if (activeDimension === "category") {
+        await mutate(() => api.renameExpenseCategory(item.id, update), { backgroundRefresh: true, update: addCategory });
+      } else if (activeDimension === "paymentMethod") {
+        await mutate(() => api.renamePaymentMethod(item.id, update), { backgroundRefresh: true, update: addPaymentMethod });
+      } else {
+        await mutate(() => api.renameExpenseTag(item.id, update), { backgroundRefresh: true, update: addTag });
+      }
+      setEditingId(null);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "保存失败");
+    }
   };
 
   return (
@@ -235,6 +267,10 @@ export function ExpenseDimensionManager() {
             {activeSubmitLabel}
           </button>
         </form>
+        <div className="flex flex-wrap gap-1.5" aria-label="选择图标">
+          <button type="button" aria-label="不使用图标" onClick={() => setIconKey(null)} className={`rounded-md border px-2 py-1 text-xs ${iconKey === null ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}>无</button>
+          {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={label} title={label} onClick={() => setIconKey(key)} className={`rounded-md border p-1.5 ${iconKey === key ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}><Icon className="h-4 w-4" aria-hidden="true" /></button>; })}
+        </div>
 
           <div>
             <div className="mb-2">
@@ -251,11 +287,25 @@ export function ExpenseDimensionManager() {
                     key={item.id}
                     className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/40"
                   >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>
-                    {item.archivedAt && <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-500">已归档</span>}
+                  {editingId === item.id ? (
+                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+                      <input aria-label={`编辑${activeTab.label}名称`} value={editingName} onChange={(event) => setEditingName(event.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+                      <div className="flex flex-wrap gap-1">
+                        {EXPENSE_ICON_OPTIONS.map(({ key, label }) => { const Icon = getExpenseIcon(key); return <button key={key} type="button" aria-label={`选择${label}图标`} title={label} onClick={() => setEditingIconKey(key)} className={`rounded-md border p-1 ${editingIconKey === key ? "border-blue-500 bg-blue-50" : "border-zinc-200"}`}><Icon className="h-3.5 w-3.5" aria-hidden="true" /></button>; })}
+                      </div>
+                      <button type="button" aria-label="保存维度修改" onClick={() => void saveEdit(item)} disabled={!editingName.trim() || isSubmitting} className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50"><Check className="h-4 w-4" aria-hidden="true" /></button>
+                      <button type="button" aria-label="取消维度修改" onClick={() => setEditingId(null)} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"><X className="h-4 w-4" aria-hidden="true" /></button>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${activeToneClassName}`}>可选</span>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 items-center gap-2">
+                        {(() => { const Icon = getExpenseIcon(item.iconKey, activeDimension === "paymentMethod" ? "wallet" : activeDimension === "tag" ? "tag" : "circle-help"); return <Icon className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />; })()}
+                        <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>
+                        {item.archivedAt && <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-500">已归档</span>}
+                      </div>
+                      <div className="flex items-center gap-2"><button type="button" aria-label={`编辑${item.name}`} onClick={() => beginEdit(item)} className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"><Pencil className="h-3.5 w-3.5" aria-hidden="true" /></button><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${activeToneClassName}`}>可选</span></div>
+                    </>
+                  )}
                   </li>
                 ))
               )}

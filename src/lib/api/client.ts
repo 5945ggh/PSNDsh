@@ -33,6 +33,7 @@ import {
   UserProfile,
   WeekPlan,
   WeekPlanItemInput,
+  ExpenseIconKey,
 } from "@/lib/domain/types";
 
 type ApiEnvelope<T> = { data: T };
@@ -144,18 +145,18 @@ export interface ApiAdapter {
   getExpenseCategories(includeArchived?: boolean): Promise<ExpenseCategory[]>;
   getExpenseTags(includeArchived?: boolean): Promise<ExpenseTag[]>;
   getPaymentMethods(includeArchived?: boolean): Promise<PaymentMethod[]>;
-  createExpenseCategory(input: { name: string }): Promise<ExpenseCategory>;
-  renameExpenseCategory(id: string, input: { name: string }): Promise<ExpenseCategory>;
+  createExpenseCategory(input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<ExpenseCategory>;
+  renameExpenseCategory(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<ExpenseCategory>;
   archiveExpenseCategory(id: string): Promise<ExpenseCategory>;
   restoreExpenseCategory(id: string): Promise<ExpenseCategory>;
   mergeExpenseCategory(id: string, input: MergeExpenseDimensionInput): Promise<ExpenseCategory>;
-  createExpenseTag(input: { name: string }): Promise<ExpenseTag>;
-  renameExpenseTag(id: string, input: { name: string }): Promise<ExpenseTag>;
+  createExpenseTag(input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<ExpenseTag>;
+  renameExpenseTag(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<ExpenseTag>;
   archiveExpenseTag(id: string): Promise<ExpenseTag>;
   restoreExpenseTag(id: string): Promise<ExpenseTag>;
   mergeExpenseTag(id: string, input: MergeExpenseDimensionInput): Promise<ExpenseTag>;
-  createPaymentMethod(input: { name: string }): Promise<PaymentMethod>;
-  renamePaymentMethod(id: string, input: { name: string }): Promise<PaymentMethod>;
+  createPaymentMethod(input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<PaymentMethod>;
+  renamePaymentMethod(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }): Promise<PaymentMethod>;
   archivePaymentMethod(id: string): Promise<PaymentMethod>;
   restorePaymentMethod(id: string): Promise<PaymentMethod>;
   mergePaymentMethod(id: string, input: MergeExpenseDimensionInput): Promise<PaymentMethod>;
@@ -494,10 +495,10 @@ export class PersistentApiAdapter implements ApiAdapter {
     const query = includeArchived ? "?includeArchived=1" : "";
     return this.request<PaymentMethod[]>(`/api/v1/expenses/payment-methods${query}`);
   }
-  createExpenseCategory(input: { name: string }) {
+  createExpenseCategory(input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<ExpenseCategory>("/api/v1/expenses/categories", { method: "POST", body: JSON.stringify(input) });
   }
-  renameExpenseCategory(id: string, input: { name: string }) {
+  renameExpenseCategory(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<ExpenseCategory>(`/api/v1/expenses/categories/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
   }
   archiveExpenseCategory(id: string) {
@@ -509,10 +510,10 @@ export class PersistentApiAdapter implements ApiAdapter {
   mergeExpenseCategory(id: string, input: MergeExpenseDimensionInput) {
     return this.request<ExpenseCategory>(`/api/v1/expenses/categories/${encodeURIComponent(id)}/merge`, { method: "POST", body: JSON.stringify(input) });
   }
-  createExpenseTag(input: { name: string }) {
+  createExpenseTag(input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<ExpenseTag>("/api/v1/expenses/tags", { method: "POST", body: JSON.stringify(input) });
   }
-  renameExpenseTag(id: string, input: { name: string }) {
+  renameExpenseTag(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<ExpenseTag>(`/api/v1/expenses/tags/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
   }
   archiveExpenseTag(id: string) {
@@ -524,10 +525,10 @@ export class PersistentApiAdapter implements ApiAdapter {
   mergeExpenseTag(id: string, input: MergeExpenseDimensionInput) {
     return this.request<ExpenseTag>(`/api/v1/expenses/tags/${encodeURIComponent(id)}/merge`, { method: "POST", body: JSON.stringify(input) });
   }
-  createPaymentMethod(input: { name: string }) {
+  createPaymentMethod(input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<PaymentMethod>("/api/v1/expenses/payment-methods", { method: "POST", body: JSON.stringify(input) });
   }
-  renamePaymentMethod(id: string, input: { name: string }) {
+  renamePaymentMethod(id: string, input: { name: string; iconKey?: ExpenseIconKey | null }) {
     return this.request<PaymentMethod>(`/api/v1/expenses/payment-methods/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
   }
   archivePaymentMethod(id: string) {
