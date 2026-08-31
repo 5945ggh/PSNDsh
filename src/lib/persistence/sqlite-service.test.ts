@@ -974,6 +974,16 @@ describe("SqliteApplicationService", () => {
     expect(app.getExpenseHistoryPage(25, undefined, { from: "2026-06-21" }).items.map((item) => item.id)).toEqual(["filter-second"]);
   });
 
+  it("treats SQL wildcard characters as literals in expense history search", () => {
+    const app = service();
+    app.captureExpense({ id: "literal-percent", amountCents: 100, captureMessage: "100% complete" });
+    app.captureExpense({ id: "literal-underscore", amountCents: 200, captureMessage: "project_alpha" });
+    app.captureExpense({ id: "literal-other", amountCents: 300, captureMessage: "1000 complete" });
+
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "%" }).items.map((item) => item.id)).toEqual(["literal-percent"]);
+    expect(app.getExpenseHistoryPage(25, undefined, { q: "_" }).items.map((item) => item.id)).toEqual(["literal-underscore"]);
+  });
+
   it("preserves occurrence facts separately from recorded time and supports independent inbox organization", () => {
     const app = service();
     const category = app.createExpenseCategory({ name: "餐饮" });

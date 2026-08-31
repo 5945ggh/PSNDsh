@@ -1074,16 +1074,22 @@ export class SqliteApplicationService implements ApplicationService, ExpenseAppl
     this.ensureExpenseHistoryKeys(userId);
     const predicates = [eq(expenses.userId, userId), isNull(expenses.deletedAt)];
     const normalizedQuery = query.q?.trim().toLocaleLowerCase();
-    if (normalizedQuery) predicates.push(sql`(lower(coalesce(${expenses.note}, '')) like ${`%${normalizedQuery}%`} OR lower(coalesce(${expenses.captureMessage}, '')) like ${`%${normalizedQuery}%`})`);
+    if (normalizedQuery) predicates.push(sql`(
+      instr(lower(coalesce(${expenses.note}, '')), ${normalizedQuery}) > 0
+      OR instr(lower(coalesce(${expenses.captureMessage}, '')), ${normalizedQuery}) > 0
+    )`);
     if (query.from) predicates.push(sql`${expenses.historyDateKey} >= ${query.from}`);
     if (query.to) predicates.push(sql`${expenses.historyDateKey} <= ${query.to}`);
     if (query.categoryId) predicates.push(eq(expenses.categoryId, query.categoryId));
     if (query.paymentMethodId) predicates.push(eq(expenses.paymentMethodId, query.paymentMethodId));
     if (query.reviewStatus) predicates.push(eq(expenses.reviewStatus, query.reviewStatus));
     if (query.tagId) {
-      const taggedRows = this.db.select({ rowId: expenseRecordTags.expenseRowId }).from(expenseRecordTags).where(eq(expenseRecordTags.tagId, query.tagId)).all();
-      const rowIds = taggedRows.map((row) => row.rowId);
-      predicates.push(rowIds.length > 0 ? inArray(expenses.rowId, rowIds) : sql`1 = 0`);
+      predicates.push(sql`exists (
+        select 1
+        from ${expenseRecordTags}
+        where ${expenseRecordTags.expenseRowId} = ${expenses.rowId}
+          and ${expenseRecordTags.tagId} = ${query.tagId}
+      )`);
     }
     let cursor = null;
     if (before) {
