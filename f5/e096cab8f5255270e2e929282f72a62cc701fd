@@ -1,0 +1,125 @@
+src/lib/mock/api.ts
+  s_b030a56ac9c6d0::t_fa29366bcc95d3 3,29
+src/lib/application/contract.ts
+  s_b030a56ac9c6d0::t_1c20c59c439b72 12
+  s_b030a56ac9c6d0::t_cb2ce3aac4f9b3 109-118,164
+  s_b030a56ac9c6d0::t_9360ccc496d16d 8,234
+src/lib/api/client.ts
+  s_c7fb2a628fef7e::t_e4e623b8428890 165,555-556
+  s_b030a56ac9c6d0::t_cb2ce3aac4f9b3 11,144,482,485-491
+  s_c7fb2a628fef7e::t_3b8faebfe48bb9 557
+src/app/api/v1/expenses/route.ts
+  s_b030a56ac9c6d0::t_f4c58954d9d3f6 19-32,37
+  s_4e6f23fe192a6b::t_b8e724d1348203 5-9
+  s_b030a56ac9c6d0::t_57a43806285778 4,10-12
+  s_b030a56ac9c6d0::t_ed4f17e4137e17 13
+src/app/api/v1/expenses/export/route.ts
+  s_b030a56ac9c6d0::t_9360ccc496d16d 1-15
+src/app/api/v1/expenses/categories/route.ts
+  s_b030a56ac9c6d0::t_fba61fbfd2b363 1,14
+src/lib/api/adapter.ts
+  s_c7fb2a628fef7e::t_e4e623b8428890 133
+src/app/api/v1/expenses/categories/[id]/route.ts
+  s_b030a56ac9c6d0::t_fba61fbfd2b363 6
+src/app/api/v1/expenses/payment-methods/[id]/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 6
+src/app/api/v1/expenses/tags/[id]/restore/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,8
+src/app/api/v1/expenses/payment-methods/[id]/merge/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,6
+src/lib/mock/store.ts
+  s_4e6f23fe192a6b::t_b8e724d1348203 23,90-94,1121-1123
+  s_b030a56ac9c6d0::t_1c20c59c439b72 22,1100,1118-1120,1124-1129,1131
+  s_b030a56ac9c6d0::t_7b2ccef96fb33c 1096-1099
+  s_b030a56ac9c6d0::t_b660f3ecf3ce67 1101-1110
+src/app/api/v1/expenses/tags/[id]/merge/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,6
+src/lib/expenses/csv.test.ts
+  s_b030a56ac9c6d0::t_f4516fc0a993f0 1-30
+src/app/api/v1/expenses/categories/[id]/restore/route.ts
+  s_b030a56ac9c6d0::t_fba61fbfd2b363 1,8
+src/lib/mock/service.ts
+  s_b030a56ac9c6d0::t_7b2ccef96fb33c 96,104-107
+  s_b030a56ac9c6d0::t_9360ccc496d16d 7,108-120
+  s_b030a56ac9c6d0::t_cb2ce3aac4f9b3 49
+src/lib/domain/types.ts
+  s_b030a56ac9c6d0::t_7b2ccef96fb33c 278,286-291
+  s_b030a56ac9c6d0::t_9360ccc496d16d 294-295
+src/lib/persistence/sqlite-service.ts
+  s_b030a56ac9c6d0::t_9360ccc496d16d 56,2192-2204
+  s_b030a56ac9c6d0::t_f4c58954d9d3f6 40,1064,1069-1080
+  s_b030a56ac9c6d0::t_b660f3ecf3ce67 1093,1099-1107
+  s_4e6f23fe192a6b::t_b8e724d1348203 245-249
+  s_b030a56ac9c6d0::t_7b2ccef96fb33c 2157-2162,2164,2188-2191
+docs/architecture/TECHNICAL_DESIGN.md
+  s_b030a56ac9c6d0::t_645ee95ab0591d 131-132,185
+  s_b030a56ac9c6d0::t_cebf53feadb895 137
+  s_b030a56ac9c6d0::t_64f461eea17b2c 133
+src/app/api/v1/expenses/payment-methods/[id]/restore/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,8
+src/app/api/v1/expenses/categories/route.test.ts
+  s_b030a56ac9c6d0::t_dca8ca472abf93 72-89
+src/app/api/v1/expenses/export/csv/route.ts
+  s_b030a56ac9c6d0::t_f4516fc0a993f0 1-19
+src/app/api/v1/expenses/tags/[id]/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 6
+src/lib/expenses/csv.ts
+  s_b030a56ac9c6d0::t_f4516fc0a993f0 1-49
+src/app/api/v1/expenses/categories/[id]/merge/route.ts
+  s_b030a56ac9c6d0::t_fba61fbfd2b363 1,6
+src/lib/persistence/sqlite-service.test.ts
+  s_b030a56ac9c6d0::t_7b2ccef96fb33c 1076,1095
+  s_4e6f23fe192a6b::t_4be6b692a192b3 847-853
+  s_b030a56ac9c6d0::t_c6f2367a9289fa 964-976
+  s_b030a56ac9c6d0::t_178426df1c8c8e 1053-1070,1088-1094,1096-1101
+src/app/api/v1/expenses/[id]/route.test.ts
+  s_c7fb2a628fef7e::t_3fabd775ac88e4 34
+  s_c7fb2a628fef7e::t_d88facd9137a94 1-33,35-43
+src/app/api/v1/expenses/export/csv/route.test.ts
+  s_b030a56ac9c6d0::t_05bf5891b24fc7 33-34,38-39
+  s_b030a56ac9c6d0::t_b6dce6f82cd92f 1-32,35-37,40-42
+src/app/api/v1/expenses/[id]/route.ts
+  s_c7fb2a628fef7e::t_e4e623b8428890 2,33-38
+  s_c7fb2a628fef7e::t_f07142e963d73f 39-40
+src/app/api/v1/expenses/tags/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,14
+src/app/api/v1/expenses/payment-methods/route.ts
+  s_b030a56ac9c6d0::t_4562625508b21d 1,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f5e096cab8f5255270e2e929282f72a62cc701fd",
+  "prompts": {},
+  "humans": {
+    "h_c735ec7f46d14b": {
+      "author": "5945ggh <1282835294@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_b030a56ac9c6d0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05689-7de2-7291-a6d6-a227b30ba7ea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    },
+    "s_c7fb2a628fef7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05654-5486-7680-acba-69e531550fd8",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
