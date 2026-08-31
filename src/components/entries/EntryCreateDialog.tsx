@@ -20,12 +20,12 @@ type EntryCreateDialogProps = {
   description?: string;
 };
 
-const mergeCreatedEntry = (
+export const mergeCreatedEntry = (
   snapshot: DataSnapshot,
   result: CreatedEntryResult
 ): DataSnapshot => ({
   ...snapshot,
-  entries: [...snapshot.entries, result.entry],
+  entries: [...snapshot.entries.filter((entry) => entry.id !== result.entry.id), result.entry],
   ...(result.weekPlan ? { currentWeekPlan: result.weekPlan } : {}),
 });
 
@@ -42,12 +42,14 @@ export const EntryCreateDialog: React.FC<EntryCreateDialogProps> = ({
   const [newMode, setNewMode] = useState<EntryCompletionMode>("completable");
   const [newDueAt, setNewDueAt] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedTitle = newTitle.trim();
-    if (!normalizedTitle) return;
+    if (!normalizedTitle || isSubmitting) return;
     setError(null);
+    setIsSubmitting(true);
 
     try {
       await mutate(async () => {
@@ -71,6 +73,8 @@ export const EntryCreateDialog: React.FC<EntryCreateDialogProps> = ({
       onOpenChange(false);
     } catch (nextError: unknown) {
       setError(nextError instanceof Error ? nextError.message : "创建条目失败");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -171,10 +175,11 @@ export const EntryCreateDialog: React.FC<EntryCreateDialogProps> = ({
               </Dialog.Close>
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3.5 py-2 font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:bg-zinc-100 dark:text-zinc-900"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                {addToWeekPlan ? "创建并加入本周" : "创建条目"}
+                {isSubmitting ? "创建中…" : addToWeekPlan ? "创建并加入本周" : "创建条目"}
               </button>
             </div>
           </form>

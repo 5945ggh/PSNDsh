@@ -41,11 +41,13 @@ const ActionButton: React.FC<{
   ariaLabel?: string;
   className: string;
   onClick: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
-}> = ({ label, ariaLabel = label, className, onClick, children }) => (
+}> = ({ label, ariaLabel = label, className, onClick, disabled = false, children }) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
     aria-label={ariaLabel}
     title={label}
     className={`relative group/action inline-flex h-7 w-7 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 ${className}`}
@@ -76,6 +78,8 @@ export default function PlanPage() {
   const [entryToFocusId, setEntryToFocusId] = useState<string | null>(null);
   const [entryPendingDelete, setEntryPendingDelete] = useState<Entry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [addingChildId, setAddingChildId] = useState<string | null>(null);
+  const addingChildIdsRef = useRef(new Set<string>());
   const entryLinkRefs = useRef(new Map<string, HTMLAnchorElement>());
   const mergeEntry = (snapshot: DataSnapshot, entry: Entry): DataSnapshot => ({
     ...snapshot,
@@ -208,6 +212,9 @@ export default function PlanPage() {
   };
 
   const handleAddChild = async (entry: Entry) => {
+    if (addingChildIdsRef.current.has(entry.id)) return;
+    addingChildIdsRef.current.add(entry.id);
+    setAddingChildId(entry.id);
     try {
       const child = await mutate(() => api.addEntry({
         parentId: entry.id,
@@ -228,6 +235,9 @@ export default function PlanPage() {
       setEntryToFocusId(child.id);
     } catch {
       // DataProvider exposes the mutation error in the page shell.
+    } finally {
+      addingChildIdsRef.current.delete(entry.id);
+      setAddingChildId((current) => current === entry.id ? null : current);
     }
   };
 
@@ -428,8 +438,10 @@ export default function PlanPage() {
 
               <ActionButton
                 onClick={() => void handleAddChild(entry)}
+                ariaLabel={addingChildId === entry.id ? "正在添加子条目" : "添加子条目"}
+                disabled={addingChildId === entry.id}
                 label="添加子条目"
-                className="text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 focus-visible:ring-blue-500"
+                className="text-zinc-400 hover:text-blue-600 hover:bg-blue-50 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-blue-950/40 focus-visible:ring-blue-500"
               >
                 <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
               </ActionButton>
