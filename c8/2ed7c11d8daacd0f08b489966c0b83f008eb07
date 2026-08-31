@@ -1,0 +1,22 @@
+src/lib/persistence/sqlite-service.ts
+  s_4e6f23fe192a6b::t_dbb4397fd79775 1077-1080,1087-1092
+src/lib/persistence/sqlite-service.test.ts
+  s_4e6f23fe192a6b::t_dbb4397fd79775 977-985
+  s_4e6f23fe192a6b::t_16f275852f3165 976
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c82ed7c11d8daacd0f08b489966c0b83f008eb07",
+  "prompts": {},
+  "sessions": {
+    "s_4e6f23fe192a6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a056b0-dbe9-7ee0-8694-7930d5c934c2",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "5945ggh <1282835294@qq.com>"
+    }
+  }
+}
