@@ -53,4 +53,4 @@ jobs:
 
       - name: Pull and start selected image
         run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && chmod +x scripts/deploy-production.sh && IMAGE='$IMAGE' ./scripts/deploy-production.sh"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && chmod +x scripts/deploy-production.sh && DOCKER_SUDO=1 IMAGE='$IMAGE' ./scripts/deploy-production.sh"
