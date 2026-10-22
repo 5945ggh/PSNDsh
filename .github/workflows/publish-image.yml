@@ -2,7 +2,7 @@ name: Publish container image
 
 on:
   push:
-    branches: [main]
+    branches: [main, security/cloud-server-20261022]
     tags: ['v*.*.*']
   workflow_dispatch:
 
@@ -11,7 +11,13 @@ permissions:
   packages: write
 
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   publish:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,7 +46,7 @@ jobs:
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag
             type=sha
 
@@ -49,6 +55,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64
+          pull: true
+          no-cache: true
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
