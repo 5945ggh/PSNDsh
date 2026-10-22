@@ -57,7 +57,7 @@ DATABASE_URL=file:./data/personal-dashboard.db \
 ```bash
 export AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIC_ORIGIN=https://dashboard.example.com
-docker compose build
+docker compose build --pull --no-cache
 docker compose up -d
 docker compose ps
 docker compose logs --tail=100 personal-dashboard
@@ -70,7 +70,7 @@ docker compose logs --tail=100 personal-dashboard
 仓库包含三条 Actions 工作流：
 
 - `CI` 在 Pull Request 和 `main` 推送上执行依赖安装、lint、TypeScript 检查、Vitest、生产构建，并验证 Dockerfile 可以构建。
-- `Publish container image` 在 `main` 推送和 `v*.*.*` 标签上构建并发布镜像到 GHCR，镜像地址会统一转换为小写，例如 `ghcr.io/5945ggh/psndsh`。`main` 额外发布 `latest`，每次发布也会带不可变的提交 SHA 标签。
+- `Publish container image` 在 `main`、本轮安全分支 `security/cloud-server-20261022` 推送和 `v*.*.*` 标签上先调用同一提交的完整 CI，验证通过后再构建并发布 `linux/amd64` 镜像到 GHCR。镜像地址会统一转换为小写，例如 `ghcr.io/5945ggh/psndsh`。`main` 额外发布 `latest`，安全分支仅发布提交 SHA 标签。
 - `Deploy production image` 只能手动触发，使用 `production` Environment 的审批和 Secrets，通过密钥 SSH 到服务器后同步 Compose/部署脚本，再拉取指定镜像。它不会在每次合并后自动改线上。
 
 首次使用前，在 GitHub 仓库的 `Settings` 中完成以下设置：
@@ -79,6 +79,12 @@ docker compose logs --tail=100 personal-dashboard
 2. `Packages` 中将对应 GHCR 包设置为私有或公开。私有包需要在服务器保存一个只读的 GitHub fine-grained PAT，权限仅需 `read:packages`。
 3. 创建 `production` Environment；如果希望上线前人工确认，在该 Environment 的 Required reviewers 中加入自己。
 4. 为默认分支启用分支保护，要求 `CI / verify` 和 `CI / container` 通过后才能合并；发布和部署工作流不应作为合并前置条件。
+
+CI 和发布构建显式拉取 Dockerfile 固定 digest 的 Node 22.23.4 Bookworm slim 基础镜像，并禁用构建缓存。依赖继续通过 `pnpm@11.2.2` 和冻结锁文件安装。首次安全修复发布应保留这些设置；如后续恢复构建缓存，仍需保留 `pull: true`，并核实固定基础镜像的安全状态。
+
+CI 的容器任务还在构建产物中核对 Node 22.23.4、Next.js 16.4.2、`sharp >=0.35.5` 与 libvips 加载，并用 `better-sqlite3` 创建内存库、执行读写和完整性检查。
+
+2026-10-22 安全补丁将 Next.js 与 `eslint-config-next` 固定为 16.4.2。发布前核对产物中的 Node、Next.js 和 `sharp` 实际版本，其中 `sharp` 至少为 0.35.5。Next.js 的内置 React Server Components 随 Next.js 更新；顶层 React 版本不能代替内置 RSC 的安全校验。依据：[Next.js 10 月安全公告](https://nextjs.org/blog/nextjs-security-update-october-14-2026)、[React RSC 公告](https://github.com/react/react/security/advisories/GHSA-xqc2-xf4c-x3h3)。
 
 在 `production` Environment 中添加以下 Secrets：
 

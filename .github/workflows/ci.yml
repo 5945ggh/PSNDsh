@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches: [main]
@@ -27,7 +28,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.1
+          node-version: 22.23.4
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -65,7 +66,35 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64
+          pull: true
+          no-cache: true
+          load: true
           push: false
           tags: personal-dashboard:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify production runtime and native dependencies
+        run: |
+          docker run --rm --entrypoint node personal-dashboard:ci -e '
+            const assert = require("node:assert/strict");
+            const { createRequire } = require("node:module");
+            const nextRequire = createRequire(require.resolve("next/package.json"));
+            const nextVersion = require("next/package.json").version;
+            const sharp = nextRequire("sharp");
+            const sharpVersion = sharp.versions.sharp;
+            const [major, minor, patch] = sharpVersion.split(".").map(Number);
+            assert.equal(process.version, "v22.23.4");
+            assert.equal(nextVersion, "16.4.2");
+            assert(major > 0 || minor > 35 || (minor === 35 && patch >= 5), `Unexpected sharp ${sharpVersion}`);
+            assert(sharp.versions.vips, "sharp native libvips failed to load");
+            const Database = require("better-sqlite3");
+            const db = new Database(":memory:");
+            db.exec("CREATE TABLE smoke (value INTEGER NOT NULL)");
+            db.prepare("INSERT INTO smoke (value) VALUES (?)").run(22);
+            assert.equal(db.prepare("SELECT value FROM smoke").get().value, 22);
+            assert.equal(db.pragma("integrity_check", { simple: true }), "ok");
+            db.close();
+            console.log(JSON.stringify({ node: process.version, next: nextVersion, sharp: sharpVersion, libvips: sharp.versions.vips, sqlite: "ok" }));
+          '
